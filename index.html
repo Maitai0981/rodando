@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rodando | Plataforma de Peças para Motos</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="./main.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="#" class="brand" id="brand-home">
+        <span class="brand-symbol"></span>
+        RODANDO<span class="brand-accent">.BR</span>
+      </a>
+
+      <nav class="nav-list">
+        <button class="nav-btn active" data-nav="home">Início</button>
+        <button class="nav-btn" data-nav="info">Informações Técnicas</button>
+        <button class="nav-btn" data-nav="products">Produtos</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="layout container">
+    <section id="view-home" class="view active">
+      <div class="hero">
+        <h1>Plataforma profissional para catálogo e gestão de peças de motos.</h1>
+        <p>
+          Releitura da experiência Rodando para consulta de peças, aplicações técnicas
+          e atendimento mais rápido para quem precisa voltar a rodar.
+        </p>
+        <div class="row">
+          <button class="btn btn-primary" data-nav="products">Ver Catálogo</button>
+          <button class="btn btn-secondary" id="home-owner-access">Acesso do Proprietário</button>
+        </div>
+      </div>
+
+      <div class="grid grid-3">
+        <article class="card">
+          <span class="tag">Arquivo Único</span>
+          <h3>Navegação rápida</h3>
+          <p class="muted">Conteúdo técnico e catálogo com acesso imediato para o cliente final.</p>
+        </article>
+
+        <article class="card">
+          <span class="tag">Catálogo Atualizado</span>
+          <h3>Informação confiável</h3>
+          <p class="muted">Produtos, aplicações e dados comerciais centralizados para consulta.</p>
+        </article>
+
+        <article class="card">
+          <span class="tag">Atendimento Rápido</span>
+          <h3>Experiência objetiva</h3>
+          <p class="muted">Busca de peças simplificada para quem precisa voltar a rodar sem demora.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="view-info" class="view">
+      <div class="section-head">
+        <h2>Informações Técnicas</h2>
+      </div>
+
+      <div class="grid grid-3">
+        <article class="card">
+          <span class="tag">Aro 18 Fina</span>
+          <h3>Câmara de Ar</h3>
+          <p class="muted">Aplicação: 275-18 / 90/90-18 / 80/100-18 / 300-18</p>
+        </article>
+
+        <article class="card">
+          <span class="tag">Aro 17 Fina</span>
+          <h3>Câmara de Ar</h3>
+          <p class="muted">Aplicação: 250-17 / 60/100-17 / 225-17 / 275-17</p>
+        </article>
+
+        <article class="card">
+          <span class="tag">Aro 17 Larga</span>
+          <h3>Câmara de Ar</h3>
+          <p class="muted">Aplicação: 110/80-17 / 120/90-17 / 130/70-17 / 350-17</p>
+        </article>
+
+        <article class="card">
+          <span class="tag">Boas Práticas</span>
+          <h3>Montagem segura</h3>
+          <p class="muted">Verifique medidas, use ferramenta adequada e calibre com pneu frio para maior durabilidade.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="view-products" class="view">
+      <div class="card section-gap-sm">
+        <div class="section-head">
+          <h2>Catálogo de Produtos</h2>
+          <span class="tag" id="public-count">0 produtos</span>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label for="search-products">Buscar no catálogo</label>
+            <input id="search-products" placeholder="Código, nome, modelo, fabricante, categoria" />
+          </div>
+        </div>
+      </div>
+
+      <div id="products-grid" class="catalog-grid"></div>
+      <div id="products-empty" class="empty-state hidden">Nenhum produto encontrado para este filtro.</div>
+    </section>
+
+    <section id="view-admin" class="view">
+      <div class="grid admin-stack-grid">
+        <article class="card">
+          <div class="section-head">
+            <h2>Acesso do Proprietário</h2>
+          </div>
+
+          <div id="auth-user" class="auth-user hidden"></div>
+          <div id="auth-help" class="auth-help">
+            Faça login para habilitar cadastro, edição e exclusão. Sem login, o catálogo continua público.
+          </div>
+
+          <div class="auth-panel section-top-md">
+            <div class="form-row">
+              <div>
+                <label for="auth-email">E-mail</label>
+                <input id="auth-email" type="email" placeholder="proprietario@empresa.com" />
+              </div>
+              <div>
+                <label for="auth-password">Senha</label>
+                <input id="auth-password" type="password" placeholder="Digite sua senha" />
+              </div>
+            </div>
+
+            <div class="row section-top-xs">
+              <button id="btn-signin" class="btn btn-primary" type="button">Entrar</button>
+              <button id="btn-signup" class="btn btn-neutral" type="button">Criar Conta</button>
+              <button id="btn-signout" class="btn btn-danger hidden" type="button">Sair</button>
+            </div>
+          </div>
+        </article>
+
+        <article id="admin-management" class="card hidden">
+          <div class="section-head">
+            <h2>Cadastro e Edição de Produtos</h2>
+            <span class="tag" id="owner-count">Meus produtos: 0</span>
+          </div>
+
+          <form id="product-form" class="form-grid" novalidate>
+            <input id="product-id" type="hidden" />
+
+            <div class="form-row">
+              <div>
+                <label for="codigo">Código</label>
+                <input id="codigo" />
+              </div>
+              <div>
+                <label for="nome">Nome</label>
+                <input id="nome" />
+              </div>
+              <div>
+                <label for="modelo">Modelo</label>
+                <input id="modelo" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div>
+                <label for="fabricante">Fabricante</label>
+                <input id="fabricante" />
+              </div>
+              <div>
+                <label for="categoria">Categoria</label>
+                <input id="categoria" placeholder="Ex.: Câmara, Freio, Filtro" />
+              </div>
+              <div>
+                <label for="preco">Preço (R$)</label>
+                <input id="preco" type="number" step="0.01" />
+              </div>
+              <div>
+                <label for="estoque">Estoque</label>
+                <input id="estoque" type="number" step="1" />
+              </div>
+            </div>
+
+            <div>
+              <label for="descricao">Descrição</label>
+              <textarea id="descricao" placeholder="Aplicações, observações e detalhes técnicos"></textarea>
+            </div>
+
+            <div class="row">
+              <button id="btn-submit-product" class="btn btn-primary" type="submit">Cadastrar Produto</button>
+              <button id="btn-cancel-edit" class="btn btn-neutral hidden" type="button">Cancelar Edição</button>
+            </div>
+          </form>
+
+          <div id="admin-message" class="message"></div>
+        </article>
+
+        <article id="owner-products-panel" class="card hidden">
+          <div class="section-head">
+            <h2>Meus Produtos</h2>
+          </div>
+
+          <div class="form-row section-gap-xs">
+            <div>
+              <label for="search-admin">Buscar nos meus produtos</label>
+              <input id="search-admin" placeholder="Código, nome, modelo ou fabricante" />
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Nome</th>
+                  <th>Modelo</th>
+                  <th>Fabricante</th>
+                  <th>Categoria</th>
+                  <th>Preço</th>
+                  <th>Estoque</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="owner-table-body"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer container">
+    <div class="footer-inner">
+      <span>Rodando.br | Releitura comercial do catálogo de peças e informações técnicas.</span>
+      <button id="footer-owner-access" class="btn btn-neutral" type="button">Área restrita do proprietário</button>
+    </div>
+  </footer>
+
+  <script>
+    const SUPABASE_URL = "https://neyicdngqsourghhnpnm.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_EsD6vF0jBH7G7y5We25ZGQ_aGGWOiaX";
+    const TABLE_NAME = "products";
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    const views = {
+      home: document.getElementById("view-home"),
+      info: document.getElementById("view-info"),
+      products: document.getElementById("view-products"),
+      admin: document.getElementById("view-admin"),
+    };
+
+    const navButtons = document.querySelectorAll("[data-nav]");
+    const brandHome = document.getElementById("brand-home");
+    const homeOwnerAccess = document.getElementById("home-owner-access");
+    const footerOwnerAccess = document.getElementById("footer-owner-access");
+
+    const productsGrid = document.getElementById("products-grid");
+    const productsEmpty = document.getElementById("products-empty");
+    const publicCount = document.getElementById("public-count");
+    const searchProducts = document.getElementById("search-products");
+
+    const authEmail = document.getElementById("auth-email");
+    const authPassword = document.getElementById("auth-password");
+    const btnSignIn = document.getElementById("btn-signin");
+    const btnSignUp = document.getElementById("btn-signup");
+    const btnSignOut = document.getElementById("btn-signout");
+    const authUserBox = document.getElementById("auth-user");
+
+    const form = document.getElementById("product-form");
+    const productId = document.getElementById("product-id");
+    const btnSubmitProduct = document.getElementById("btn-submit-product");
+    const btnCancelEdit = document.getElementById("btn-cancel-edit");
+    const adminMessage = document.getElementById("admin-message");
+
+    const searchAdmin = document.getElementById("search-admin");
+    const ownerTableBody = document.getElementById("owner-table-body");
+    const ownerCount = document.getElementById("owner-count");
+    const adminManagement = document.getElementById("admin-management");
+    const ownerProductsPanel = document.getElementById("owner-products-panel");
+
+    let currentUser = null;
+    let publicProducts = [];
+    let ownerProducts = [];
+
+    init();
+
+    async function init() {
+      bindNavigation();
+      bindAuthEvents();
+      bindAdminEvents();
+
+      const { data } = await supabaseClient.auth.getSession();
+      currentUser = data.session?.user ?? null;
+      updateAuthUI();
+
+      supabaseClient.auth.onAuthStateChange((_event, session) => {
+        currentUser = session?.user ?? null;
+        updateAuthUI();
+        loadOwnerProducts();
+      });
+
+      await loadPublicProducts();
+      await loadOwnerProducts();
+    }
+
+    function bindNavigation() {
+      navButtons.forEach((button) => {
+        button.addEventListener("click", () => showView(button.dataset.nav));
+      });
+
+      brandHome.addEventListener("click", (event) => {
+        event.preventDefault();
+        showView("home");
+      });
+      homeOwnerAccess.addEventListener("click", () => showView("admin"));
+      footerOwnerAccess.addEventListener("click", () => showView("admin"));
+
+      searchProducts.addEventListener("input", renderPublicProducts);
+    }
+
+    function showView(viewName) {
+      Object.entries(views).forEach(([key, section]) => {
+        section.classList.toggle("active", key === viewName);
+      });
+
+      document.querySelectorAll(".nav-btn[data-nav]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.nav === viewName);
+      });
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function bindAuthEvents() {
+      btnSignIn.addEventListener("click", signIn);
+      btnSignUp.addEventListener("click", signUp);
+      btnSignOut.addEventListener("click", signOut);
+    }
+
+    async function signIn() {
+      const email = authEmail.value.trim();
+      const password = authPassword.value;
+
+      if (!email || !password) {
+        showAdminMessage("Informe e-mail e senha para entrar.", "error");
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        showAdminMessage(`Falha no login: ${error.message}`, "error");
+        return;
+      }
+
+      showAdminMessage("Login realizado com sucesso.", "success");
+      authPassword.value = "";
+    }
+
+    async function signUp() {
+      const email = authEmail.value.trim();
+      const password = authPassword.value;
+
+      if (!email || !password) {
+        showAdminMessage("Informe e-mail e senha para criar conta.", "error");
+        return;
+      }
+
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      if (error) {
+        showAdminMessage(`Falha ao criar conta: ${error.message}`, "error");
+        return;
+      }
+
+      if (data?.user && !data.session) {
+        showAdminMessage("Conta criada. Verifique seu e-mail para confirmar o acesso.", "info");
+      } else {
+        showAdminMessage("Conta criada e sessão iniciada.", "success");
+      }
+
+      authPassword.value = "";
+    }
+
+    async function signOut() {
+      const { error } = await supabaseClient.auth.signOut();
+      if (error) {
+        showAdminMessage(`Erro ao sair: ${error.message}`, "error");
+        return;
+      }
+
+      showAdminMessage("Sessão encerrada.", "info");
+      resetForm();
+    }
+
+    function updateAuthUI() {
+      const isLogged = Boolean(currentUser);
+      authUserBox.classList.toggle("hidden", !isLogged);
+      btnSignOut.classList.toggle("hidden", !isLogged);
+      authUserBox.textContent = isLogged ? `Logado como: ${currentUser.email}` : "";
+      searchAdmin.disabled = !isLogged;
+      adminManagement.classList.toggle("hidden", !isLogged);
+      ownerProductsPanel.classList.toggle("hidden", !isLogged);
+
+      form.querySelectorAll("input, textarea, button").forEach((el) => {
+        if (el.id === "btn-cancel-edit") return;
+        el.disabled = !isLogged;
+      });
+
+      if (!isLogged) {
+        resetForm();
+      }
+    }
+
+    async function loadPublicProducts() {
+      const { data, error } = await supabaseClient
+        .from(TABLE_NAME)
+        .select("*")
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        showAdminMessage(`Erro ao carregar catálogo: ${error.message}`, "error");
+        return;
+      }
+
+      publicProducts = (data ?? []).map(mapProductRow);
+      renderPublicProducts();
+    }
+
+    function renderPublicProducts() {
+      const term = searchProducts.value.trim().toLowerCase();
+      const filtered = publicProducts.filter((product) => {
+        if (!term) return true;
+
+        return [product.codigo, product.nome, product.modelo, product.fabricante, product.categoria]
+          .join(" ")
+          .toLowerCase()
+          .includes(term);
+      });
+
+      publicCount.textContent = `${filtered.length} produtos`;
+      productsGrid.innerHTML = "";
+
+      if (!filtered.length) {
+        productsEmpty.classList.remove("hidden");
+        return;
+      }
+
+      productsEmpty.classList.add("hidden");
+
+      filtered.forEach((product) => {
+        const card = document.createElement("article");
+        card.className = "product-card";
+        card.innerHTML = `
+          <div class="product-head">
+            <span class="tag">${escapeHtml(product.categoria || "Peça")}</span>
+            <span class="product-code">${escapeHtml(product.codigo || "-")}</span>
+          </div>
+          <h3 class="product-name">${escapeHtml(product.nome)}</h3>
+          <p class="muted product-meta">Modelo: ${escapeHtml(product.modelo || "-")}</p>
+          <p class="muted product-meta">Fabricante: ${escapeHtml(product.fabricante || "-")}</p>
+          <p class="price">${formatBRL(product.preco)}</p>
+          <p class="stock">Estoque: ${Number(product.estoque || 0)}</p>
+          <p class="desc">${escapeHtml(product.descricao || "Sem descrição técnica cadastrada.")}</p>
+        `;
+        productsGrid.appendChild(card);
+      });
+    }
+
+    function bindAdminEvents() {
+      searchAdmin.addEventListener("input", renderOwnerTable);
+      btnCancelEdit.addEventListener("click", resetForm);
+      form.addEventListener("submit", onSubmitProduct);
+    }
+
+    async function loadOwnerProducts() {
+      if (!currentUser) {
+        ownerProducts = [];
+        renderOwnerTable();
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from(TABLE_NAME)
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        showAdminMessage(`Erro ao carregar seus produtos: ${error.message}`, "error");
+        return;
+      }
+
+      ownerProducts = (data ?? []).map(mapProductRow);
+      renderOwnerTable();
+    }
+
+    function renderOwnerTable() {
+      const term = searchAdmin.value.trim().toLowerCase();
+      const filtered = ownerProducts.filter((product) => {
+        if (!term) return true;
+
+        return [product.codigo, product.nome, product.modelo, product.fabricante]
+          .join(" ")
+          .toLowerCase()
+          .includes(term);
+      });
+
+      ownerCount.textContent = `Meus produtos: ${ownerProducts.length}`;
+      ownerTableBody.innerHTML = "";
+
+      if (!currentUser) {
+        ownerTableBody.innerHTML = '<tr><td colspan="8" class="table-empty-cell">Faça login para visualizar e gerenciar seus produtos.</td></tr>';
+        return;
+      }
+
+      if (!filtered.length) {
+        ownerTableBody.innerHTML = '<tr><td colspan="8" class="table-empty-cell">Nenhum produto encontrado.</td></tr>';
+        return;
+      }
+
+      filtered.forEach((product) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${escapeHtml(product.codigo)}</td>
+          <td>${escapeHtml(product.nome)}</td>
+          <td>${escapeHtml(product.modelo)}</td>
+          <td>${escapeHtml(product.fabricante || "-")}</td>
+          <td>${escapeHtml(product.categoria || "-")}</td>
+          <td>${formatBRL(product.preco)}</td>
+          <td>${Number(product.estoque || 0)}</td>
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-neutral" data-action="edit" data-id="${product.id}" type="button">Editar</button>
+              <button class="btn btn-danger" data-action="delete" data-id="${product.id}" type="button">Excluir</button>
+            </div>
+          </td>
+        `;
+
+        ownerTableBody.appendChild(row);
+      });
+
+      bindOwnerTableActions();
+    }
+
+    function bindOwnerTableActions() {
+      ownerTableBody.querySelectorAll("[data-action='edit']").forEach((button) => {
+        button.addEventListener("click", () => {
+          const product = ownerProducts.find((p) => p.id === button.dataset.id);
+          if (!product) return;
+
+          productId.value = product.id;
+          document.getElementById("codigo").value = product.codigo || "";
+          document.getElementById("nome").value = product.nome || "";
+          document.getElementById("modelo").value = product.modelo || "";
+          document.getElementById("fabricante").value = product.fabricante || "";
+          document.getElementById("categoria").value = product.categoria || "";
+          document.getElementById("preco").value = Number(product.preco || 0);
+          document.getElementById("estoque").value = Number(product.estoque || 0);
+          document.getElementById("descricao").value = product.descricao || "";
+
+          btnSubmitProduct.textContent = "Atualizar Produto";
+          btnCancelEdit.classList.remove("hidden");
+          showAdminMessage("Edição habilitada.", "info");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      });
+
+      ownerTableBody.querySelectorAll("[data-action='delete']").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const confirmed = window.confirm("Deseja realmente excluir este produto?");
+          if (!confirmed) return;
+
+          const { error } = await supabaseClient.from(TABLE_NAME).delete().eq("id", button.dataset.id);
+          if (error) {
+            showAdminMessage(`Erro ao excluir: ${error.message}`, "error");
+            return;
+          }
+
+          showAdminMessage("Produto excluído com sucesso.", "success");
+          await loadPublicProducts();
+          await loadOwnerProducts();
+        });
+      });
+    }
+
+    async function onSubmitProduct(event) {
+      event.preventDefault();
+
+      if (!currentUser) {
+        showAdminMessage("Faça login para cadastrar ou editar produtos.", "error");
+        return;
+      }
+
+      const payload = {
+        codigo: clean(document.getElementById("codigo").value),
+        nome: clean(document.getElementById("nome").value),
+        modelo: clean(document.getElementById("modelo").value),
+        fabricante: clean(document.getElementById("fabricante").value),
+        categoria: clean(document.getElementById("categoria").value),
+        preco: Number(document.getElementById("preco").value),
+        estoque: Number(document.getElementById("estoque").value),
+        descricao: clean(document.getElementById("descricao").value),
+      };
+
+      if (!payload.codigo || !payload.nome || !payload.modelo) {
+        showAdminMessage("Código, nome e modelo são obrigatórios.", "error");
+        return;
+      }
+
+      if (payload.preco < 0 || payload.estoque < 0) {
+        showAdminMessage("Preço e estoque não podem ser negativos.", "error");
+        return;
+      }
+
+      const isEditing = Boolean(productId.value);
+
+      if (isEditing) {
+        const { error } = await supabaseClient
+          .from(TABLE_NAME)
+          .update({ ...payload, updated_at: new Date().toISOString() })
+          .eq("id", productId.value);
+
+        if (error) {
+          showAdminMessage(`Erro ao atualizar produto: ${error.message}`, "error");
+          return;
+        }
+
+        showAdminMessage("Produto atualizado com sucesso.", "success");
+      } else {
+        const { error } = await supabaseClient
+          .from(TABLE_NAME)
+          .insert({ ...payload, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+
+        if (error) {
+          showAdminMessage(`Erro ao cadastrar produto: ${error.message}`, "error");
+          return;
+        }
+
+        showAdminMessage("Produto cadastrado com sucesso.", "success");
+      }
+
+      resetForm();
+      await loadPublicProducts();
+      await loadOwnerProducts();
+    }
+
+    function resetForm() {
+      form.reset();
+      productId.value = "";
+      btnSubmitProduct.textContent = "Cadastrar Produto";
+      btnCancelEdit.classList.add("hidden");
+    }
+
+    function showAdminMessage(message, type) {
+      adminMessage.textContent = message;
+      adminMessage.className = `message show ${type}`;
+    }
+
+    function mapProductRow(row) {
+      return {
+        id: row.id,
+        owner_id: row.owner_id,
+        codigo: row.codigo,
+        nome: row.nome,
+        modelo: row.modelo,
+        fabricante: row.fabricante,
+        categoria: row.categoria,
+        preco: row.preco,
+        estoque: row.estoque,
+        descricao: row.descricao,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      };
+    }
+
+    function formatBRL(value) {
+      return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
+    }
+
+    function clean(value) {
+      return String(value || "").trim();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+  </script>
+</body>
+</html>
