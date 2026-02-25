@@ -3,57 +3,73 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rodando | Plataforma de Peças para Motos</title>
+  <title>Rodando | Catálogo Profissional de Peças para Motos</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="./main.css" />
 </head>
 <body>
   <header class="topbar">
     <div class="container topbar-inner">
-      <a href="#" class="brand" id="brand-home">
+      <a href="#" class="brand" id="brand-home" aria-label="Voltar para início">
         <span class="brand-symbol"></span>
         RODANDO<span class="brand-accent">.BR</span>
       </a>
 
-      <nav class="nav-list">
-        <button class="nav-btn active" data-nav="home">Início</button>
-        <button class="nav-btn" data-nav="info">Informações Técnicas</button>
-        <button class="nav-btn" data-nav="products">Produtos</button>
+      <nav class="nav-list" aria-label="Navegação principal">
+        <button class="nav-btn active" data-nav="home" type="button">Início</button>
+        <button class="nav-btn" data-nav="info" type="button">Informações Técnicas</button>
+        <button class="nav-btn" data-nav="products" type="button">Produtos</button>
       </nav>
     </div>
   </header>
 
   <main class="layout container">
     <section id="view-home" class="view active">
-      <div class="hero">
-        <h1>Plataforma profissional para catálogo e gestão de peças de motos.</h1>
+      <article class="hero">
+        <span class="eyebrow">Seleção premium para motocicletas</span>
+        <h1>Peças certas, informação clara e atendimento rápido para manter sua moto rodando.</h1>
         <p>
-          Releitura da experiência Rodando para consulta de peças, aplicações técnicas
-          e atendimento mais rápido para quem precisa voltar a rodar.
+          A releitura da Rodando foi desenhada para facilitar a busca por peças com visual moderno,
+          leitura rápida e foco total na decisão de compra.
         </p>
-        <div class="row">
-          <button class="btn btn-primary" data-nav="products">Ver Catálogo</button>
-          <button class="btn btn-secondary" id="home-owner-access">Acesso do Proprietário</button>
+        <div class="hero-cta row">
+          <button class="btn btn-primary" data-nav="products" type="button">Ver Catálogo</button>
+          <button class="btn btn-secondary" id="home-owner-access" type="button">Acesso do Proprietário</button>
         </div>
-      </div>
+      </article>
+
+      <section class="trust-strip" aria-label="Pontos fortes da loja">
+        <div class="trust-item">
+          <strong>Entrega ágil</strong>
+          <span>Operação voltada para reposição rápida</span>
+        </div>
+        <div class="trust-item">
+          <strong>Curadoria técnica</strong>
+          <span>Aplicações de medidas e modelos verificadas</span>
+        </div>
+        <div class="trust-item">
+          <strong>Atendimento direto</strong>
+          <span>Comunicação objetiva para fechar pedido</span>
+        </div>
+      </section>
 
       <div class="grid grid-3">
         <article class="card">
-          <span class="tag">Arquivo Único</span>
-          <h3>Navegação rápida</h3>
-          <p class="muted">Conteúdo técnico e catálogo com acesso imediato para o cliente final.</p>
+          <span class="tag">Compra segura</span>
+          <h3>Catálogo atualizado</h3>
+          <p class="muted">Produtos organizados para encontrar rápido o item ideal para cada moto.</p>
         </article>
 
         <article class="card">
-          <span class="tag">Catálogo Atualizado</span>
-          <h3>Informação confiável</h3>
-          <p class="muted">Produtos, aplicações e dados comerciais centralizados para consulta.</p>
+          <span class="tag">Performance</span>
+          <h3>Busca inteligente</h3>
+          <p class="muted">Filtro por código, modelo, fabricante e categoria para decisões sem ruído.</p>
         </article>
 
         <article class="card">
-          <span class="tag">Atendimento Rápido</span>
-          <h3>Experiência objetiva</h3>
-          <p class="muted">Busca de peças simplificada para quem precisa voltar a rodar sem demora.</p>
+          <span class="tag">Área profissional</span>
+          <h3>Gestão restrita</h3>
+          <p class="muted">Cadastro e edição liberados apenas para o proprietário autenticado.</p>
         </article>
       </div>
     </section>
@@ -61,6 +77,7 @@
     <section id="view-info" class="view">
       <div class="section-head">
         <h2>Informações Técnicas</h2>
+        <p class="muted">Tabela de referência para aplicação e montagem com mais segurança.</p>
       </div>
 
       <div class="grid grid-3">
@@ -85,7 +102,7 @@
         <article class="card">
           <span class="tag">Boas Práticas</span>
           <h3>Montagem segura</h3>
-          <p class="muted">Verifique medidas, use ferramenta adequada e calibre com pneu frio para maior durabilidade.</p>
+          <p class="muted">Verifique medidas, utilize ferramenta adequada e calibre com pneu frio.</p>
         </article>
       </div>
     </section>
@@ -111,14 +128,17 @@
 
     <section id="view-admin" class="view">
       <div class="grid admin-stack-grid">
-        <article class="card">
+        <article class="card auth-card">
           <div class="section-head">
-            <h2>Acesso do Proprietário</h2>
+            <h2>Área restrita do proprietário</h2>
           </div>
 
           <div id="auth-user" class="auth-user hidden"></div>
           <div id="auth-help" class="auth-help">
-            Faça login para habilitar cadastro, edição e exclusão. Sem login, o catálogo continua público.
+            Área exclusiva para o responsável pela operação. Usuários comuns visualizam apenas o catálogo público.
+          </div>
+          <div id="visitor-warning" class="visitor-warning">
+            Você está como visitante. O cadastro de produtos só aparece após autenticação.
           </div>
 
           <div class="auth-panel section-top-md">
@@ -234,7 +254,7 @@
 
   <footer class="footer container">
     <div class="footer-inner">
-      <span>Rodando.br | Releitura comercial do catálogo de peças e informações técnicas.</span>
+      <span>Rodando.br | Catálogo comercial e referência técnica para peças de moto.</span>
       <button id="footer-owner-access" class="btn btn-neutral" type="button">Área restrita do proprietário</button>
     </div>
   </footer>
@@ -269,6 +289,7 @@
     const btnSignUp = document.getElementById("btn-signup");
     const btnSignOut = document.getElementById("btn-signout");
     const authUserBox = document.getElementById("auth-user");
+    const visitorWarning = document.getElementById("visitor-warning");
 
     const form = document.getElementById("product-form");
     const productId = document.getElementById("product-id");
@@ -316,9 +337,9 @@
         event.preventDefault();
         showView("home");
       });
+
       homeOwnerAccess.addEventListener("click", () => showView("admin"));
       footerOwnerAccess.addEventListener("click", () => showView("admin"));
-
       searchProducts.addEventListener("input", renderPublicProducts);
     }
 
@@ -399,6 +420,8 @@
       authUserBox.classList.toggle("hidden", !isLogged);
       btnSignOut.classList.toggle("hidden", !isLogged);
       authUserBox.textContent = isLogged ? `Logado como: ${currentUser.email}` : "";
+      visitorWarning.classList.toggle("hidden", isLogged);
+
       searchAdmin.disabled = !isLogged;
       adminManagement.classList.toggle("hidden", !isLogged);
       ownerProductsPanel.classList.toggle("hidden", !isLogged);
