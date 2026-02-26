@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { startTransition, useDeferredValue, useEffect, useState } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import {
   Alert,
@@ -24,20 +24,26 @@ export default function OwnerProductsPage() {
   const location = useLocation()
   const [rows, setRows] = useState<Product[]>([])
   const [query, setQuery] = useState('')
+  const deferredQuery = useDeferredValue(query)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>((location.state as { toast?: string } | null)?.toast ?? null)
 
   useEffect(() => {
-    void loadProducts()
-  }, [])
+    const timeoutId = window.setTimeout(() => {
+      void loadProducts(deferredQuery)
+    }, 220)
+    return () => window.clearTimeout(timeoutId)
+  }, [deferredQuery])
 
   async function loadProducts(search = query) {
     setLoading(true)
     setError(null)
     try {
       const result = await api.listOwnerProducts(search)
-      setRows(result.items)
+      startTransition(() => {
+        setRows(result.items)
+      })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Falha ao carregar produtos.')
     } finally {
@@ -51,7 +57,9 @@ export default function OwnerProductsPage() {
 
     try {
       await api.deleteProduct(product.id)
-      setRows((prev) => prev.filter((row) => row.id !== product.id))
+      startTransition(() => {
+        setRows((prev) => prev.filter((row) => row.id !== product.id))
+      })
       setToast('Produto excluido com sucesso.')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Falha ao excluir produto.')
@@ -76,11 +84,11 @@ export default function OwnerProductsPage() {
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault()
-              void loadProducts()
+              void loadProducts(query)
             }
           }}
         />
-        <Button variant="outlined" color="primary" onClick={() => void loadProducts()}>
+        <Button variant="outlined" color="primary" onClick={() => void loadProducts(query)}>
           Buscar
         </Button>
       </Stack>

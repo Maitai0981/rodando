@@ -9,6 +9,7 @@
   --site-muted: #1a4aa6;
   --site-line: rgba(0, 39, 118, 0.12);
   --site-green: #009c3b;
+  --site-yellow: #ffdf00;
 }
 
 * {
@@ -23,15 +24,29 @@ body,
   width: 100%;
 }
 
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 body {
   position: relative;
   min-height: 100vh;
   font-family: 'Space Grotesk', 'Sora', Arial, sans-serif;
   background:
-    radial-gradient(circle at 12% 10%, rgba(0, 39, 118, 0.14), transparent 34%),
-    radial-gradient(circle at 84% 16%, rgba(0, 156, 59, 0.1), transparent 28%),
-    radial-gradient(circle at 50% 85%, rgba(255, 223, 0, 0.12), transparent 36%),
-    linear-gradient(180deg, #ffffff 0%, #f6fbf7 62%, #eef8f1 100%);
+    radial-gradient(circle at 75% 18%, rgba(255, 223, 0, 0.08), transparent 42%),
+    radial-gradient(circle at 22% 74%, rgba(0, 156, 59, 0.07), transparent 44%),
+    radial-gradient(circle at 35% 24%, rgba(0, 39, 118, 0.06), transparent 48%),
+    radial-gradient(circle at 12% 8%, rgba(0, 39, 118, 0.05), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(0, 156, 59, 0.04), transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbf8 60%, #f2f8f4 100%);
   color: var(--site-ink);
 }
 
@@ -51,33 +66,33 @@ body::after {
 
 body::before {
   z-index: 0;
-  opacity: 0.08;
+  opacity: 0.03;
   background-image:
-    radial-gradient(rgba(0, 39, 118, 0.5) 0.6px, transparent 0.8px),
-    radial-gradient(rgba(0, 156, 59, 0.22) 0.55px, transparent 0.8px);
+    radial-gradient(rgba(0, 39, 118, 0.32) 0.45px, transparent 0.75px),
+    radial-gradient(rgba(0, 156, 59, 0.16) 0.45px, transparent 0.75px);
   background-position: 0 0, 11px 8px;
-  background-size: 14px 14px, 17px 17px;
-  animation: grainShift 14s steps(10) infinite;
+  background-size: 16px 16px, 18px 18px;
+  animation: grainShift 22s steps(10) infinite;
 }
 
 body::after {
   z-index: 0;
   background:
-    radial-gradient(circle at 70% 28%, rgba(0, 39, 118, 0.18), transparent 35%),
-    radial-gradient(circle at 24% 70%, rgba(0, 156, 59, 0.08), transparent 34%),
-    radial-gradient(circle at 50% 40%, rgba(255, 223, 0, 0.06), transparent 28%);
-  filter: blur(48px);
-  opacity: 0.65;
+    radial-gradient(circle at 75% 20%, rgba(255,223,0,0.12), transparent 44%),
+    radial-gradient(circle at 22% 75%, rgba(0,156,59,0.1), transparent 46%),
+    radial-gradient(circle at 35% 25%, rgba(0,39,118,0.08), transparent 52%);
+  filter: blur(2px);
+  opacity: 0.42;
 }
 
 .glass-nav {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(18px) saturate(1.05);
-  -webkit-backdrop-filter: blur(18px) saturate(1.05);
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(12px) saturate(1.02);
+  -webkit-backdrop-filter: blur(12px) saturate(1.02);
 }
 
 .float-animation {
-  animation: floating 4.8s ease-in-out infinite;
+  animation: floating 7s ease-in-out infinite;
   will-change: transform;
 }
 
@@ -115,7 +130,146 @@ body::after {
 .hairline-panel {
   border: 1px solid var(--site-line);
   background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
+}
+
+.hero-paper {
+  min-height: 100vh;
+  background: linear-gradient(
+    135deg,
+    #009b3a 0%,
+    #009b3a 40%,
+    #ffdf00 40%,
+    #ffdf00 70%,
+    #002776 70%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+}
+
+.hero-content {
+  background: white;
+  padding: 4rem;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  max-width: 900px;
+  width: 100%;
+}
+
+.hero-title {
+  font-size: 4rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #002776;
+}
+
+.title-line-1 {
+  display: block;
+  color: #009b3a;
+}
+
+.title-line-2 {
+  display: block;
+  margin-top: 1rem;
+}
+
+.rodando-wheel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15em;
+}
+
+.wheel {
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 50%;
+  border: 4px solid #002776;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: spin 3s linear infinite;
+}
+
+.wheel-inner {
+  width: 40%;
+  height: 40%;
+  background-color: #ffdf00;
+  border-radius: 50%;
+}
+
+.hero-subtitle {
+  margin-top: 2rem;
+  font-size: 1.2rem;
+  color: #333;
+  max-width: 600px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.tireTrack {
+  display: inline-block;
+  overflow: hidden;
+}
+
+.tireTrack__svg {
+  display: block;
+}
+
+.tireTrack--rotated .tireTrack__svg {
+  transform: rotate(90deg);
+  transform-origin: center;
+}
+
+.home__tireTrack {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: auto;
+  opacity: 0.42;
+  filter: blur(0.15px);
+}
+
+.home__tireTrack .tireTrack__svg {
+  width: 100%;
+  height: auto;
+}
+
+.jelly-scroll-layer {
+  --jelly-translate-y: 0px;
+  --jelly-scale-x: 1;
+  --jelly-scale-y: 1;
+  transform: translate3d(0, var(--jelly-translate-y), 0) scaleX(var(--jelly-scale-x)) scaleY(var(--jelly-scale-y));
+  transform-origin: 50% 0%;
+  will-change: transform;
+}
+
+.scroll-cue-pill {
+  animation: scrollCueFloat 1.8s ease-in-out infinite;
+}
+
+.scroll-cue-icon {
+  animation: scrollCueArrow 1.1s ease-in-out infinite;
+}
+
+.nav-progress-bar {
+  height: 2px;
+  width: 100%;
+  transform-origin: 0% 50%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0,156,59,0.85), rgba(255,223,0,0.95), rgba(0,39,118,0.85));
+  opacity: 0.9;
 }
 
 @keyframes floating {
@@ -143,6 +297,16 @@ body::after {
   80% { transform: translate(1.1%, 0.8%); }
 }
 
+@keyframes scrollCueFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+@keyframes scrollCueArrow {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(2px); opacity: 0.85; }
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -156,12 +320,20 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .float-animation,
   .reveal-up,
-  body::before {
+  body::before,
+  .jelly-scroll-layer,
+  .scroll-cue-pill,
+  .scroll-cue-icon {
     animation: none !important;
   }
 
   .reveal-up {
     opacity: 1;
     transform: none;
+  }
+
+  .jelly-scroll-layer {
+    transform: none !important;
+    will-change: auto;
   }
 }

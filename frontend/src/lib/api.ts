@@ -15,10 +15,26 @@ export type Product = {
   bikeModel: string
   price: number
   stock: number
+  imageUrl: string
   description: string
   isActive: number | boolean
   createdAt: string
   updatedAt: string
+}
+
+export type BagItem = {
+  productId: number
+  quantity: number
+  name: string
+  sku: string
+  manufacturer: string
+  category: string
+  bikeModel: string
+  price: number
+  stock: number
+  imageUrl: string
+  description: string
+  isActive: number | boolean
 }
 
 export class ApiError extends Error {
@@ -56,7 +72,7 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => apiRequest<{ status: string; timestamp: string }>('/api/health'),
-  me: () => apiRequest<{ user: AuthUser }>('/api/auth/me'),
+  me: () => apiRequest<{ user: AuthUser | null }>('/api/auth/me'),
   signIn: (payload: { email: string; password: string }) =>
     apiRequest<{ message: string; user: AuthUser }>('/api/auth/signin', {
       method: 'POST',
@@ -74,6 +90,50 @@ export const api = {
     }),
   listPublicProducts: (query = '') =>
     apiRequest<{ items: Product[] }>(`/api/products${query ? `?q=${encodeURIComponent(query)}` : ''}`),
+  getBag: () =>
+    apiRequest<{ items: BagItem[]; total: number }>('/api/bag'),
+  addBagItem: (payload: { productId: number; quantity?: number }) =>
+    apiRequest<{ items: BagItem[] }>('/api/bag/items', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateBagItem: (productId: number, quantity: number) =>
+    apiRequest<{ items: BagItem[] }>(`/api/bag/items/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ quantity }),
+    }),
+  removeBagItem: (productId: number) =>
+    fetch(`${API_BASE}/api/bag/items/${productId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    }).then(async (res) => {
+      if (!res.ok) {
+        let message = `Erro HTTP ${res.status}`
+        try {
+          const json = await res.json()
+          message = json?.error || message
+        } catch {
+          // noop
+        }
+        throw new ApiError(message, res.status)
+      }
+    }),
+  clearBag: () =>
+    fetch(`${API_BASE}/api/bag`, {
+      method: 'DELETE',
+      credentials: 'include',
+    }).then(async (res) => {
+      if (!res.ok) {
+        let message = `Erro HTTP ${res.status}`
+        try {
+          const json = await res.json()
+          message = json?.error || message
+        } catch {
+          // noop
+        }
+        throw new ApiError(message, res.status)
+      }
+    }),
   ownerDashboard: () =>
     apiRequest<{
       metrics: {

@@ -40,16 +40,32 @@ db.exec(`
     bike_model TEXT NOT NULL,
     price REAL NOT NULL CHECK (price >= 0),
     stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
+    image_url TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
     is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS user_bag_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (user_id, product_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+  );
+
   CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
   CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
   CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+  CREATE INDEX IF NOT EXISTS idx_bag_user_id ON user_bag_items(user_id);
 `)
+
+ensureColumn('products', 'image_url', "image_url TEXT NOT NULL DEFAULT ''")
 
 function nowIso() {
   return new Date().toISOString()
@@ -57,6 +73,14 @@ function nowIso() {
 
 function cleanExpiredSessions() {
   db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(nowIso())
+}
+
+function ensureColumn(tableName, columnName, columnDefinition) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all()
+  const exists = columns.some((column) => String(column.name) === columnName)
+  if (!exists) {
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition}`)
+  }
 }
 
 function seedProducts() {
@@ -67,17 +91,17 @@ function seedProducts() {
 
   const insert = db.prepare(`
     INSERT INTO products (
-      name, sku, manufacturer, category, bike_model, price, stock, description, is_active, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      name, sku, manufacturer, category, bike_model, price, stock, image_url, description, is_active, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
   const createdAt = nowIso()
   const sample = [
-    ['Camara de Ar Aro 18 Fina', 'CA-AR18-F', 'Rodando', 'Camara de Ar', 'CG 160 / Fan 160', 49.9, 120, 'Alta resistencia para uso urbano e estrada.', 1],
-    ['Camara de Ar Aro 17 Larga', 'CA-AR17-L', 'Rodando', 'Camara de Ar', 'XRE 190 / Bros', 58.9, 90, 'Aplicacao para pneus traseiros mais largos.', 1],
-    ['Pastilha de Freio Dianteira Pro', 'PF-DI-PRO', 'Rodaflex', 'Freio', 'CB 300 / Twister', 79.9, 45, 'Composto com boa resposta e durabilidade.', 1],
-    ['Filtro de Oleo Premium', 'FO-118', 'Magna', 'Lubrificacao', 'Factor / Fazer', 32.5, 220, 'Filtro para revisao preventiva e uso diario.', 1],
-    ['Kit Relacao Touring', 'KR-TOUR-991', 'Voltx', 'Transmissao', 'XTZ 250 / Lander', 189.9, 34, 'Kit relacao com foco em durabilidade.', 1]
+    ['Camara de Ar Aro 18 Fina', 'CA-AR18-F', 'Rodando', 'Camara de Ar', 'CG 160 / Fan 160', 49.9, 120, '', 'Alta resistencia para uso urbano e estrada.', 1],
+    ['Camara de Ar Aro 17 Larga', 'CA-AR17-L', 'Rodando', 'Camara de Ar', 'XRE 190 / Bros', 58.9, 90, '', 'Aplicacao para pneus traseiros mais largos.', 1],
+    ['Pastilha de Freio Dianteira Pro', 'PF-DI-PRO', 'Rodaflex', 'Freio', 'CB 300 / Twister', 79.9, 45, '', 'Composto com boa resposta e durabilidade.', 1],
+    ['Filtro de Oleo Premium', 'FO-118', 'Magna', 'Lubrificacao', 'Factor / Fazer', 32.5, 220, '', 'Filtro para revisao preventiva e uso diario.', 1],
+    ['Kit Relacao Touring', 'KR-TOUR-991', 'Voltx', 'Transmissao', 'XTZ 250 / Lander', 189.9, 34, '', 'Kit relacao com foco em durabilidade.', 1]
   ]
 
   for (const item of sample) {

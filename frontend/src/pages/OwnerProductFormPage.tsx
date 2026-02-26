@@ -30,6 +30,7 @@ type ProductForm = {
   bikeModel: string
   price: string
   stock: string
+  imageUrl: string
   description: string
   isActive: boolean
 }
@@ -42,6 +43,7 @@ const emptyForm: ProductForm = {
   bikeModel: '',
   price: '',
   stock: '',
+  imageUrl: '',
   description: '',
   isActive: true,
 }
@@ -92,6 +94,7 @@ export default function OwnerProductFormPage() {
           bikeModel: item.bikeModel,
           price: String(item.price),
           stock: String(item.stock),
+          imageUrl: item.imageUrl || '',
           description: item.description,
           isActive: Boolean(item.isActive),
         })
@@ -122,6 +125,7 @@ export default function OwnerProductFormPage() {
       bikeModel: form.bikeModel.trim(),
       price: Number(form.price),
       stock: Number(form.stock),
+      imageUrl: form.imageUrl.trim(),
       description: form.description.trim(),
       isActive: form.isActive,
     }
@@ -252,6 +256,15 @@ export default function OwnerProductFormPage() {
                       onChange={(e) => setForm((prev) => ({ ...prev, bikeModel: e.target.value }))}
                     />
 
+                    <TextField
+                      label="URL da imagem"
+                      fullWidth
+                      placeholder="https://... (recomendado CDN/Cloudinary)"
+                      value={form.imageUrl}
+                      onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                      helperText="Melhor prática: armazenar URL da imagem no banco (CDN/Cloudinary/S3), não o arquivo binário."
+                    />
+
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                       <TextField
                         label="Preco"
@@ -329,8 +342,43 @@ export default function OwnerProductFormPage() {
                     <Line label="SKU" value={form.sku || '-'} />
                     <Line label="Preco" value={form.price ? `R$ ${Number(form.price || 0).toFixed(2)}` : '-'} />
                     <Line label="Estoque" value={form.stock || '-'} />
+                    <Line label="Imagem" value={form.imageUrl ? 'Configurada' : 'Sem imagem'} />
                   </Stack>
                 )}
+              </Paper>
+
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3 }}>
+                <Typography variant="subtitle2" color="primary" gutterBottom>
+                  Preview da imagem
+                </Typography>
+                <Box
+                  sx={{
+                    borderRadius: 2.5,
+                    border: '1px solid rgba(12,22,44,0.08)',
+                    bgcolor: 'rgba(247,250,248,0.95)',
+                    minHeight: 180,
+                    display: 'grid',
+                    placeItems: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {form.imageUrl ? (
+                    <Box
+                      component="img"
+                      key={form.imageUrl}
+                      src={form.imageUrl}
+                      alt={form.name || 'Preview do produto'}
+                      sx={{ width: '100%', height: 180, objectFit: 'contain', p: 1.25 }}
+                      onError={(event) => {
+                        ;(event.currentTarget as HTMLImageElement).style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Informe uma URL para visualizar.
+                    </Typography>
+                  )}
+                </Box>
               </Paper>
 
               {!isCreate && loadedProduct ? (

@@ -9,6 +9,7 @@ const {
   createUser,
   deleteSessionByToken,
   getUserByEmail,
+  requireAuth,
   requireOwner,
   setSessionCookie,
   verifyPassword,
@@ -32,7 +33,7 @@ app.get('/api/health', (_req, res) => {
 
 app.get('/api/auth/me', (req, res) => {
   if (!req.auth?.user) {
-    return res.status(401).json({ error: 'Nao autenticado.' })
+    return res.json({ user: null })
   }
   return res.json({ user: req.auth.user })
 })
@@ -116,12 +117,121 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ message: 'Logout realizado.' })
 })
 
+app.get('/api/bag', requireAuth, (req, res) => {
+  const items = getUserBagItems(req.auth.user.id)
+  const total = items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0)
+  res.json({ items, total })
+})
+
+app.post('/api/bag/items', requireAuth, (req, res) => {
+  const userId = req.auth.user.id
+  const productId = Number(req.body?.productId)
+  const requestedQty = Number(req.body?.quantity ?? 1)
+
+  if (!Number.isInteger(productId) || productId <= 0) {
+    return res.status(400).json({ error: 'Produto invalido.' })
+  }
+  if (!Number.isInteger(requestedQty) || requestedQty <= 0) {
+    return res.status(400).json({ error: 'Quantidade invalida.' })
+  }
+
+  const product = getProductById(productId)
+  if (!product || Number(product.isActive) !== 1) {
+    return res.status(404).json({ error: 'Produto nao encontrado.' })
+  }
+  if (Number(product.stock) <= 0) {
+    return res.status(409).json({ error: 'Produto sem estoque.' })
+  }
+
+  const current = db.prepare(
+    'SELECT quantity FROM user_bag_items WHERE user_id = ? AND product_id = ?'
+  ).get(userId, productId)
+  const nextQty = Math.min(Number(product.stock), Number(current?.quantity || 0) + requestedQty)
+
+  if (nextQty <= 0) {
+    return res.status(409).json({ error: 'Quantidade indisponivel.' })
+  }
+
+  const timestamp = nowIso()
+  if (current) {
+    db.prepare('UPDATE user_bag_items SET quantity = ?, updated_at = ? WHERE user_id = ? AND product_id = ?').run(
+      nextQty,
+      timestamp,
+      userId,
+      productId,
+    )
+  } else {
+    db.prepare(
+      'INSERT INTO user_bag_items (user_id, product_id, quantity, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(userId, productId, nextQty, timestamp, timestamp)
+  }
+
+  return res.status(201).json({ items: getUserBagItems(userId) })
+})
+
+app.put('/api/bag/items/:productId', requireAuth, (req, res) => {
+  const userId = req.auth.user.id
+  const productId = Number(req.params.productId)
+  const quantity = Number(req.body?.quantity)
+
+  if (!Number.isInteger(productId) || productId <= 0) {
+    return res.status(400).json({ error: 'Produto invalido.' })
+  }
+  if (!Number.isInteger(quantity)) {
+    return res.status(400).json({ error: 'Quantidade invalida.' })
+  }
+
+  if (quantity <= 0) {
+    db.prepare('DELETE FROM user_bag_items WHERE user_id = ? AND product_id = ?').run(userId, productId)
+    return res.json({ items: getUserBagItems(userId) })
+  }
+
+  const product = getProductById(productId)
+  if (!product || Number(product.isActive) !== 1) {
+    return res.status(404).json({ error: 'Produto nao encontrado.' })
+  }
+
+  const nextQty = Math.min(quantity, Number(product.stock))
+  if (nextQty <= 0) {
+    return res.status(409).json({ error: 'Produto sem estoque.' })
+  }
+
+  const existing = db.prepare('SELECT id FROM user_bag_items WHERE user_id = ? AND product_id = ?').get(userId, productId)
+  if (!existing) {
+    return res.status(404).json({ error: 'Item nao encontrado na mochila.' })
+  }
+
+  db.prepare('UPDATE user_bag_items SET quantity = ?, updated_at = ? WHERE user_id = ? AND product_id = ?').run(
+    nextQty,
+    nowIso(),
+    userId,
+    productId,
+  )
+  return res.json({ items: getUserBagItems(userId) })
+})
+
+app.delete('/api/bag/items/:productId', requireAuth, (req, res) => {
+  const userId = req.auth.user.id
+  const productId = Number(req.params.productId)
+  if (!Number.isInteger(productId) || productId <= 0) {
+    return res.status(400).json({ error: 'Produto invalido.' })
+  }
+
+  db.prepare('DELETE FROM user_bag_items WHERE user_id = ? AND product_id = ?').run(userId, productId)
+  return res.status(204).send()
+})
+
+app.delete('/api/bag', requireAuth, (req, res) => {
+  db.prepare('DELETE FROM user_bag_items WHERE user_id = ?').run(req.auth.user.id)
+  return res.status(204).send()
+})
+
 app.get('/api/products', (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase()
   const params = []
 
   let sql = `
-    SELECT id, name, sku, manufacturer, category, bike_model AS bikeModel, price, stock, description, is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
+    SELECT id, name, sku, manufacturer, category, bike_model AS bikeModel, price, stock, image_url AS imageUrl, description, is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM products
     WHERE is_active = 1
   `
@@ -156,7 +266,7 @@ app.get('/api/owner/dashboard', requireOwner, (_req, res) => {
 app.get('/api/owner/products', requireOwner, (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase()
   let sql = `
-    SELECT id, name, sku, manufacturer, category, bike_model AS bikeModel, price, stock, description,
+    SELECT id, name, sku, manufacturer, category, bike_model AS bikeModel, price, stock, image_url AS imageUrl, description,
            is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM products
   `
@@ -195,8 +305,8 @@ app.post('/api/owner/products', requireOwner, (req, res) => {
   const now = nowIso()
   try {
     const result = db.prepare(`
-      INSERT INTO products (name, sku, manufacturer, category, bike_model, price, stock, description, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO products (name, sku, manufacturer, category, bike_model, price, stock, image_url, description, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       parsed.value.name,
       parsed.value.sku,
@@ -205,6 +315,7 @@ app.post('/api/owner/products', requireOwner, (req, res) => {
       parsed.value.bikeModel,
       parsed.value.price,
       parsed.value.stock,
+      parsed.value.imageUrl,
       parsed.value.description,
       parsed.value.isActive ? 1 : 0,
       now,
@@ -240,7 +351,7 @@ app.put('/api/owner/products/:id', requireOwner, (req, res) => {
   try {
     db.prepare(`
       UPDATE products
-      SET name = ?, sku = ?, manufacturer = ?, category = ?, bike_model = ?, price = ?, stock = ?, description = ?, is_active = ?, updated_at = ?
+      SET name = ?, sku = ?, manufacturer = ?, category = ?, bike_model = ?, price = ?, stock = ?, image_url = ?, description = ?, is_active = ?, updated_at = ?
       WHERE id = ?
     `).run(
       parsed.value.name,
@@ -250,6 +361,7 @@ app.put('/api/owner/products/:id', requireOwner, (req, res) => {
       parsed.value.bikeModel,
       parsed.value.price,
       parsed.value.stock,
+      parsed.value.imageUrl,
       parsed.value.description,
       parsed.value.isActive ? 1 : 0,
       nowIso(),
@@ -292,11 +404,33 @@ function startServer(port = PORT) {
 
 function getProductById(id) {
   return db.prepare(`
-    SELECT id, name, sku, manufacturer, category, bike_model AS bikeModel, price, stock, description,
+    SELECT id, name, sku, manufacturer, category, bike_model AS bikeModel, price, stock, image_url AS imageUrl, description,
            is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM products
     WHERE id = ?
   `).get(id)
+}
+
+function getUserBagItems(userId) {
+  return db.prepare(`
+    SELECT
+      b.product_id AS productId,
+      b.quantity AS quantity,
+      p.name AS name,
+      p.sku AS sku,
+      p.manufacturer AS manufacturer,
+      p.category AS category,
+      p.bike_model AS bikeModel,
+      p.price AS price,
+      p.stock AS stock,
+      p.image_url AS imageUrl,
+      p.description AS description,
+      p.is_active AS isActive
+    FROM user_bag_items b
+    JOIN products p ON p.id = b.product_id
+    WHERE b.user_id = ?
+    ORDER BY b.updated_at DESC, b.id DESC
+  `).all(userId)
 }
 
 function validateProduct(body) {
@@ -309,6 +443,7 @@ function validateProduct(body) {
     bikeModel: String(input.bikeModel || '').trim(),
     price: Number(input.price),
     stock: Number(input.stock),
+    imageUrl: String(input.imageUrl || '').trim(),
     description: String(input.description || '').trim(),
     isActive:
       input.isActive === false || input.isActive === 0 || input.isActive === '0' || input.isActive === 'false'
@@ -323,6 +458,22 @@ function validateProduct(body) {
   if (value.bikeModel.length < 2) return { error: 'Modelo/aplicacao obrigatorio.' }
   if (!Number.isFinite(value.price) || value.price < 0) return { error: 'Preco invalido.' }
   if (!Number.isInteger(value.stock) || value.stock < 0) return { error: 'Estoque invalido.' }
+  if (value.imageUrl.length > 1500) return { error: 'URL da imagem muito longa.' }
+  if (value.imageUrl) {
+    const isRelativePath = value.imageUrl.startsWith('/')
+    const isHttpUrl = /^https?:\/\//i.test(value.imageUrl)
+    if (!isRelativePath && !isHttpUrl) {
+      return { error: 'Imagem deve ser uma URL http(s) ou caminho iniciado por /.' }
+    }
+    if (isHttpUrl) {
+      try {
+        // Valida formato da URL sem tentar fazer request.
+        new URL(value.imageUrl)
+      } catch {
+        return { error: 'URL da imagem invalida.' }
+      }
+    }
+  }
 
   return { value }
 }

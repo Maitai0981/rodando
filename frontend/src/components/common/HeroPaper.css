@@ -1,0 +1,114 @@
+.hero-paper {
+  max-width: 560px;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hero-title {
+  margin: 0;
+  color: #0c1630;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 0.93;
+  font-size: clamp(1.6rem, 6.8vw, 2.35rem);
+}
+
+.hero-title .title-line-1,
+.hero-title .title-line-2 {
+  display: block;
+}
+
+.hero-title .title-line-2 {
+  color: #009c3b;
+}
+
+.hero-subtitle {
+  margin: 0;
+  max-width: 360px;
+  color: rgba(12, 22, 44, 0.68);
+  font-size: 0.84rem;
+  line-height: 1.32;
+}
+
+.rodando-wheel {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.02em;
+  white-space: nowrap;
+}
+
+.wheel {
+  position: relative;
+  display: inline-flex;
+  width: 0.88em;
+  height: 0.88em;
+  margin: 0 0.02em;
+  border-radius: 50%;
+  border: 0.09em solid currentColor;
+  transform: translateY(0.08em);
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 0.05em rgba(255, 255, 255, 0.3);
+  animation: heroWheelSpin 1.45s linear infinite;
+}
+
+.wheel::before,
+.wheel::after {
+  content: '';
+  position: absolute;
+  background: currentColor;
+  opacity: 0.9;
+}
+
+.wheel::before {
+  width: 0.08em;
+  height: 74%;
+}
+
+.wheel::after {
+  height: 0.08em;
+  width: 74%;
+}
+
+.wheel-inner {
+  width: 0.22em;
+  height: 0.22em;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.95;
+}
+
+@keyframes heroWheelSpin {
+  from {
+    transform: translateY(0.08em) rotate(0deg);
+  }
+  to {
+    transform: translateY(0.08em) rotate(360deg);
+  }
+}
+
+@media (min-width: 900px) {
+  .hero-content {
+    gap: 10px;
+  }
+
+  .hero-title {
+    font-size: clamp(2.15rem, 3.9vw, 3.25rem);
+    line-height: 0.92;
+  }
+
+  .hero-subtitle {
+    font-size: 0.88rem;
+    max-width: 390px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheel {
+    animation: none;
+  }
+}

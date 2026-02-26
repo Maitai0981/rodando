@@ -1,34 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Alert, Box, Button, Paper, Stack, Typography } from '@mui/material'
-import { api } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 
 export default function OwnerGatePage() {
   const navigate = useNavigate()
-  const [checking, setChecking] = useState(true)
+  const { user, status } = useAuth()
 
   useEffect(() => {
-    let active = true
-
-    api
-      .me()
-      .then(({ user }) => {
-        if (!active) return
-        if (user.role === 'owner') {
-          navigate('/owner/dashboard', { replace: true })
-          return
-        }
-        setChecking(false)
-      })
-      .catch(() => {
-        if (!active) return
-        setChecking(false)
-      })
-
-    return () => {
-      active = false
+    if (status !== 'authenticated') return
+    if (user?.role === 'owner') {
+      navigate('/owner/dashboard', { replace: true })
     }
-  }, [navigate])
+  }, [navigate, status, user])
+
+  const checking = status === 'loading'
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', px: 2 }}>

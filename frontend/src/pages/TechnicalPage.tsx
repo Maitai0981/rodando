@@ -21,7 +21,7 @@ export default function TechnicalPage() {
           </Typography>
         </Box>
         <Box className="float-animation" sx={{ width: 120, height: 120, borderRadius: '50%', bgcolor: '#FFFFFF', display: 'grid', placeItems: 'center', border: '2px solid #FFCC00' }}>
-          <Box component="img" src="/brand/rodando-mascot.svg" alt="Mascote" sx={{ width: 64, opacity: 0.8 }} />
+          <Box component="img" src="/brand/rodando-mascote.png" alt="Mascote" sx={{ width: 64, opacity: 0.8 }} />
         </Box>
       </Stack>
 
