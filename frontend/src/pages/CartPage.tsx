@@ -121,7 +121,7 @@ export default function CartPage() {
                       >
                         <Grid container spacing={2} alignItems="center">
                           <Grid size={{ xs: 12, md: 7 }}>
-                            <Stack direction="row" spacing={1.4} alignItems="center">
+                            <Stack direction="row" spacing={1.2} alignItems="center">
                               <Box
                                 component={motion.div}
                                 whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }}
@@ -146,17 +146,17 @@ export default function CartPage() {
                                     sx={{ width: '100%', height: '100%', objectFit: 'contain', p: 0.75 }}
                                   />
                                 ) : (
-                                  <Box sx={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed rgba(0,39,118,0.2)' }} />
+                                  <Box sx={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed rgba(17,17,17,0.2)' }} />
                                 )}
                               </Box>
                               <Box sx={{ minWidth: 0 }}>
                                 <Typography variant="subtitle1" sx={{ color: 'info.main', lineHeight: 1.15 }}>
                                   {item.name}
                                 </Typography>
-                                <Typography variant="body2" color="text.secondary" noWrap>
+                                <Typography variant="body2" color="text.secondary" noWrap={false} sx={{ wordBreak: 'break-word' }}>
                                   {item.manufacturer} • {item.bikeModel}
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', pr: 0.5 }}>
                                   SKU: {item.sku} • Estoque: {item.stock}
                                 </Typography>
                               </Box>
@@ -164,7 +164,7 @@ export default function CartPage() {
                           </Grid>
 
                           <Grid size={{ xs: 12, md: 2.5 }}>
-                            <Stack direction="row" spacing={0.8} alignItems="center">
+                            <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap">
                               <Button size="small" variant="outlined" onClick={() => void updateQty(item.productId, item.quantity - 1)}>
                                 -
                               </Button>
@@ -198,7 +198,7 @@ export default function CartPage() {
                             </Stack>
                           </Grid>
 
-                          <Grid size={{ xs: 8, md: 2.5 }}>
+                          <Grid size={{ xs: 12, sm: 8, md: 2.5 }}>
                             <Typography variant="subtitle1" sx={{ color: 'info.main', fontWeight: 700 }}>
                               {formatPrice(Number(item.price) * Number(item.quantity))}
                             </Typography>
@@ -207,8 +207,8 @@ export default function CartPage() {
                             </Typography>
                           </Grid>
 
-                          <Grid size={{ xs: 4, md: 12 }}>
-                            <Stack direction="row" justifyContent={{ xs: 'flex-end', md: 'flex-start' }}>
+                          <Grid size={{ xs: 12, sm: 4, md: 12 }}>
+                            <Stack direction="row" justifyContent={{ xs: 'flex-start', sm: 'flex-end', md: 'flex-start' }}>
                               <Button size="small" color="error" onClick={() => void removeItem(item.productId)}>
                                 Remover
                               </Button>

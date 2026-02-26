@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { Box, Grid, Paper, Stack, Typography } from '@mui/material'
 import { motion, useReducedMotion } from 'motion/react'
-import BrandTireStrip from '../common/BrandTireStrip'
 
 type AuthSplitLayoutProps = {
   eyebrow: string
@@ -31,14 +30,13 @@ export default function AuthSplitLayout(props: AuthSplitLayoutProps) {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'rgba(255,255,255,0.86)' }}>
-      <BrandTireStrip compact />
       <Grid
         container
         component={motion.div}
         initial={reduceMotion ? false : { opacity: 0, y: 8 }}
         animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        sx={{ minHeight: { xs: 'calc(100vh - 28px)', md: 'calc(100vh - 34px)' }, bgcolor: 'rgba(255,255,255,0.86)' }}
+        sx={{ minHeight: '100vh', bgcolor: 'rgba(255,255,255,0.86)' }}
       >
         <Grid
           size={{ xs: 12, md: 6 }}

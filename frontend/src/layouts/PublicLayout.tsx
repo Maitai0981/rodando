@@ -5,6 +5,7 @@ import {
   Badge,
   Box,
   Button,
+  Chip,
   Container,
   Divider,
   IconButton,
@@ -14,8 +15,7 @@ import {
 } from '@mui/material'
 import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined'
 import { motion, useReducedMotion, useScroll, useSpring } from 'motion/react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import BrandTireStrip from '../components/common/BrandTireStrip'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 
@@ -27,10 +27,30 @@ const officialChannels = {
   instagram: 'https://www.instagram.com/rodandomoto?utm_source=qr&igsh=MWUzd3VvM21rYzk2Mg%3D%3D',
 }
 
+const primaryNavLinks = [
+  { label: 'Inicio', to: '/' },
+  { label: 'Medidas', to: '/technical' },
+  { label: 'Catalogo', to: '/catalog' },
+]
+
+const PUBLIC_SHELL_MAX_WIDTH = 1380
+const PUBLIC_CONTENT_MAX_WIDTH = '1360px !important'
+
+function isActiveRoute(pathname: string, href: string) {
+  if (href === '/') return pathname === '/'
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
 export default function PublicLayout({ children }: PropsWithChildren) {
   const { itemCount } = useCart()
   const { user, status, logout } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
+  const isHome = location.pathname === '/'
+  const showHomeEditorialActions = isHome && status !== 'authenticated'
+  const visibleNavLinks = user?.role === 'owner'
+    ? [...primaryNavLinks, { label: 'Painel', to: '/owner/dashboard' }]
+    : primaryNavLinks
   const reduceMotion = useReducedMotion()
   const { scrollYProgress } = useScroll()
   const progressScaleX = useSpring(scrollYProgress, {
@@ -95,7 +115,16 @@ export default function PublicLayout({ children }: PropsWithChildren) {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh' }}>
+    <Box sx={{ minHeight: '100vh', position: 'relative', overflowX: 'clip' }}>
+      <Box
+        className={`brazil-bg-stripes site-top-stripes${isHome ? ' site-top-stripes--home' : ''}`}
+        aria-hidden
+      >
+        <Box className="bg-stripe bg-stripe-green" />
+        <Box className="bg-stripe bg-stripe-yellow" />
+        <Box className="bg-stripe bg-stripe-blue" />
+      </Box>
+
       <motion.div
         initial={reduceMotion ? false : { opacity: 0, y: -10 }}
         animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
@@ -115,12 +144,29 @@ export default function PublicLayout({ children }: PropsWithChildren) {
             border: 'none',
             overflow: 'hidden',
             zIndex: (theme) => theme.zIndex.appBar,
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              pointerEvents: 'none',
+              background:
+                'linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.08) 60%, rgba(255,255,255,0) 100%)',
+            },
           }}
         >
-          <Toolbar sx={{ gap: 1.5, minHeight: { xs: 54, md: 60 }, px: { xs: 1, md: 1.5 } }}>
+          <Toolbar
+            sx={{
+              gap: { xs: 0.7, md: 1.35, lg: 1.6 },
+              minHeight: { xs: 52, md: 56 },
+              px: { xs: 0.8, sm: 1.35, md: 2, lg: 2.4 },
+              width: '100%',
+              maxWidth: { lg: PUBLIC_SHELL_MAX_WIDTH },
+              mx: 'auto',
+            }}
+          >
           <Stack
             direction="row"
-            spacing={1}
+            spacing={{ xs: 1.1, md: 1.35 }}
             alignItems="center"
             component={RouterLink}
             to="/"
@@ -128,31 +174,40 @@ export default function PublicLayout({ children }: PropsWithChildren) {
           >
             <Box
               sx={{
-                width: 30,
-                height: 30,
+                width: { xs: 40, md: 46 },
+                height: { xs: 40, md: 46 },
                 borderRadius: '50%',
-                border: '1px solid rgba(0,39,118,0.14)',
+                border: '1px solid rgba(17,17,17,0.14)',
                 display: 'grid',
                 placeItems: 'center',
                 position: 'relative',
                 bgcolor: 'rgba(255,255,255,0.95)'
               }}
             >
-              <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: 'secondary.main' }} />
+              <Box sx={{ width: { xs: 12, md: 14 }, height: { xs: 12, md: 14 }, borderRadius: '50%', bgcolor: 'secondary.main' }} />
               <Box
                 sx={{
                   position: 'absolute',
-                  inset: 3,
+                  inset: { xs: 4, md: 5 },
                   borderRadius: '50%',
-                  border: '1px dashed rgba(0,39,118,0.18)'
+                  border: '1px dashed rgba(17,17,17,0.18)'
                 }}
               />
             </Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 700,
+                letterSpacing: '-0.03em',
+                whiteSpace: 'nowrap',
+                lineHeight: 1,
+                fontSize: { xs: 13, sm: 14, md: 16 },
+              }}
+            >
               RODANDO
-              <Box component="span" sx={{ color: 'primary.main' }}>
+              {/* <Box component="span" sx={{ color: 'primary.main' }}>
                 .BR
-              </Box>
+              </Box> */}
             </Typography>
           </Stack>
 
@@ -163,35 +218,76 @@ export default function PublicLayout({ children }: PropsWithChildren) {
             sx={{
               mx: 'auto',
               display: { xs: 'none', md: 'flex' },
-              p: 0.25,
+              p: 0.3,
               borderRadius: 999,
+              bgcolor: 'rgba(255,255,255,0.62)',
+              border: '1px solid rgba(12,22,44,0.06)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
             }}
           >
-            <Button component={RouterLink} to="/" color="primary" sx={{ px: 1.1, minWidth: 0 }}>
-              Inicio
-            </Button>
-            <Button component={RouterLink} to="/technical" color="primary" sx={{ px: 1.1, minWidth: 0 }}>
-              Medidas
-            </Button>
-            <Button component={RouterLink} to="/catalog" color="primary" sx={{ px: 1.1, minWidth: 0 }}>
-              Catalogo
-            </Button>
+            {visibleNavLinks.map((link) => {
+              const active = isActiveRoute(location.pathname, link.to)
+              return (
+                <Button
+                  key={link.to}
+                  component={RouterLink}
+                  to={link.to}
+                  color="primary"
+                  aria-current={active ? 'page' : undefined}
+                  sx={{
+                    px: 1.7,
+                    minHeight: 44,
+                    minWidth: 0,
+                    borderRadius: 999,
+                    textTransform: 'none',
+                    fontWeight: active ? 700 : 600,
+                    fontSize: 13,
+                    color: active ? 'info.main' : 'primary.main',
+                    bgcolor: active ? 'rgba(255,255,255,0.92)' : 'transparent',
+                    border: active ? '1px solid rgba(12,22,44,0.08)' : '1px solid transparent',
+                    boxShadow: active ? '0 6px 16px rgba(12,22,44,0.06)' : 'none',
+                    '&:hover': {
+                      bgcolor: active ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.45)',
+                    },
+                  }}
+                >
+                  {link.label}
+                </Button>
+              )
+            })}
             {user?.role === 'owner' ? (
-              <Button component={RouterLink} to="/owner/products/new" color="primary" sx={{ px: 1.1, minWidth: 0 }}>
+              <Button
+                component={RouterLink}
+                to="/owner/products/new"
+                color="primary"
+                sx={{
+                  px: 1.5,
+                  minHeight: 44,
+                  minWidth: 0,
+                  borderRadius: 999,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  border: '1px dashed rgba(17,17,17,0.18)',
+                  bgcolor: 'rgba(255,255,255,0.5)',
+                }}
+              >
                 Adicionar produto
               </Button>
             ) : null}
           </Stack>
 
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: { xs: 'auto', md: 0 } }}>
-            {status !== 'authenticated' ? (
+          <Stack direction="row" spacing={{ xs: 0.6, sm: 0.9, md: 1.1 }} alignItems="center" sx={{ ml: { xs: 'auto', md: 0 }, minWidth: 0 }}>
+            {status !== 'authenticated' && !showHomeEditorialActions ? (
               <>
                 <Button
                   component={RouterLink}
                   to="/auth"
                   variant="text"
                   color="primary"
-                  sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                  sx={{ display: { xs: 'none', sm: 'inline-flex' }, minHeight: 42, px: 1.4, fontSize: 13, fontWeight: 700 }}
                 >
                   Entrar
                 </Button>
@@ -200,7 +296,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                   to="/auth/signup"
                   variant="outlined"
                   color="primary"
-                  sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+                  sx={{ display: { xs: 'none', md: 'inline-flex' }, minHeight: 42, px: 1.7, fontSize: 13, fontWeight: 700 }}
                 >
                   Criar conta
                 </Button>
@@ -216,57 +312,218 @@ export default function PublicLayout({ children }: PropsWithChildren) {
               </Stack>
             ) : null}
             {status === 'authenticated' ? (
+                <Button
+                  variant="text"
+                  color="primary"
+                  onClick={() => void handleLogout()}
+                  sx={{ display: { xs: 'none', sm: 'inline-flex' }, minHeight: 42, px: 1.3, fontSize: 13, fontWeight: 700 }}
+                >
+                  Sair
+                </Button>
+            ) : null}
+            {showHomeEditorialActions ? (
+              <>
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  sx={{
+                    display: { xs: 'none', md: 'inline-flex' },
+                    px: 2.1,
+                    minHeight: 50,
+                    borderRadius: 999,
+                    textTransform: 'none',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    borderColor: 'rgba(17,17,17,0.18)',
+                    color: '#111111',
+                    bgcolor: 'rgba(255,255,255,0.58)',
+                  }}
+                >
+                  pt-br
+                </Button>
+                <Button
+                  component="a"
+                  href="#home-contact"
+                  variant="outlined"
+                  color="inherit"
+                  sx={{
+                    display: { xs: 'none', md: 'inline-flex' },
+                    px: { md: 2.2, lg: 2.6 },
+                    minHeight: 50,
+                    borderRadius: 999,
+                    textTransform: 'none',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                    borderColor: 'rgba(17,17,17,0.18)',
+                    color: '#111111',
+                    bgcolor: 'rgba(255,255,255,0.58)',
+                  }}
+                >
+                  Seja parceiro
+                </Button>
+              </>
+            ) : null}
+            <Button
+              component={RouterLink}
+              to="/catalog"
+              variant="contained"
+              color="primary"
+              sx={{
+                display: showHomeEditorialActions ? { xs: 'inline-flex', md: 'none' } : undefined,
+                px: { xs: 1.4, sm: 1.8, md: 2.1 },
+                minWidth: 0,
+                minHeight: { xs: 42, sm: 48 },
+                borderRadius: 999,
+                bgcolor: 'rgba(255, 240, 178, 0.96)',
+                color: '#111111',
+                boxShadow: '0 8px 20px rgba(255,223,0,0.14)',
+                border: '1px solid rgba(17,17,17,0.06)',
+                fontSize: { xs: 12, sm: 13 },
+                fontWeight: 700,
+                '&:hover': {
+                  bgcolor: 'rgba(255, 240, 178, 1)',
+                  boxShadow: '0 10px 22px rgba(255,223,0,0.18)',
+                },
+              }}
+            >
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Ver catalogo
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                Loja
+              </Box>
+            </Button>
+            {showHomeEditorialActions ? (
               <Button
-                variant="text"
+                component={RouterLink}
+                to="/catalog"
+                variant="contained"
                 color="primary"
-                onClick={() => void handleLogout()}
-                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                sx={{
+                  display: { xs: 'none', md: 'inline-flex' },
+                  px: { md: 2.6, lg: 3.1 },
+                  minHeight: 50,
+                  borderRadius: 999,
+                  textTransform: 'none',
+                  whiteSpace: 'nowrap',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  bgcolor: 'rgba(255, 240, 178, 0.96)',
+                  color: '#111111',
+                  boxShadow: '0 8px 20px rgba(255,223,0,0.14)',
+                  border: '1px solid rgba(17,17,17,0.06)',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 240, 178, 1)',
+                    boxShadow: '0 10px 22px rgba(255,223,0,0.18)',
+                  },
+                }}
               >
-                Sair
+                Ver catalogo
               </Button>
             ) : null}
-            <Button component={RouterLink} to="/catalog" variant="contained" color="primary" sx={{ px: 1.6 }}>
-              Ver loja
-            </Button>
             <IconButton
               component={RouterLink}
               to="/cart"
               sx={{
+                display: showHomeEditorialActions ? { xs: 'inline-flex', md: 'none' } : undefined,
                 color: 'info.main',
                 bgcolor: 'rgba(255,255,255,0.9)',
-                border: '1px solid rgba(0,39,118,0.08)',
+                border: '1px solid rgba(17,17,17,0.08)',
+                width: { xs: 42, sm: 46 },
+                height: { xs: 42, sm: 46 },
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.98)' }
               }}
             >
               <Badge badgeContent={itemCount} color="secondary" overlap="circular" max={99}>
-                <ShoppingBagOutlinedIcon />
+                <ShoppingBagOutlinedIcon sx={{ fontSize: 22 }} />
               </Badge>
             </IconButton>
           </Stack>
           </Toolbar>
-          <Box sx={{ px: 1, pb: 0.55 }}>
-            <motion.div
-              aria-hidden
-              style={{ scaleX: reduceMotion ? scrollYProgress : progressScaleX }}
-              transition={{ type: 'spring' }}
-              className="nav-progress-bar"
-            />
+          <Box sx={{ px: { xs: 1, sm: 1.35 }, pb: 0.7, display: { xs: 'block', md: 'none' }, width: '100%', maxWidth: { lg: PUBLIC_SHELL_MAX_WIDTH }, mx: 'auto' }}>
+            <Stack
+              direction="row"
+              spacing={0.85}
+              sx={{
+                overflowX: 'auto',
+                pb: 0.35,
+                '&::-webkit-scrollbar': { display: 'none' },
+                scrollbarWidth: 'none',
+              }}
+            >
+              {visibleNavLinks.map((link) => {
+                const active = isActiveRoute(location.pathname, link.to)
+                return (
+                  <Chip
+                    key={`mobile-${link.to}`}
+                    component={RouterLink}
+                    to={link.to}
+                    clickable
+                    label={link.label}
+                    variant={active ? 'filled' : 'outlined'}
+                    color={active ? 'primary' : 'default'}
+                    sx={{
+                      height: 36,
+                      borderRadius: 999,
+                      fontWeight: active ? 700 : 600,
+                      fontSize: 12,
+                      bgcolor: active ? undefined : 'rgba(255,255,255,0.72)',
+                      borderColor: active ? undefined : 'rgba(12,22,44,0.09)',
+                      '& .MuiChip-label': { px: 1.3 },
+                    }}
+                  />
+                )
+              })}
+            </Stack>
           </Box>
         </AppBar>
       </motion.div>
 
       <Box ref={jellyRef} className="jelly-scroll-layer">
-        <BrandTireStrip compact bleed mb={{ xs: 0.5, md: 0.75 }} />
-
         <motion.div
           initial={reduceMotion ? false : { opacity: 0, y: 10 }}
           animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
         >
-          <Box sx={{ pt: { xs: 0.15, md: 0.3 } }}>
-            <Container sx={{ py: { xs: 1.5, md: 2.25 }, px: { xs: 1.25, sm: 2, md: 2.5 } }}>{children}</Container>
+          <Box sx={{ pt: { xs: 0.05, md: 0.15 } }}>
+            <Container
+              maxWidth="xl"
+              sx={{
+                py: { xs: 1, md: 1.5 },
+                px: { xs: 1.2, sm: 2, md: 2.8, lg: 3.2 },
+                maxWidth: PUBLIC_CONTENT_MAX_WIDTH,
+                position: 'relative',
+              }}
+            >
+              <Box
+                aria-hidden
+                sx={{
+                  position: 'absolute',
+                  inset: { xs: '8px 8px auto', md: '10px 10px auto' },
+                  height: 140,
+                  borderRadius: 3,
+                  background:
+                    'radial-gradient(circle at 18% 30%, rgba(0,156,59,0.06), transparent 52%), radial-gradient(circle at 84% 22%, rgba(17,17,17,0.06), transparent 56%), linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0))',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                }}
+              />
+              <Box sx={{ position: 'relative', zIndex: 1 }}>{children}</Box>
+            </Container>
           </Box>
         </motion.div>
+
+        <Box
+          aria-hidden
+          sx={{
+            mt: { xs: 2.5, md: 3.2 },
+            mb: 0,
+            mx: { xs: -1.5, sm: -2.5, md: -3 },
+            height: 1,
+            bgcolor: 'rgba(17,17,17,0.08)',
+          }}
+        />
 
         <motion.div
           initial={reduceMotion ? false : { opacity: 0, y: 18 }}
@@ -280,14 +537,43 @@ export default function PublicLayout({ children }: PropsWithChildren) {
           <Box
             component="footer"
             sx={{
-              mt: 7,
-              borderTop: '1px solid rgba(0,39,118,0.07)',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(245,250,247,0.92) 100%)'
+              mt: 0,
+              borderTop: '1px solid rgba(17,17,17,0.07)',
+              background:
+                'linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(245,250,247,0.92) 34%, rgba(242,247,244,0.98) 100%)',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                inset: 0,
+                pointerEvents: 'none',
+                background:
+                  'radial-gradient(circle at 8% 15%, rgba(0,156,59,0.06), transparent 42%), radial-gradient(circle at 92% 12%, rgba(17,17,17,0.06), transparent 44%)',
+              },
             }}
           >
-          <Container sx={{ py: { xs: 4.5, md: 6 }, px: { xs: 1.5, sm: 2.5, md: 3 } }}>
+          <Container
+            maxWidth="xl"
+            sx={{
+              py: { xs: 4.5, md: 6 },
+              px: { xs: 1.6, sm: 2.8, md: 3.4 },
+              maxWidth: PUBLIC_CONTENT_MAX_WIDTH,
+            }}
+          >
             <Stack direction={{ xs: 'column', lg: 'row' }} spacing={4} sx={{ mb: 3 }}>
-              <Box sx={{ flex: 1 }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  p: { xs: 2, md: 2.4 },
+                  borderRadius: 3,
+                  border: '1px solid rgba(12,22,44,0.07)',
+                  bgcolor: 'rgba(255,255,255,0.72)',
+                  boxShadow: '0 12px 28px rgba(12,22,44,0.04)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                }}
+              >
                 <Typography variant="caption" color="primary" sx={{ mb: 1.25, letterSpacing: '0.12em', display: 'block' }}>
                   RODANDO
                 </Typography>
@@ -296,16 +582,34 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                 </Typography>
               </Box>
               <Stack sx={{ minWidth: { lg: 220 } }} justifyContent="flex-end">
-                <Button component={RouterLink} to="/catalog" variant="outlined" color="primary" size="large">
+                <Button
+                  component={RouterLink}
+                  to="/catalog"
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  sx={{
+                    boxShadow: '0 10px 22px rgba(0,156,59,0.18)',
+                    minHeight: 48,
+                  }}
+                >
                   Ver catalogo
                 </Button>
               </Stack>
             </Stack>
 
-            <Divider sx={{ borderColor: 'rgba(0,39,118,0.08)' }} />
+            <Divider sx={{ borderColor: 'rgba(17,17,17,0.08)' }} />
 
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} sx={{ py: 3.5 }}>
-              <Box sx={{ flex: 1 }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  p: { xs: 1.6, md: 1.8 },
+                  borderRadius: 2.5,
+                  border: '1px solid rgba(12,22,44,0.06)',
+                  bgcolor: 'rgba(255,255,255,0.62)',
+                }}
+              >
                 <Typography variant="subtitle1" sx={{ fontWeight: 700, letterSpacing: '-0.03em' }}>
                   RODANDO
                   <Box component="span" sx={{ color: 'primary.main' }}>
@@ -316,8 +620,17 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                   Especialistas em camaras de ar e componentes. Clareza, velocidade e confianca.
                 </Typography>
               </Box>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={4}>
-                <Stack spacing={1}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.2} sx={{ flexWrap: 'wrap' }}>
+                <Stack
+                  spacing={1}
+                  sx={{
+                    p: 1.4,
+                    borderRadius: 2.2,
+                    border: '1px solid rgba(12,22,44,0.05)',
+                    bgcolor: 'rgba(255,255,255,0.55)',
+                    minWidth: { sm: 160 },
+                  }}
+                >
                   <Typography variant="overline" sx={{ color: 'primary.main' }}>
                     Navegacao
                   </Typography>
@@ -331,7 +644,16 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                     Loja virtual
                   </Typography>
                 </Stack>
-                <Stack spacing={1}>
+                <Stack
+                  spacing={1}
+                  sx={{
+                    p: 1.4,
+                    borderRadius: 2.2,
+                    border: '1px solid rgba(12,22,44,0.05)',
+                    bgcolor: 'rgba(255,255,255,0.5)',
+                    minWidth: { sm: 160 },
+                  }}
+                >
                   <Typography variant="overline" sx={{ color: 'primary.main' }}>
                     Suporte
                   </Typography>
@@ -339,7 +661,16 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                   <Typography variant="body2">Atendimento</Typography>
                   <Typography variant="body2">Politicas</Typography>  
                 </Stack>
-                <Stack spacing={1}>
+                <Stack
+                  spacing={1}
+                  sx={{
+                    p: 1.4,
+                    borderRadius: 2.2,
+                    border: '1px solid rgba(12,22,44,0.05)',
+                    bgcolor: 'rgba(255,255,255,0.5)',
+                    minWidth: { sm: 170 },
+                  }}
+                >
                   <Typography variant="overline" sx={{ color: 'primary.main' }}>
                     Canais oficiais
                   </Typography>
@@ -356,7 +687,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
               </Stack>
             </Stack>
 
-            <Divider sx={{ borderColor: 'rgba(0,39,118,0.08)' }} />
+            <Divider sx={{ borderColor: 'rgba(17,17,17,0.08)' }} />
             <Typography
               variant="caption"
               sx={{ display: 'block', pt: 2.25, color: 'text.secondary', letterSpacing: '0.06em', textTransform: 'uppercase' }}

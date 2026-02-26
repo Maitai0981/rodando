@@ -3,36 +3,44 @@ import type { PaletteOptions } from '@mui/material/styles'
 export const palette: PaletteOptions = {
   mode: 'light',
   primary: {
-    main: '#009C3B',
-    dark: '#007A2E',
-    light: '#27B456'
+    main: '#0A8F3A',
+    dark: '#076D2C',
+    light: '#2DB861',
+    contrastText: '#F8FFF9'
   },
   secondary: {
-    main: '#FFDF00',
-    dark: '#D3B700',
-    light: '#FFE94C'
+    main: '#F2C617',
+    dark: '#C8A30E',
+    light: '#FFE37A',
+    contrastText: '#17140A'
   },
   info: {
-    main: '#002776',
-    dark: '#001A4D',
-    light: '#1A4AA6'
+    main: '#141414',
+    dark: '#090909',
+    light: '#343434',
+    contrastText: '#FAFAFA'
   },
   success: {
-    main: '#1F7A3D'
+    main: '#17733F'
   },
   error: {
     main: '#C63A3A'
   },
   warning: {
-    main: '#F5B700'
+    main: '#D9A010'
   },
   background: {
-    default: '#F6FBF7',
+    default: '#F7F8F4',
     paper: '#FFFFFF'
   },
   text: {
-    primary: '#002776',
-    secondary: '#31508A'
+    primary: '#111111',
+    secondary: '#5B5B5B'
   },
-  divider: 'rgba(0, 39, 118, 0.12)'
+  divider: 'rgba(17, 17, 17, 0.10)',
+  action: {
+    hover: 'rgba(17, 17, 17, 0.04)',
+    selected: 'rgba(17, 17, 17, 0.08)',
+    focus: 'rgba(10, 143, 58, 0.22)'
+  }
 }
