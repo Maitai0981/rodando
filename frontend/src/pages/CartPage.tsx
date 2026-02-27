@@ -1,13 +1,10 @@
 import { Box, Button, Divider, Grid, Paper, Stack, Typography } from '@mui/material'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Link as RouterLink } from 'react-router-dom'
-import PublicLayout from '../layouts/PublicLayout'
+import { AppShell } from '../layouts/AppShell'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
-
-function formatPrice(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
+import { formatCurrency } from '../lib'
 
 const reveal = {
   hidden: { opacity: 0, y: 14 },
@@ -20,7 +17,7 @@ export default function CartPage() {
   const prefersReducedMotion = useReducedMotion()
 
   return (
-    <PublicLayout>
+    <AppShell contained={false}>
       <Stack spacing={{ xs: 2.5, md: 3.5 }}>
         <Paper
           component={motion.div}
@@ -200,10 +197,10 @@ export default function CartPage() {
 
                           <Grid size={{ xs: 12, sm: 8, md: 2.5 }}>
                             <Typography variant="subtitle1" sx={{ color: 'info.main', fontWeight: 700 }}>
-                              {formatPrice(Number(item.price) * Number(item.quantity))}
+                              {formatCurrency(Number(item.price) * Number(item.quantity))}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {formatPrice(Number(item.price))} un.
+                              {formatCurrency(Number(item.price))} un.
                             </Typography>
                           </Grid>
 
@@ -255,7 +252,7 @@ export default function CartPage() {
                   <Typography variant="body2" color="text.secondary">
                     Subtotal
                   </Typography>
-                  <Typography variant="body2">{formatPrice(total)}</Typography>
+                  <Typography variant="body2">{formatCurrency(total)}</Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
                   <Typography variant="body2" color="text.secondary">
@@ -280,7 +277,7 @@ export default function CartPage() {
                   transition={{ duration: 0.18 }}
                 >
                   <Typography variant="h4" sx={{ color: 'info.main', letterSpacing: '-0.03em' }}>
-                    {formatPrice(total)}
+                    {formatCurrency(total)}
                   </Typography>
                 </motion.div>
               </Stack>
@@ -294,6 +291,6 @@ export default function CartPage() {
           </Grid>
         </Grid>
       </Stack>
-    </PublicLayout>
+    </AppShell>
   )
 }

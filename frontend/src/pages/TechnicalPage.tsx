@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Box, Chip, Grid, InputAdornment, Paper, Stack, TextField, Typography } from '@mui/material'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
-import PublicLayout from '../layouts/PublicLayout'
+import { AppShell } from '../layouts/AppShell'
 
 // Expanded tire/inner tube technical data
 const technicalData = [
@@ -70,7 +70,7 @@ export default function TechnicalPage() {
   }, [search, selectedCategory])
 
   return (
-    <PublicLayout>
+    <AppShell contained={false}>
       <Stack spacing={4}>
         <Paper
           elevation={0}
@@ -292,6 +292,6 @@ export default function TechnicalPage() {
           </Grid>
         )}
       </Stack>
-    </PublicLayout>
+    </AppShell>
   )
 }

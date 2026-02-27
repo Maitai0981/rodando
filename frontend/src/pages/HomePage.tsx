@@ -16,7 +16,7 @@ import ShoppingBagRoundedIcon from '@mui/icons-material/ShoppingBagRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import type { SvgIconComponent } from '@mui/icons-material'
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
-import PublicLayout from '../layouts/PublicLayout'
+import { AppShell } from '../layouts/AppShell'
 
 const officialLinks = {
   maps:
@@ -330,7 +330,7 @@ export default function HomePage() {
   }
 
   return (
-    <PublicLayout>
+    <AppShell contained={false}>
       <Box
         component="section"
         id="home-top"
@@ -940,6 +940,6 @@ export default function HomePage() {
         </Grid>
       </Paper>
       </Box>
-    </PublicLayout>
+    </AppShell>
   )
 }

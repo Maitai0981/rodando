@@ -9,6 +9,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 import AuthSplitLayout from '../components/auth/AuthSplitLayout'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/api'
+import { isStrongPassword, isValidEmail } from '../lib'
 
 interface FormErrors {
   email?: string
@@ -30,13 +31,13 @@ export default function SignInPage() {
     
     if (!email) {
       newErrors.email = 'Email e obrigatorio'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    } else if (!isValidEmail(email)) {
       newErrors.email = 'Digite um email valido'
     }
     
     if (!password) {
       newErrors.password = 'Senha e obrigatoria'
-    } else if (password.length < 6) {
+    } else if (!isStrongPassword(password)) {
       newErrors.password = 'Senha deve ter pelo menos 6 caracteres'
     }
     

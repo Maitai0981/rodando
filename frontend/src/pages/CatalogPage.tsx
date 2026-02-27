@@ -5,12 +5,10 @@ import ArrowForwardIosRoundedIcon from '@mui/icons-material/ArrowForwardIosRound
 import SortRoundedIcon from '@mui/icons-material/SortRounded'
 import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import PublicLayout from '../layouts/PublicLayout'
+import { AppShell } from '../layouts/AppShell'
 import { api, ApiError, type Product } from '../lib/api'
+import { formatCurrency } from '../lib'
 import { useCart } from '../context/CartContext'
-function formatPrice(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
 
 type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc' | 'newest'
 
@@ -162,7 +160,7 @@ export default function CatalogPage() {
   const hasActiveFilters = query !== '' || categoryFilter !== 'Todas' || sortBy !== 'name-asc'
 
   return (
-    <PublicLayout>
+    <AppShell contained={false}>
       <Stack spacing={{ xs: 2.5, md: 3.5 }}>
         <Paper
           component={motion.div}
@@ -455,7 +453,7 @@ export default function CatalogPage() {
                                   {activeFeatured.description}
                                 </Typography>
                                 <Typography variant="h4" sx={{ color: 'info.main', letterSpacing: '-0.03em', mt: 'auto' }}>
-                                  {formatPrice(Number(activeFeatured.price))}
+                                  {formatCurrency(Number(activeFeatured.price))}
                                 </Typography>
                                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                                   <Button
@@ -722,7 +720,7 @@ export default function CatalogPage() {
                   >
                     <Box>
                       <Typography variant="h6" sx={{ color: 'info.main', lineHeight: 1.1 }}>
-                        {formatPrice(Number(item.price))}
+                        {formatCurrency(Number(item.price))}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         SKU: {item.sku}
@@ -747,6 +745,6 @@ export default function CatalogPage() {
           </Grid>
         )}
       </Stack>
-    </PublicLayout>
+    </AppShell>
   )
 }
