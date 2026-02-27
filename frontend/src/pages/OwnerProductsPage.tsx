@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useState } from 'react'
+import { startTransition, useCallback, useDeferredValue, useEffect, useState } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import {
   Alert,
@@ -29,14 +29,7 @@ export default function OwnerProductsPage() {
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>((location.state as { toast?: string } | null)?.toast ?? null)
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadProducts(deferredQuery)
-    }, 220)
-    return () => window.clearTimeout(timeoutId)
-  }, [deferredQuery])
-
-  async function loadProducts(search = query) {
+  const loadProducts = useCallback(async (search: string) => {
     setLoading(true)
     setError(null)
     try {
@@ -49,7 +42,14 @@ export default function OwnerProductsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadProducts(deferredQuery)
+    }, 220)
+    return () => window.clearTimeout(timeoutId)
+  }, [deferredQuery, loadProducts])
 
   async function handleDelete(product: Product) {
     const confirmed = window.confirm(`Excluir o produto ${product.name}?`)

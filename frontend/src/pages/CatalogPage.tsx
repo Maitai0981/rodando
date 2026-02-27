@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Alert, Box, Button, Chip, Grid, MenuItem, Paper, Select, Stack, TextField, Typography, FormControl, InputLabel } from '@mui/material'
 import ArrowBackIosNewRoundedIcon from '@mui/icons-material/ArrowBackIosNewRounded'
 import ArrowForwardIosRoundedIcon from '@mui/icons-material/ArrowForwardIosRounded'
@@ -91,13 +91,28 @@ export default function CatalogPage() {
     })
   }, [products, sortBy, categoryFilter])
 
+  const loadProducts = useCallback(async (search: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await api.listPublicProducts(search)
+      startTransition(() => {
+        setProducts(result.items)
+      })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Falha ao carregar catalogo.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadProducts(deferredQuery)
     }, 220)
 
     return () => window.clearTimeout(timeoutId)
-  }, [deferredQuery])
+  }, [deferredQuery, loadProducts])
 
   useEffect(() => {
     if (featuredProducts.length === 0) {
@@ -119,21 +134,6 @@ export default function CatalogPage() {
 
     return () => window.clearInterval(intervalId)
   }, [featuredProducts.length])
-
-  async function loadProducts(search = query) {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await api.listPublicProducts(search)
-      startTransition(() => {
-        setProducts(result.items)
-      })
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao carregar catalogo.')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   function showPrevFeatured() {
     setFeaturedDirection(-1)
