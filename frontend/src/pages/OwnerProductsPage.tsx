@@ -139,7 +139,7 @@ export default function OwnerProductsPage() {
                   <TableCell>{item.bikeModel}</TableCell>
                   <TableCell>R$ {Number(item.price).toFixed(2)}</TableCell>
                   <TableCell>{item.stock}</TableCell>
-                  <TableCell>{Boolean(item.isActive) ? 'Ativo' : 'Inativo'}</TableCell>
+                  <TableCell>{item.isActive ? 'Ativo' : 'Inativo'}</TableCell>
                   <TableCell align="right">
                     <Button
                       size="small"

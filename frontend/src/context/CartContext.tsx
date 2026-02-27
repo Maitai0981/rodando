@@ -79,7 +79,6 @@ export function CartProvider({ children }: PropsWithChildren) {
     return () => {
       active = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, user?.id])
 
   async function hydrateServerBag() {
