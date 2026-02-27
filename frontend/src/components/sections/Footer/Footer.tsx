@@ -13,7 +13,7 @@ import { UiContainer } from '../../ui'
 const QUICK_LINKS = [
   { label: 'Inicio', href: '/' },
   { label: 'Catalogo', href: '/catalog' },
-  { label: 'Medidas', href: '/technical' },
+  { label: 'Ofertas', href: '/#home-offers' },
   { label: 'Carrinho', href: '/cart' },
   { label: 'Contato', href: '/#home-contact' },
 ]
@@ -35,7 +35,7 @@ export function Footer() {
               </Typography>
               <Typography variant="h4">Peças para sua moto com suporte rápido.</Typography>
               <Typography variant="body2" color="text.secondary">
-                Av. Brasil, 8708 - Cascavel/PR. Segunda a sexta, 08h às 18h.
+                Av. Brasil, 8708 - Cascavel/PR. Segunda a sexta, 08h as 18h.
               </Typography>
               <Stack direction="row" spacing={1}>
                 <Button

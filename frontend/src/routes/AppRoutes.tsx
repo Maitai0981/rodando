@@ -4,7 +4,6 @@ import { OwnerRoute } from './guards/OwnerRoute'
 
 const HomePage = lazy(() => import('../pages/HomePage'))
 const CatalogPage = lazy(() => import('../pages/CatalogPage'))
-const TechnicalPage = lazy(() => import('../pages/TechnicalPage'))
 const CartPage = lazy(() => import('../pages/CartPage'))
 const SignInPage = lazy(() => import('../pages/SignInPage'))
 const SignUpPage = lazy(() => import('../pages/SignUpPage'))
@@ -18,7 +17,6 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/catalog" element={<CatalogPage />} />
-      <Route path="/technical" element={<TechnicalPage />} />
       <Route path="/cart" element={<CartPage />} />
       <Route path="/auth" element={<SignInPage />} />
       <Route path="/auth/signup" element={<SignUpPage />} />

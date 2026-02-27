@@ -30,7 +30,7 @@ import {
 const NAV_LINKS = [
   { label: 'Inicio', href: '/' },
   { label: 'Catalogo', href: '/catalog' },
-  { label: 'Medidas', href: '/technical' },
+  { label: 'Ofertas', href: '/#home-offers' },
 ]
 
 const CATEGORY_LINKS = [
@@ -48,6 +48,7 @@ const SEARCH_SUGGESTIONS = [
   'Kit corrente',
   'Pastilha de freio',
   'Relacao 428',
+  'Capacete fechado',
 ]
 
 function isActive(pathname: string, href: string) {
@@ -149,7 +150,7 @@ export function Header() {
                   <UiInput
                     {...params}
                     size="small"
-                    placeholder="Buscar por produto, medida ou marca"
+                    placeholder="Buscar por produto, categoria ou marca"
                     InputProps={{
                       ...params.InputProps,
                       startAdornment: <SearchRoundedIcon color="action" sx={{ mr: 1 }} />,
@@ -208,7 +209,7 @@ export function Header() {
             <Box component="form" onSubmit={handleSearchSubmit}>
               <UiInput
                 size="small"
-                placeholder="Buscar produto ou medida"
+                placeholder="Buscar produto ou categoria"
                 value={searchInputValue}
                 onChange={(event: ChangeEvent<HTMLInputElement>) => setSearchInputValue(event.target.value)}
                 InputProps={{
