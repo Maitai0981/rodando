@@ -28,6 +28,10 @@ export function AppShell({
         sx={[
           {
             flexGrow: 1,
+            width: '100%',
+            maxWidth: 'var(--app-content-max-width)',
+            mx: 'auto',
+            px: { xs: 1.5, sm: 2, md: 3 },
             pt: { xs: 10, md: 13 },
             pb: { xs: 5, md: 8 },
           },

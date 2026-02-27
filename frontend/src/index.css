@@ -374,6 +374,17 @@ a {
   color: var(--site-ink) !important;
 }
 
+.MuiButton-outlinedSuccess {
+  border-color: rgba(0, 156, 59, 0.7) !important;
+  background-color: rgba(0, 156, 59, 0.2) !important;
+  color: #bdfdd5 !important;
+}
+
+.MuiButton-outlinedSuccess:hover {
+  border-color: rgba(0, 156, 59, 0.95) !important;
+  background-color: rgba(0, 156, 59, 0.3) !important;
+}
+
 .MuiChip-root {
   color: var(--site-ink) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
