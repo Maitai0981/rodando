@@ -48,10 +48,8 @@ body {
   overflow-x: clip;
   font-family: 'Space Grotesk', 'Sora', Arial, sans-serif;
   background:
-    radial-gradient(circle at 84% 10%, rgba(255, 223, 0, 0.12), transparent 42%),
-    radial-gradient(circle at 14% 16%, rgba(0, 156, 59, 0.12), transparent 46%),
-    radial-gradient(circle at 24% 72%, rgba(255, 255, 255, 0.08), transparent 44%),
-    linear-gradient(180deg, #0b0b0b 0%, #070707 54%, #050505 100%);
+    radial-gradient(circle at 50% -20%, rgba(0, 156, 59, 0.14), transparent 40%),
+    linear-gradient(180deg, #0a0a0a 0%, #060606 52%, #050505 100%);
   color: var(--site-ink);
 }
 
@@ -65,50 +63,27 @@ body {
 body::before,
 body::after {
   content: '';
-  position: fixed;
-  inset: 0;
+  display: none;
   pointer-events: none;
 }
 
-body::before {
-  z-index: 0;
-  opacity: 0.06;
-  background-image:
-    radial-gradient(rgba(255, 223, 0, 0.32) 0.45px, transparent 0.75px),
-    radial-gradient(rgba(0, 156, 59, 0.24) 0.45px, transparent 0.75px);
-  background-position: 0 0, 12px 9px;
-  background-size: 17px 17px, 19px 19px;
-  animation: grainShift 22s steps(10) infinite;
-}
-
-body::after {
-  z-index: 0;
-  background:
-    radial-gradient(circle at 80% 14%, rgba(255, 223, 0, 0.13), transparent 42%),
-    radial-gradient(circle at 20% 76%, rgba(0, 156, 59, 0.16), transparent 46%),
-    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.12), transparent 50%);
-  filter: blur(8px);
-  opacity: 0.28;
-}
-
 .glass-nav {
-  background:
-    linear-gradient(180deg, rgba(10, 10, 10, 0.94) 0%, rgba(16, 16, 16, 0.86) 100%);
+  background: linear-gradient(180deg, rgba(8, 8, 8, 0.96) 0%, rgba(8, 8, 8, 0.9) 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.36);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(14px) saturate(1.03);
   -webkit-backdrop-filter: blur(14px) saturate(1.03);
 }
 
 .float-animation {
-  animation: floating 7s ease-in-out infinite;
+  animation: none;
   will-change: transform;
 }
 
 .reveal-up {
-  opacity: 0;
-  transform: translateY(18px);
-  animation: revealUp 0.8s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  opacity: 1;
+  transform: none;
+  animation: none;
 }
 
 .link-underline {
@@ -138,15 +113,13 @@ body::after {
 
 .hairline-panel {
   border: 1px solid var(--site-line);
-  background: linear-gradient(180deg, rgba(24, 24, 24, 0.9) 0%, rgba(16, 16, 16, 0.82) 100%);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
-  -webkit-backdrop-filter: blur(14px) saturate(1.02);
-  backdrop-filter: blur(14px) saturate(1.02);
+  background: linear-gradient(180deg, rgba(18, 18, 18, 0.94) 0%, rgba(12, 12, 12, 0.9) 100%);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
 }
 
 /* Faixas fixas do topo */
 .brazil-bg-stripes {
-  display: grid;
+  display: none !important;
   grid-template-columns: 16fr 12fr 18fr;
   align-items: stretch;
   overflow: hidden;
@@ -157,6 +130,7 @@ body::after {
 .site-top-stripes {
   --top-stripes-height: clamp(160px, 24vw, 240px);
   --stripe-overflow: calc(var(--top-stripes-height) * 0.95);
+  display: none !important;
   position: fixed;
   top: -18px;
   left: calc(-1 * var(--stripe-overflow));
@@ -272,13 +246,7 @@ select:focus-visible {
 }
 
 .home__tireTrack {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: auto;
-  opacity: 0.42;
-  filter: blur(0.15px);
+  display: none;
 }
 
 .home__tireTrack .tireTrack__svg {
@@ -290,17 +258,17 @@ select:focus-visible {
   --jelly-translate-y: 0px;
   --jelly-scale-x: 1;
   --jelly-scale-y: 1;
-  transform: translate3d(0, var(--jelly-translate-y), 0) scaleX(var(--jelly-scale-x)) scaleY(var(--jelly-scale-y));
+  transform: none !important;
   transform-origin: 50% 0%;
-  will-change: transform;
+  will-change: auto;
 }
 
 .scroll-cue-pill {
-  animation: scrollCueFloat 1.8s ease-in-out infinite;
+  animation: none;
 }
 
 .scroll-cue-icon {
-  animation: scrollCueArrow 1.1s ease-in-out infinite;
+  animation: none;
 }
 
 .nav-progress-bar {
@@ -387,6 +355,8 @@ a {
   background: linear-gradient(180deg, rgba(16, 16, 16, 0.95) 0%, rgba(10, 10, 10, 0.9) 100%) !important;
   border-color: rgba(255, 255, 255, 0.22) !important;
   color: var(--site-ink) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 .MuiAppBar-root {
