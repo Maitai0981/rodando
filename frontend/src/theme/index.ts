@@ -3,47 +3,47 @@ import type { Theme } from '@mui/material/styles'
 import { tokens } from '../styles/tokens'
 
 const palette = {
-  mode: 'light' as const,
+  mode: 'dark' as const,
   primary: {
-    main: '#0A8F3A',
-    dark: '#076D2C',
-    light: '#2DB861',
+    main: '#0EA84B',
+    dark: '#0A7A37',
+    light: '#32C56A',
     contrastText: '#F8FFF9',
   },
   secondary: {
-    main: '#F2C617',
-    dark: '#C8A30E',
-    light: '#FFE37A',
-    contrastText: '#17140A',
+    main: '#FFFFFF',
+    dark: '#DCDCDC',
+    light: '#FFFFFF',
+    contrastText: '#050505',
   },
   info: {
-    main: '#141414',
-    dark: '#090909',
-    light: '#343434',
-    contrastText: '#FAFAFA',
+    main: '#FFDF00',
+    dark: '#E2C400',
+    light: '#FFEA5C',
+    contrastText: '#050505',
   },
   success: {
-    main: '#17733F',
+    main: '#19B353',
   },
   error: {
-    main: '#C63A3A',
+    main: '#E65A5A',
   },
   warning: {
-    main: '#D9A010',
+    main: '#E4C21A',
   },
   background: {
-    default: '#F7F8F4',
-    paper: '#FFFFFF',
+    default: '#060606',
+    paper: '#111111',
   },
   text: {
-    primary: '#111111',
-    secondary: '#5B5B5B',
+    primary: '#FFDF00',
+    secondary: '#F1F1F1',
   },
-  divider: 'rgba(17, 17, 17, 0.1)',
+  divider: 'rgba(255, 255, 255, 0.2)',
   action: {
-    hover: 'rgba(17, 17, 17, 0.04)',
-    selected: 'rgba(17, 17, 17, 0.08)',
-    focus: 'rgba(10, 143, 58, 0.22)',
+    hover: 'rgba(255, 255, 255, 0.08)',
+    selected: 'rgba(255, 255, 255, 0.16)',
+    focus: 'rgba(14, 168, 75, 0.36)',
   },
 }
 
@@ -59,10 +59,12 @@ function appComponents(theme: Theme) {
         },
         body: {
           minHeight: '100vh',
-          colorScheme: 'light',
+          colorScheme: 'dark',
           textRendering: 'optimizeLegibility',
           WebkitFontSmoothing: 'antialiased',
           MozOsxFontSmoothing: 'grayscale',
+          backgroundColor: theme.palette.background.default,
+          color: theme.palette.text.primary,
         },
         a: {
           color: 'inherit',
@@ -115,14 +117,30 @@ function appComponents(theme: Theme) {
             boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.26)}`,
           },
         },
+        contained: {
+          backgroundColor: theme.palette.primary.main,
+          color: theme.palette.primary.contrastText,
+          '&:hover': {
+            backgroundColor: theme.palette.primary.dark,
+          },
+        },
+        outlined: {
+          borderColor: alpha(theme.palette.secondary.main, 0.5),
+          color: theme.palette.text.primary,
+          '&:hover': {
+            borderColor: alpha(theme.palette.secondary.main, 0.9),
+            backgroundColor: alpha(theme.palette.secondary.main, 0.08),
+          },
+        },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
           borderRadius: tokens.radius.lg,
-          border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
+          border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
           boxShadow: tokens.elevation.sm,
+          backgroundColor: alpha(theme.palette.background.paper, 0.96),
         },
       },
     },
@@ -131,6 +149,8 @@ function appComponents(theme: Theme) {
         root: {
           borderRadius: tokens.radius.md,
           backgroundImage: 'none',
+          border: `1px solid ${alpha(theme.palette.secondary.main, 0.18)}`,
+          backgroundColor: alpha(theme.palette.background.paper, 0.95),
         },
       },
     },
@@ -138,7 +158,9 @@ function appComponents(theme: Theme) {
       styleOverrides: {
         root: {
           borderRadius: tokens.radius.pill,
-          border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
+          border: `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`,
+          color: theme.palette.text.primary,
+          backgroundColor: alpha(theme.palette.secondary.main, 0.08),
         },
       },
     },
@@ -149,6 +171,7 @@ function appComponents(theme: Theme) {
             duration: tokens.motion.duration.fast,
             easing: tokens.motion.easing.standard,
           }),
+          color: theme.palette.text.primary,
           '&.Mui-focusVisible': {
             outline: `2px solid ${alpha(theme.palette.primary.main, 0.65)}`,
             outlineOffset: 2,
@@ -160,12 +183,24 @@ function appComponents(theme: Theme) {
       styleOverrides: {
         root: {
           borderRadius: tokens.radius.sm,
+          color: theme.palette.text.primary,
+          backgroundColor: alpha(theme.palette.secondary.main, 0.08),
           transition: theme.transitions.create(['box-shadow', 'border-color'], {
             duration: tokens.motion.duration.fast,
             easing: tokens.motion.easing.standard,
           }),
           '&.Mui-focused': {
             boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.18)}`,
+          },
+        },
+        notchedOutline: {
+          borderColor: alpha(theme.palette.secondary.main, 0.3),
+        },
+        input: {
+          color: theme.palette.text.primary,
+          '&::placeholder': {
+            color: alpha(theme.palette.secondary.main, 0.75),
+            opacity: 1,
           },
         },
       },

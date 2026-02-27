@@ -88,7 +88,7 @@ export function Header() {
         sx={{
           borderBottom: '1px solid',
           borderColor: 'divider',
-          bgcolor: 'rgba(255,255,255,0.88)',
+          bgcolor: 'rgba(6, 6, 6, 0.9)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
         }}
