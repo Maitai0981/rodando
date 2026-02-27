@@ -32,7 +32,7 @@ html {
   -ms-overflow-style: none;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  /* font-size: 50%; */
+  font-size: 62.5%;
 }
 
 html::-webkit-scrollbar,

@@ -224,7 +224,7 @@ function appComponents(theme: Theme) {
 
 const baseTheme = createTheme({
   palette,
-  spacing: tokens.spacing,
+  spacing: 8,
   shape: {
     borderRadius: tokens.radius.md,
   },
