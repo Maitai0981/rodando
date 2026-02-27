@@ -373,6 +373,42 @@ a {
   color: #050505;
 }
 
+/* Palette enforcement for legacy inline sx colors */
+[class*='MuiTypography-root'] {
+  color: var(--site-ink) !important;
+}
+
+[class*='MuiTypography-colorTextSecondary'] {
+  color: var(--site-muted) !important;
+}
+
+.MuiPaper-root,
+.MuiCard-root {
+  background: linear-gradient(180deg, rgba(16, 16, 16, 0.95) 0%, rgba(10, 10, 10, 0.9) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: var(--site-ink) !important;
+}
+
+.MuiAppBar-root {
+  background: linear-gradient(180deg, rgba(9, 9, 9, 0.96) 0%, rgba(6, 6, 6, 0.92) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.MuiButton-containedPrimary {
+  background: var(--site-green) !important;
+  color: #ffffff !important;
+}
+
+.MuiButton-outlinedPrimary {
+  border-color: rgba(255, 255, 255, 0.52) !important;
+  color: var(--site-ink) !important;
+}
+
+.MuiChip-root {
+  color: var(--site-ink) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .float-animation,
   .reveal-up,
