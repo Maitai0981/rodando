@@ -19,6 +19,7 @@ import { useState } from 'react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useCart } from '../../../context/CartContext'
+import { useAssist } from '../../../context/AssistContext'
 import {
   UiBadge,
   UiChip,
@@ -28,26 +29,25 @@ import {
 } from '../../ui'
 
 const NAV_LINKS = [
-  { label: 'Inicio', href: '/' },
-  { label: 'Catalogo', href: '/catalog' },
-  { label: 'Ofertas', href: '/#home-offers' },
+  { label: 'Inicio', href: '/', testId: 'header-nav-home' },
+  { label: 'Catálogo', href: '/catalog', testId: 'header-nav-catalog' },
 ]
 
 const CATEGORY_LINKS = [
-  'Camaras de ar',
+  'Câmaras de ar',
   'Pneus',
-  'Relacao',
+  'Relação',
   'Freios',
-  'Transmissao',
-  'Acessorios',
+  'Transmissão',
+  'Acessórios',
 ]
 
 const SEARCH_SUGGESTIONS = [
-  'Camera 300-17',
+  'Câmara 300-17',
   'Pneu 90/90-19',
   'Kit corrente',
   'Pastilha de freio',
-  'Relacao 428',
+  'Relação 428',
   'Capacete fechado',
 ]
 
@@ -61,6 +61,7 @@ export function Header() {
   const location = useLocation()
   const { itemCount } = useCart()
   const { status, logout, user } = useAuth()
+  const { completeStep } = useAssist()
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [searchValue, setSearchValue] = useState<string | null>(null)
@@ -75,10 +76,17 @@ export function Header() {
     event.preventDefault()
     const query = (searchInputValue || searchValue || '').trim()
     navigate(`/catalog${query ? `?q=${encodeURIComponent(query)}` : ''}`)
+    if (location.pathname === '/') {
+      completeStep('search-used', 'home')
+      completeStep('open-catalog', 'home')
+    }
+    completeStep('filter-applied', 'catalog')
   }
 
   const accountLabel = status === 'authenticated' ? user?.name || 'Conta' : 'Entrar'
-  const accountHref = status === 'authenticated' && user?.role === 'owner' ? '/owner/dashboard' : '/auth'
+  const accountHref = status === 'authenticated'
+    ? (user?.role === 'owner' ? '/owner/dashboard' : '/account/profile')
+    : '/auth'
 
   return (
     <>
@@ -88,19 +96,22 @@ export function Header() {
         elevation={0}
         sx={{
           borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'rgba(6, 6, 6, 0.9)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          borderColor: { xs: 'rgba(216,211,194,0.95)', md: 'divider' },
+          bgcolor: { xs: 'rgba(247,245,238,0.95)', md: 'rgba(255,255,255,0.95)' },
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
         }}
       >
         <UiContainer fluid>
-          <Toolbar disableGutters sx={{ minHeight: { xs: 64, md: 78 }, gap: { xs: 1, md: 2 } }}>
+          <Toolbar
+            disableGutters
+            sx={{ minHeight: { xs: 62, md: 78 }, gap: { xs: 1, md: 2 }, pb: { xs: 1, md: 0 } }}
+          >
             <IconButton
               aria-label="Abrir categorias"
               edge="start"
               onClick={() => setDrawerOpen(true)}
-              sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+              sx={{ display: { xs: 'inline-flex', md: 'none' }, color: { xs: 'text.primary', md: 'inherit' } }}
             >
               <MenuRoundedIcon />
             </IconButton>
@@ -119,9 +130,11 @@ export function Header() {
                   height: { xs: 36, md: 40 },
                   borderRadius: '50%',
                   border: '1px solid',
-                  borderColor: 'divider',
+                  borderColor: { xs: 'rgba(216,211,194,0.95)', md: 'divider' },
+                  bgcolor: { xs: '#FFFDF7', md: 'transparent' },
                   display: 'grid',
                   placeItems: 'center',
+                  color: { xs: 'primary.main', md: 'inherit' },
                   fontWeight: 700,
                   fontSize: { xs: 14, md: 16 },
                 }}
@@ -129,10 +142,10 @@ export function Header() {
                 R
               </Box>
               <Box sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle1" sx={{ lineHeight: 1, fontWeight: 700 }}>
+                <Typography variant="subtitle1" sx={{ lineHeight: 1, fontWeight: 700, color: { xs: 'primary.main', md: 'text.primary' } }}>
                   RODANDO
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' }, color: { xs: 'text.secondary', md: 'text.secondary' } }}>
                   Moto Center
                 </Typography>
               </Box>
@@ -140,6 +153,7 @@ export function Header() {
 
             <Box component="form" onSubmit={handleSearchSubmit} sx={{ flexGrow: 1, display: { xs: 'none', md: 'block' } }}>
               <Autocomplete
+                data-testid="header-search-autocomplete"
                 freeSolo
                 options={SEARCH_SUGGESTIONS}
                 value={searchValue}
@@ -151,6 +165,10 @@ export function Header() {
                     {...params}
                     size="small"
                     placeholder="Buscar por produto, categoria ou marca"
+                    inputProps={{
+                      ...params.inputProps,
+                      'data-testid': 'header-search-input',
+                    }}
                     InputProps={{
                       ...params.InputProps,
                       startAdornment: <SearchRoundedIcon color="action" sx={{ mr: 1 }} />,
@@ -163,12 +181,25 @@ export function Header() {
             <Stack direction="row" spacing={0.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
               {NAV_LINKS.map((link) => (
                 <Button
+                  data-testid={link.testId}
                   key={link.href}
                   component={RouterLink}
                   to={link.href}
-                  color={isActive(location.pathname, link.href) ? 'primary' : 'inherit'}
-                  variant={isActive(location.pathname, link.href) ? 'contained' : 'text'}
-                  sx={{ minHeight: 40, px: 1.7 }}
+                  onClick={() => {
+                    if (link.href === '/catalog') {
+                      completeStep('open-catalog', 'home')
+                    }
+                  }}
+                  color={isActive(location.pathname, link.href) ? 'secondary' : 'inherit'}
+                  variant={isActive(location.pathname, link.href) ? 'outlined' : 'text'}
+                  sx={{
+                    minHeight: 40,
+                    px: 1.7,
+                    fontWeight: isActive(location.pathname, link.href) ? 700 : 600,
+                    '&:hover': {
+                      color: 'secondary.dark',
+                    },
+                  }}
                 >
                   {link.label}
                 </Button>
@@ -176,12 +207,13 @@ export function Header() {
             </Stack>
 
             <Stack direction="row" spacing={0.5} alignItems="center">
-              <IconButton aria-label="Abrir carrinho" component={RouterLink} to="/cart">
+              <IconButton data-testid="header-cart-button" aria-label="Abrir carrinho" component={RouterLink} to="/cart">
                 <UiBadge badgeContent={itemCount} color="secondary" max={99}>
                   <ShoppingBagOutlinedIcon />
                 </UiBadge>
               </IconButton>
               <Button
+                data-testid="header-account-button"
                 component={RouterLink}
                 to={accountHref}
                 variant="outlined"
@@ -192,6 +224,7 @@ export function Header() {
               </Button>
               {status === 'authenticated' ? (
                 <Button
+                  data-testid="header-logout-button"
                   variant="text"
                   color="inherit"
                   onClick={() => {
@@ -208,10 +241,21 @@ export function Header() {
           <Box sx={{ display: { xs: 'block', md: 'none' }, pb: 1.5 }}>
             <Box component="form" onSubmit={handleSearchSubmit}>
               <UiInput
+                inputProps={{ 'data-testid': 'header-search-input-mobile' }}
                 size="small"
                 placeholder="Buscar produto ou categoria"
                 value={searchInputValue}
                 onChange={(event: ChangeEvent<HTMLInputElement>) => setSearchInputValue(event.target.value)}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2.2,
+                    bgcolor: '#FFFFFF',
+                    color: 'text.primary',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#D8D3C2',
+                  },
+                }}
                 InputProps={{
                   startAdornment: <SearchRoundedIcon color="action" sx={{ mr: 1 }} />,
                 }}
@@ -230,7 +274,7 @@ export function Header() {
           }
         }}
         headerTitle="Categorias"
-        footer={<Button fullWidth variant="contained" component={RouterLink} to="/catalog">Ver catalogo</Button>}
+        footer={<Button fullWidth variant="contained" component={RouterLink} to="/catalog">Ver catálogo</Button>}
       >
         <List sx={{ p: 0 }}>
           {NAV_LINKS.map((link) => (
@@ -238,7 +282,12 @@ export function Header() {
               <ListItemButton
                 component={RouterLink}
                 to={link.href}
-                onClick={() => setDrawerOpen(false)}
+                onClick={() => {
+                  if (link.href === '/catalog') {
+                    completeStep('open-catalog', 'home')
+                  }
+                  setDrawerOpen(false)
+                }}
               >
                 <Typography variant="body2">{link.label}</Typography>
               </ListItemButton>

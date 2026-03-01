@@ -73,3 +73,23 @@ export default defineConfig([
   },
 ])
 ```
+
+## E2E com PostgreSQL local (Windows PowerShell)
+
+Defina a conexão do banco usada no backend do Playwright:
+
+```powershell
+$env:E2E_DATABASE_URL="postgres://postgres:SUA_SENHA@127.0.0.1:5432/rodando_e2e"
+npm --prefix frontend run test:e2e
+```
+
+`test:e2e` agora executa um preflight de conexão antes do Playwright.
+O backend de E2E roda em banco isolado e com defaults:
+- `SEED_BASE_CATALOG=1`
+- `SEED_DEMO_DATA=0`
+
+### Troubleshooting
+
+- `28P01`: usuário/senha inválidos no PostgreSQL.
+- `ECONNREFUSED`: PostgreSQL não está rodando ou não está ouvindo em `127.0.0.1:5432`.
+- `3D000` (`database does not exist`): crie o banco ou use usuário com permissão para criação automática.

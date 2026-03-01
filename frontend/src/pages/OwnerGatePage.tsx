@@ -25,16 +25,16 @@ export default function OwnerGatePage() {
             Area administrativa de produtos
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            O acesso ao painel e feito por login/sessao no backend Express. O primeiro usuario cadastrado no sistema vira owner.
+            O acesso ao painel e feito em rota dedicada para owner.
           </Typography>
 
           {checking ? <Alert severity="info">Verificando sessao atual...</Alert> : null}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ pt: 1 }}>
-            <Button component={RouterLink} to="/auth" variant="contained" color="primary">
-              Entrar
+            <Button component={RouterLink} to="/owner/login" variant="contained" color="primary">
+              Entrar como owner
             </Button>
-            <Button component={RouterLink} to="/auth/signup" variant="outlined" color="primary">
-              Criar conta
+            <Button component={RouterLink} to="/auth" variant="outlined" color="primary">
+              Area de cliente
             </Button>
           </Stack>
         </Stack>

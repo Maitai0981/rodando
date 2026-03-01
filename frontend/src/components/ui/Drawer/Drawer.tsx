@@ -28,7 +28,7 @@ export function UiDrawer({
         ...PaperProps,
         sx: [
           {
-            width: 'min(88vw, 360px)',
+            width: 'min(82vw, 332px)',
           },
           ...(Array.isArray(PaperProps?.sx) ? PaperProps.sx : [PaperProps?.sx]),
         ],

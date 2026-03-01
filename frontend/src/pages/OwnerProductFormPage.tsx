@@ -21,6 +21,8 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import OwnerLayout from '../layouts/OwnerLayout'
 import { api, ApiError, type Product } from '../lib/api'
+import { useAssist } from '../context/AssistContext'
+import { AssistHintInline } from '../components/assist'
 
 type ProductForm = {
   name: string
@@ -29,8 +31,12 @@ type ProductForm = {
   category: string
   bikeModel: string
   price: string
+  cost: string
   stock: string
+  minimumStock: string
+  reorderPoint: string
   imageUrl: string
+  hoverImageUrl: string
   description: string
   isActive: boolean
 }
@@ -42,8 +48,12 @@ const emptyForm: ProductForm = {
   category: '',
   bikeModel: '',
   price: '',
+  cost: '',
   stock: '',
+  minimumStock: '5',
+  reorderPoint: '10',
   imageUrl: '',
+  hoverImageUrl: '',
   description: '',
   isActive: true,
 }
@@ -52,6 +62,7 @@ export default function OwnerProductFormPage() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
   const navigate = useNavigate()
+  const { completeStep } = useAssist()
 
   const isCreate = location.pathname.endsWith('/new')
   const productId = isCreate ? null : Number(id)
@@ -60,6 +71,9 @@ export default function OwnerProductFormPage() {
   const [loading, setLoading] = useState(!isCreate)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadingMain, setUploadingMain] = useState(false)
+  const [uploadingHover, setUploadingHover] = useState(false)
   const [loadedProduct, setLoadedProduct] = useState<Product | null>(null)
 
   const pageTitle = useMemo(() => (isCreate ? 'Novo produto' : 'Editar produto'), [isCreate])
@@ -81,6 +95,7 @@ export default function OwnerProductFormPage() {
     let active = true
     setLoading(true)
     setError(null)
+    setUploadError(null)
 
     api.getOwnerProduct(productId)
       .then(({ item }) => {
@@ -93,8 +108,12 @@ export default function OwnerProductFormPage() {
           category: item.category,
           bikeModel: item.bikeModel,
           price: String(item.price),
+          cost: String(item.cost ?? 0),
           stock: String(item.stock),
+          minimumStock: String(item.minimumStock ?? 5),
+          reorderPoint: String(item.reorderPoint ?? 10),
           imageUrl: item.imageUrl || '',
+          hoverImageUrl: item.hoverImageUrl || '',
           description: item.description,
           isActive: Boolean(item.isActive),
         })
@@ -124,8 +143,12 @@ export default function OwnerProductFormPage() {
       category: form.category.trim(),
       bikeModel: form.bikeModel.trim(),
       price: Number(form.price),
+      cost: Number(form.cost || 0),
       stock: Number(form.stock),
+      minimumStock: Number(form.minimumStock || 0),
+      reorderPoint: Number(form.reorderPoint || 0),
       imageUrl: form.imageUrl.trim(),
+      hoverImageUrl: form.hoverImageUrl.trim(),
       description: form.description.trim(),
       isActive: form.isActive,
     }
@@ -133,6 +156,10 @@ export default function OwnerProductFormPage() {
     try {
       if (isCreate) {
         const { item } = await api.createProduct(payload)
+        completeStep('save-valid', 'owner-products')
+        if (payload.isActive && payload.imageUrl) {
+          completeStep('published-with-image', 'owner-products')
+        }
         navigate(`/owner/products/${item.id}/edit`, {
           replace: true,
           state: { toast: 'Produto criado com sucesso.' },
@@ -145,6 +172,10 @@ export default function OwnerProductFormPage() {
       }
 
       const { item } = await api.updateProduct(productId, payload)
+      completeStep('save-valid', 'owner-products')
+      if (payload.isActive && payload.imageUrl) {
+        completeStep('published-with-image', 'owner-products')
+      }
       setLoadedProduct(item)
       navigate('/owner/products', {
         state: { toast: 'Produto atualizado com sucesso.' },
@@ -153,6 +184,26 @@ export default function OwnerProductFormPage() {
       setError(err instanceof ApiError ? err.message : 'Falha ao salvar produto.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleLocalImageUpload(kind: 'main' | 'hover', file?: File) {
+    if (!file) return
+    const setUploading = kind === 'main' ? setUploadingMain : setUploadingHover
+    setUploading(true)
+    setUploadError(null)
+
+    try {
+      const { item } = await api.uploadOwnerImage(file)
+      setForm((prev) =>
+        kind === 'main'
+          ? { ...prev, imageUrl: item.publicUrl }
+          : { ...prev, hoverImageUrl: item.publicUrl },
+      )
+    } catch (err) {
+      setUploadError(err instanceof ApiError ? err.message : 'Falha ao enviar imagem local.')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -167,7 +218,7 @@ export default function OwnerProductFormPage() {
             <Typography component={RouterLink} to="/owner/products" variant="body2" color="text.secondary">
               Produtos
             </Typography>
-            <Typography variant="body2" color="info.main">
+            <Typography variant="body2" color="text.primary">
               {pageTitle}
             </Typography>
           </Breadcrumbs>
@@ -186,6 +237,7 @@ export default function OwnerProductFormPage() {
                 Voltar
               </Button>
               <Button
+                data-testid="owner-product-save-button"
                 type="submit"
                 form="owner-product-form"
                 variant="contained"
@@ -214,8 +266,12 @@ export default function OwnerProductFormPage() {
               ) : (
                 <Box component="form" id="owner-product-form" onSubmit={handleSubmit}>
                   <Stack spacing={2}>
+                    <AssistHintInline tipId="owner-product-form-tip-image" routeKey="owner-products">
+                      Produto ativo sem imagem principal não entra na vitrine pública.
+                    </AssistHintInline>
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                       <TextField
+                        inputProps={{ 'data-testid': 'owner-product-name' }}
                         label="Nome do produto"
                         fullWidth
                         required
@@ -223,6 +279,7 @@ export default function OwnerProductFormPage() {
                         onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                       />
                       <TextField
+                        inputProps={{ 'data-testid': 'owner-product-sku' }}
                         label="SKU"
                         fullWidth
                         required
@@ -233,6 +290,7 @@ export default function OwnerProductFormPage() {
 
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                       <TextField
+                        inputProps={{ 'data-testid': 'owner-product-manufacturer' }}
                         label="Fabricante"
                         fullWidth
                         required
@@ -240,6 +298,7 @@ export default function OwnerProductFormPage() {
                         onChange={(e) => setForm((prev) => ({ ...prev, manufacturer: e.target.value }))}
                       />
                       <TextField
+                        inputProps={{ 'data-testid': 'owner-product-category' }}
                         label="Categoria"
                         fullWidth
                         required
@@ -249,6 +308,7 @@ export default function OwnerProductFormPage() {
                     </Stack>
 
                     <TextField
+                      inputProps={{ 'data-testid': 'owner-product-bike-model' }}
                       label="Modelo / Aplicacao"
                       fullWidth
                       required
@@ -257,28 +317,110 @@ export default function OwnerProductFormPage() {
                     />
 
                     <TextField
+                      inputProps={{ 'data-testid': 'owner-product-image-url' }}
                       label="URL da imagem"
                       fullWidth
-                      placeholder="https://... (recomendado CDN/Cloudinary)"
+                      placeholder="https://... ou upload local"
                       value={form.imageUrl}
                       onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                      helperText="Melhor prática: armazenar URL da imagem no banco (CDN/Cloudinary/S3), não o arquivo binário."
+                      helperText="Obrigatoria para produto ativo na vitrine publica."
                     />
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <Button
+                        component="label"
+                        variant="outlined"
+                        disabled={uploadingMain}
+                        data-testid="owner-product-main-upload-button"
+                      >
+                        {uploadingMain ? 'Enviando imagem...' : 'Enviar imagem local'}
+                        <input
+                          hidden
+                          accept="image/*"
+                          type="file"
+                          data-testid="owner-product-main-upload-input"
+                          onChange={(event) => {
+                            const file = event.currentTarget.files?.[0]
+                            void handleLocalImageUpload('main', file)
+                            event.currentTarget.value = ''
+                          }}
+                        />
+                      </Button>
+                      {form.imageUrl ? (
+                        <Button
+                          variant="text"
+                          color="inherit"
+                          onClick={() => setForm((prev) => ({ ...prev, imageUrl: '' }))}
+                        >
+                          Limpar imagem
+                        </Button>
+                      ) : null}
+                    </Stack>
+
+                    <TextField
+                      inputProps={{ 'data-testid': 'owner-product-hover-image-url' }}
+                      label="URL da imagem hover (opcional)"
+                      fullWidth
+                      placeholder="https://... ou upload local"
+                      value={form.hoverImageUrl}
+                      onChange={(e) => setForm((prev) => ({ ...prev, hoverImageUrl: e.target.value }))}
+                      helperText="Quando preenchida, substitui a imagem principal no hover dos cards."
+                    />
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <Button
+                        component="label"
+                        variant="outlined"
+                        disabled={uploadingHover}
+                        data-testid="owner-product-hover-upload-button"
+                      >
+                        {uploadingHover ? 'Enviando imagem hover...' : 'Enviar imagem hover local'}
+                        <input
+                          hidden
+                          accept="image/*"
+                          type="file"
+                          data-testid="owner-product-hover-upload-input"
+                          onChange={(event) => {
+                            const file = event.currentTarget.files?.[0]
+                            void handleLocalImageUpload('hover', file)
+                            event.currentTarget.value = ''
+                          }}
+                        />
+                      </Button>
+                      {form.hoverImageUrl ? (
+                        <Button
+                          variant="text"
+                          color="inherit"
+                          onClick={() => setForm((prev) => ({ ...prev, hoverImageUrl: '' }))}
+                        >
+                          Limpar hover
+                        </Button>
+                      ) : null}
+                    </Stack>
+
+                    {uploadError ? <Alert severity="error">{uploadError}</Alert> : null}
 
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                       <TextField
                         label="Preco"
                         type="number"
-                        inputProps={{ min: 0, step: '0.01' }}
+                        inputProps={{ min: 0, step: '0.01', 'data-testid': 'owner-product-price' }}
                         fullWidth
                         required
                         value={form.price}
                         onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
                       />
                       <TextField
+                        label="Custo"
+                        type="number"
+                        inputProps={{ min: 0, step: '0.01', 'data-testid': 'owner-product-cost' }}
+                        fullWidth
+                        required
+                        value={form.cost}
+                        onChange={(e) => setForm((prev) => ({ ...prev, cost: e.target.value }))}
+                      />
+                      <TextField
                         label="Estoque"
                         type="number"
-                        inputProps={{ min: 0, step: '1' }}
+                        inputProps={{ min: 0, step: '1', 'data-testid': 'owner-product-stock' }}
                         fullWidth
                         required
                         value={form.stock}
@@ -286,7 +428,29 @@ export default function OwnerProductFormPage() {
                       />
                     </Stack>
 
+                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                      <TextField
+                        label="Estoque minimo"
+                        type="number"
+                        inputProps={{ min: 0, step: '1', 'data-testid': 'owner-product-minimum-stock' }}
+                        fullWidth
+                        required
+                        value={form.minimumStock}
+                        onChange={(e) => setForm((prev) => ({ ...prev, minimumStock: e.target.value }))}
+                      />
+                      <TextField
+                        label="Ponto de reposicao"
+                        type="number"
+                        inputProps={{ min: 0, step: '1', 'data-testid': 'owner-product-reorder-point' }}
+                        fullWidth
+                        required
+                        value={form.reorderPoint}
+                        onChange={(e) => setForm((prev) => ({ ...prev, reorderPoint: e.target.value }))}
+                      />
+                    </Stack>
+
                     <TextField
+                      inputProps={{ 'data-testid': 'owner-product-description' }}
                       label="Descricao"
                       multiline
                       minRows={4}
@@ -321,7 +485,7 @@ export default function OwnerProductFormPage() {
                       borderRadius: 2,
                       display: 'grid',
                       placeItems: 'center',
-                      bgcolor: 'rgba(0,156,59,0.1)',
+                      bgcolor: 'rgba(44,209,100,0.1)',
                       color: 'primary.main',
                     }}
                   >
@@ -341,8 +505,16 @@ export default function OwnerProductFormPage() {
                     <Line label="Status" value={form.isActive ? 'Ativo' : 'Inativo'} />
                     <Line label="SKU" value={form.sku || '-'} />
                     <Line label="Preco" value={form.price ? `R$ ${Number(form.price || 0).toFixed(2)}` : '-'} />
+                    <Line label="Custo" value={form.cost ? `R$ ${Number(form.cost || 0).toFixed(2)}` : '-'} />
+                    <Line
+                      label="Margem"
+                      value={Number(form.price || 0) > 0 ? `${(((Number(form.price || 0) - Number(form.cost || 0)) / Number(form.price || 0)) * 100).toFixed(1)}%` : '-'}
+                    />
                     <Line label="Estoque" value={form.stock || '-'} />
+                    <Line label="Estoque minimo" value={form.minimumStock || '-'} />
+                    <Line label="Reposicao" value={form.reorderPoint || '-'} />
                     <Line label="Imagem" value={form.imageUrl ? 'Configurada' : 'Sem imagem'} />
+                    <Line label="Imagem hover" value={form.hoverImageUrl ? 'Configurada' : 'Nao informada'} />
                   </Stack>
                 )}
               </Paper>
@@ -354,7 +526,7 @@ export default function OwnerProductFormPage() {
                 <Box
                   sx={{
                     borderRadius: 2.5,
-                    border: '1px solid rgba(12,22,44,0.08)',
+                    border: '1px solid rgba(0,0,0,0.08)',
                     bgcolor: 'rgba(247,250,248,0.95)',
                     minHeight: 180,
                     display: 'grid',
@@ -380,6 +552,12 @@ export default function OwnerProductFormPage() {
                   )}
                 </Box>
               </Paper>
+
+              {form.isActive && !form.imageUrl.trim() ? (
+                <Alert severity="warning">
+                  Produto ativo sem imagem nao pode ser publicado na vitrine.
+                </Alert>
+              ) : null}
 
               {!isCreate && loadedProduct ? (
                 <Paper elevation={0} sx={{ p: 3, borderRadius: 3 }}>
@@ -410,7 +588,7 @@ function Line({ label, value }: { label: string; value: string }) {
       <Typography variant="body2" color="text.secondary">
         {label}
       </Typography>
-      <Typography variant="body2" sx={{ color: 'info.main', fontWeight: 600, textAlign: 'right' }}>
+      <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600, textAlign: 'right' }}>
         {value}
       </Typography>
     </Stack>

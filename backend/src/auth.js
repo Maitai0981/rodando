@@ -1,11 +1,21 @@
 const crypto = require('node:crypto')
-const { db, nowIso } = require('./db')
+const {
+  nowIso,
+  query,
+  queryOne,
+} = require('./db')
 
 const SESSION_COOKIE = 'rodando_session'
+const GUEST_COOKIE = 'rodando_guest'
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const GUEST_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex')
+}
+
+function hashToken(token) {
+  return sha256(token)
 }
 
 function hashPassword(password) {
@@ -17,6 +27,7 @@ function hashPassword(password) {
 function verifyPassword(password, storedHash) {
   const [salt, expected] = String(storedHash || '').split(':')
   if (!salt || !expected) return false
+
   const actual = crypto.scryptSync(password, salt, 64).toString('hex')
   const expectedBuf = Buffer.from(expected, 'hex')
   const actualBuf = Buffer.from(actual, 'hex')
@@ -31,41 +42,102 @@ function sanitizeUser(row) {
     name: row.name,
     email: row.email,
     role: row.role,
+    phone: row.phone || null,
+    document: row.document || null,
+    cep: row.cep || null,
+    addressStreet: row.address_street || null,
+    addressCity: row.address_city || null,
+    addressState: row.address_state || null,
     createdAt: row.created_at,
   }
 }
 
-function getUserByEmail(email) {
-  return db.prepare('SELECT * FROM users WHERE lower(email) = lower(?)').get(email)
+async function getRoleIdByCode(code) {
+  const row = await queryOne('SELECT id FROM roles WHERE code = $1', [code])
+  return row ? Number(row.id) : null
 }
 
-function getUserById(id) {
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(id)
+async function getUserByEmail(email) {
+  return queryOne(
+    `SELECT
+      u.*,
+      COALESCE(r.code, 'customer') AS role
+    FROM users u
+    LEFT JOIN user_roles ur ON ur.user_id = u.id
+    LEFT JOIN roles r ON r.id = ur.role_id
+    WHERE lower(u.email) = lower($1)
+    LIMIT 1`,
+    [email],
+  )
 }
 
-function createUser({ name, email, password, role }) {
+async function getUserById(id) {
+  return queryOne(
+    `SELECT
+      u.*,
+      COALESCE(r.code, 'customer') AS role
+    FROM users u
+    LEFT JOIN user_roles ur ON ur.user_id = u.id
+    LEFT JOIN roles r ON r.id = ur.role_id
+    WHERE u.id = $1
+    LIMIT 1`,
+    [id],
+  )
+}
+
+async function createUser({
+  name,
+  email,
+  password,
+  role = 'customer',
+  phone = null,
+  document = null,
+  cep = null,
+  addressStreet = null,
+  addressCity = null,
+  addressState = null,
+}) {
   const timestamp = nowIso()
   const passwordHash = hashPassword(password)
-  const result = db.prepare(
-    'INSERT INTO users (name, email, password_hash, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(name, email.toLowerCase(), passwordHash, role, timestamp, timestamp)
-  return getUserById(result.lastInsertRowid)
+
+  const created = await queryOne(
+    `INSERT INTO users (name, email, password_hash, phone, document, cep, address_street, address_city, address_state, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     RETURNING id`,
+    [
+      name,
+      email.toLowerCase(),
+      passwordHash,
+      phone,
+      document,
+      cep,
+      addressStreet,
+      addressCity,
+      addressState,
+      timestamp,
+      timestamp,
+    ],
+  )
+
+  const roleId = await getRoleIdByCode(role)
+  if (!roleId) {
+    throw new Error(`Role ${role} nao encontrada.`)
+  }
+
+  await query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [Number(created.id), roleId])
+  return getUserById(Number(created.id))
 }
 
-function countOwners() {
-  const row = db.prepare("SELECT COUNT(*) AS count FROM users WHERE role = 'owner'").get()
-  return Number(row.count || 0)
-}
-
-function createSession(userId) {
+async function createSession(userId) {
   const token = crypto.randomBytes(32).toString('hex')
-  const tokenHash = sha256(token)
+  const tokenHash = hashToken(token)
   const createdAt = new Date()
   const expiresAt = new Date(createdAt.getTime() + SESSION_TTL_MS)
 
-  db.prepare(
-    'INSERT INTO sessions (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)'
-  ).run(userId, tokenHash, expiresAt.toISOString(), createdAt.toISOString())
+  await query(
+    'INSERT INTO sessions (user_id, token_hash, expires_at, created_at) VALUES ($1, $2, $3, $4)',
+    [userId, tokenHash, expiresAt.toISOString(), createdAt.toISOString()],
+  )
 
   return {
     token,
@@ -73,21 +145,25 @@ function createSession(userId) {
   }
 }
 
-function deleteSessionByToken(token) {
+async function deleteSessionByToken(token) {
   if (!token) return
-  db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256(token))
+  await query('DELETE FROM sessions WHERE token_hash = $1', [hashToken(token)])
 }
 
-function getUserFromSessionToken(token) {
+async function getUserFromSessionToken(token) {
   if (!token) return null
-  const row = db.prepare(`
-    SELECT u.*
+  return queryOne(
+    `SELECT
+      u.*,
+      COALESCE(r.code, 'customer') AS role
     FROM sessions s
     JOIN users u ON u.id = s.user_id
-    WHERE s.token_hash = ? AND s.expires_at > ?
-    LIMIT 1
-  `).get(sha256(token), nowIso())
-  return row || null
+    LEFT JOIN user_roles ur ON ur.user_id = u.id
+    LEFT JOIN roles r ON r.id = ur.role_id
+    WHERE s.token_hash = $1 AND s.expires_at > $2
+    LIMIT 1`,
+    [hashToken(token), nowIso()],
+  )
 }
 
 function setSessionCookie(res, token, expiresAt) {
@@ -109,14 +185,44 @@ function clearSessionCookie(res) {
   })
 }
 
-function attachAuth(req, _res, next) {
-  const token = req.cookies?.[SESSION_COOKIE]
-  const user = getUserFromSessionToken(token)
-  req.auth = {
-    token: token || null,
-    user: sanitizeUser(user),
+function setGuestCookie(res, token, expiresAt) {
+  res.cookie(GUEST_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    expires: expiresAt,
+    path: '/',
+  })
+}
+
+function ensureGuestToken(req, res) {
+  const existing = String(req.cookies?.[GUEST_COOKIE] || '').trim()
+  if (existing.length >= 24) {
+    return existing
   }
-  next()
+
+  const token = crypto.randomBytes(24).toString('hex')
+  const expiresAt = new Date(Date.now() + GUEST_TTL_MS)
+  setGuestCookie(res, token, expiresAt)
+  return token
+}
+
+async function attachAuth(req, res, next) {
+  try {
+    const token = req.cookies?.[SESSION_COOKIE]
+    const guestToken = ensureGuestToken(req, res)
+    const user = await getUserFromSessionToken(token)
+
+    req.auth = {
+      token: token || null,
+      user: sanitizeUser(user),
+      guestToken,
+      guestTokenHash: hashToken(guestToken),
+    }
+    return next()
+  } catch (error) {
+    return next(error)
+  }
 }
 
 function requireAuth(req, res, next) {
@@ -137,10 +243,10 @@ function requireOwner(req, res, next) {
 }
 
 module.exports = {
+  GUEST_COOKIE,
   SESSION_COOKIE,
   attachAuth,
   clearSessionCookie,
-  countOwners,
   createSession,
   createUser,
   deleteSessionByToken,
@@ -149,6 +255,8 @@ module.exports = {
   requireAuth,
   requireOwner,
   sanitizeUser,
+  hashToken,
+  hashPassword,
   setSessionCookie,
   verifyPassword,
 }

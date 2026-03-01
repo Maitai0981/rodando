@@ -1,3 +1,4 @@
 export { formatCurrency } from './formatCurrency'
 export { maskPhone } from './maskPhone'
-export { isStrongPassword, isValidEmail } from './validators'
+export { maskCep, normalizeCep } from './maskCep'
+export { isStrongPassword, isValidCep, isValidEmail } from './validators'

@@ -3,44 +3,46 @@ import type { PaletteOptions } from '@mui/material/styles'
 export const palette: PaletteOptions = {
   mode: 'light',
   primary: {
-    main: '#0A8F3A',
-    dark: '#076D2C',
-    light: '#2DB861',
-    contrastText: '#F8FFF9'
+    main: '#1C9C4B',
+    dark: '#157A39',
+    light: '#4ADE80',
+    contrastText: '#FFFFFF',
   },
   secondary: {
-    main: '#F2C617',
-    dark: '#C8A30E',
-    light: '#FFE37A',
-    contrastText: '#17140A'
+    main: '#C28A0E',
+    dark: '#9D6D09',
+    light: '#E0AE3C',
+    contrastText: '#1A1A1A',
   },
   info: {
-    main: '#141414',
-    dark: '#090909',
-    light: '#343434',
-    contrastText: '#FAFAFA'
+    main: '#C28A0E',
+    dark: '#9D6D09',
+    light: '#E0AE3C',
+    contrastText: '#1A1A1A',
   },
   success: {
-    main: '#17733F'
+    main: '#1C9C4B',
   },
   error: {
-    main: '#C63A3A'
+    main: '#DC2626',
+    dark: '#B91C1C',
+    light: '#EF4444',
   },
   warning: {
-    main: '#D9A010'
+    main: '#F59E0B',
   },
   background: {
-    default: '#F7F8F4',
-    paper: '#FFFFFF'
+    default: '#F7F5EE',
+    paper: '#FFFFFF',
   },
   text: {
-    primary: '#111111',
-    secondary: '#5B5B5B'
+    primary: '#142235',
+    secondary: '#34475D',
   },
-  divider: 'rgba(17, 17, 17, 0.10)',
+  divider: '#D8D3C2',
   action: {
-    hover: 'rgba(17, 17, 17, 0.04)',
-    selected: 'rgba(17, 17, 17, 0.08)',
-    focus: 'rgba(10, 143, 58, 0.22)'
-  }
+    hover: 'rgba(194,138,14,0.1)',
+    selected: 'rgba(194,138,14,0.16)',
+    focus: 'rgba(28,156,75,0.22)',
+  },
 }

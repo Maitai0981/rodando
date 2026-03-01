@@ -14,7 +14,7 @@ import {
   Typography
 } from '@mui/material'
 import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined'
-import { motion, useReducedMotion, useScroll, useSpring } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
@@ -29,8 +29,8 @@ const officialChannels = {
 
 const primaryNavLinks = [
   { label: 'Inicio', to: '/' },
-  { label: 'Medidas', to: '/technical' },
-  { label: 'Catalogo', to: '/catalog' },
+  { label: 'Categorias', to: '/catalog' },
+  { label: 'Catálogo', to: '/catalog' },
 ]
 
 const PUBLIC_SHELL_MAX_WIDTH = 1380
@@ -52,12 +52,6 @@ export default function PublicLayout({ children }: PropsWithChildren) {
     ? [...primaryNavLinks, { label: 'Painel', to: '/owner/dashboard' }]
     : primaryNavLinks
   const reduceMotion = useReducedMotion()
-  const { scrollYProgress } = useScroll()
-  const progressScaleX = useSpring(scrollYProgress, {
-    stiffness: 220,
-    damping: 28,
-    mass: 0.25,
-  })
   const jellyRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -115,7 +109,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', position: 'relative', overflowX: 'clip' }}>
+    <Box sx={{ minHeight: '100vh', position: 'relative', overflowX: 'hidden' }}>
       <Box
         className={`brazil-bg-stripes site-top-stripes${isHome ? ' site-top-stripes--home' : ''}`}
         aria-hidden
@@ -164,154 +158,154 @@ export default function PublicLayout({ children }: PropsWithChildren) {
               mx: 'auto',
             }}
           >
-          <Stack
-            direction="row"
-            spacing={{ xs: 1.1, md: 1.35 }}
-            alignItems="center"
-            component={RouterLink}
-            to="/"
-            sx={{ color: 'inherit', minWidth: 0 }}
-          >
-            <Box
-              sx={{
-                width: { xs: 40, md: 46 },
-                height: { xs: 40, md: 46 },
-                borderRadius: '50%',
-                border: '1px solid rgba(17,17,17,0.14)',
-                display: 'grid',
-                placeItems: 'center',
-                position: 'relative',
-                bgcolor: 'rgba(255,255,255,0.95)'
-              }}
+            <Stack
+              direction="row"
+              spacing={{ xs: 1.1, md: 1.35 }}
+              alignItems="center"
+              component={RouterLink}
+              to="/"
+              sx={{ color: 'inherit', minWidth: 0 }}
             >
-              <Box sx={{ width: { xs: 12, md: 14 }, height: { xs: 12, md: 14 }, borderRadius: '50%', bgcolor: 'secondary.main' }} />
               <Box
                 sx={{
-                  position: 'absolute',
-                  inset: { xs: 4, md: 5 },
+                  width: { xs: 40, md: 46 },
+                  height: { xs: 40, md: 46 },
                   borderRadius: '50%',
-                  border: '1px dashed rgba(17,17,17,0.18)'
+                  border: '1px solid rgba(17,17,17,0.14)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  position: 'relative',
+                  bgcolor: 'rgba(255,255,255,0.95)'
                 }}
-              />
-            </Box>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: 700,
-                letterSpacing: '-0.03em',
-                whiteSpace: 'nowrap',
-                lineHeight: 1,
-                fontSize: { xs: 13, sm: 14, md: 16 },
-              }}
-            >
-              RODANDO
-              {/* <Box component="span" sx={{ color: 'primary.main' }}>
+              >
+                <Box sx={{ width: { xs: 12, md: 14 }, height: { xs: 12, md: 14 }, borderRadius: '50%', bgcolor: 'secondary.main' }} />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: { xs: 4, md: 5 },
+                    borderRadius: '50%',
+                    border: '1px dashed rgba(17,17,17,0.18)'
+                  }}
+                />
+              </Box>
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontWeight: 700,
+                  letterSpacing: '-0.03em',
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1,
+                  fontSize: { xs: 13, sm: 14, md: 16 },
+                }}
+              >
+                RODANDO
+                {/* <Box component="span" sx={{ color: 'primary.main' }}>
                 .BR
               </Box> */}
-            </Typography>
-          </Stack>
+              </Typography>
+            </Stack>
 
-          <Stack
-            direction="row"
-            spacing={0.5}
-            alignItems="center"
-            sx={{
-              mx: 'auto',
-              display: { xs: 'none', md: 'flex' },
-              p: 0.3,
-              borderRadius: 999,
-              bgcolor: 'rgba(255,255,255,0.62)',
-              border: '1px solid rgba(12,22,44,0.06)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-            }}
-          >
-            {visibleNavLinks.map((link) => {
-              const active = isActiveRoute(location.pathname, link.to)
-              return (
+            <Stack
+              direction="row"
+              spacing={0.5}
+              alignItems="center"
+              sx={{
+                mx: 'auto',
+                display: { xs: 'none', md: 'flex' },
+                p: 0.3,
+                borderRadius: 999,
+                bgcolor: 'rgba(255,255,255,0.62)',
+                border: '1px solid rgba(0,0,0,0.06)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+              }}
+            >
+              {visibleNavLinks.map((link) => {
+                const active = isActiveRoute(location.pathname, link.to)
+                return (
+                  <Button
+                    key={link.to}
+                    component={RouterLink}
+                    to={link.to}
+                    color="primary"
+                    aria-current={active ? 'page' : undefined}
+                    sx={{
+                      px: 1.7,
+                      minHeight: 44,
+                      minWidth: 0,
+                      borderRadius: 999,
+                      textTransform: 'none',
+                      fontWeight: active ? 700 : 600,
+                      fontSize: 13,
+                      color: active ? 'info.main' : 'primary.main',
+                      bgcolor: active ? 'rgba(255,255,255,0.92)' : 'transparent',
+                      border: active ? '1px solid rgba(0,0,0,0.08)' : '1px solid transparent',
+                      boxShadow: active ? '0 6px 16px rgba(0,0,0,0.06)' : 'none',
+                      '&:hover': {
+                        bgcolor: active ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.45)',
+                      },
+                    }}
+                  >
+                    {link.label}
+                  </Button>
+                )
+              })}
+              {user?.role === 'owner' ? (
                 <Button
-                  key={link.to}
                   component={RouterLink}
-                  to={link.to}
+                  to="/owner/products/new"
                   color="primary"
-                  aria-current={active ? 'page' : undefined}
                   sx={{
-                    px: 1.7,
+                    px: 1.5,
                     minHeight: 44,
                     minWidth: 0,
                     borderRadius: 999,
                     textTransform: 'none',
-                    fontWeight: active ? 700 : 600,
+                    fontWeight: 600,
                     fontSize: 13,
-                    color: active ? 'info.main' : 'primary.main',
-                    bgcolor: active ? 'rgba(255,255,255,0.92)' : 'transparent',
-                    border: active ? '1px solid rgba(12,22,44,0.08)' : '1px solid transparent',
-                    boxShadow: active ? '0 6px 16px rgba(12,22,44,0.06)' : 'none',
-                    '&:hover': {
-                      bgcolor: active ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.45)',
-                    },
+                    border: '1px dashed rgba(17,17,17,0.18)',
+                    bgcolor: 'rgba(255,255,255,0.5)',
                   }}
                 >
-                  {link.label}
+                  Adicionar produto
                 </Button>
-              )
-            })}
-            {user?.role === 'owner' ? (
-              <Button
-                component={RouterLink}
-                to="/owner/products/new"
-                color="primary"
-                sx={{
-                  px: 1.5,
-                  minHeight: 44,
-                  minWidth: 0,
-                  borderRadius: 999,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: 13,
-                  border: '1px dashed rgba(17,17,17,0.18)',
-                  bgcolor: 'rgba(255,255,255,0.5)',
-                }}
-              >
-                Adicionar produto
-              </Button>
-            ) : null}
-          </Stack>
+              ) : null}
+            </Stack>
 
-          <Stack direction="row" spacing={{ xs: 0.6, sm: 0.9, md: 1.1 }} alignItems="center" sx={{ ml: { xs: 'auto', md: 0 }, minWidth: 0 }}>
-            {status !== 'authenticated' && !showHomeEditorialActions ? (
-              <>
-                <Button
-                  component={RouterLink}
-                  to="/auth"
-                  variant="text"
-                  color="primary"
-                  sx={{ display: { xs: 'none', sm: 'inline-flex' }, minHeight: 42, px: 1.4, fontSize: 13, fontWeight: 700 }}
-                >
-                  Entrar
-                </Button>
-                <Button
-                  component={RouterLink}
-                  to="/auth/signup"
-                  variant="outlined"
-                  color="primary"
-                  sx={{ display: { xs: 'none', md: 'inline-flex' }, minHeight: 42, px: 1.7, fontSize: 13, fontWeight: 700 }}
-                >
-                  Criar conta
-                </Button>
-              </>
-            ) : user?.role === 'owner' ? (
-              <Stack direction="row" spacing={1} sx={{ display: { xs: 'none', md: 'flex' } }}>
-                <Button component={RouterLink} to="/owner/products/new" variant="text" color="primary">
-                  Adicionar
-                </Button>
-                <Button component={RouterLink} to="/owner/dashboard" variant="outlined" color="primary">
-                  Painel
-                </Button>
-              </Stack>
-            ) : null}
-            {status === 'authenticated' ? (
+            <Stack direction="row" spacing={{ xs: 0.6, sm: 0.9, md: 1.1 }} alignItems="center" sx={{ ml: { xs: 'auto', md: 0 }, minWidth: 0 }}>
+              {status !== 'authenticated' && !showHomeEditorialActions ? (
+                <>
+                  <Button
+                    component={RouterLink}
+                    to="/auth"
+                    variant="text"
+                    color="primary"
+                    sx={{ display: { xs: 'none', sm: 'inline-flex' }, minHeight: 42, px: 1.4, fontSize: 13, fontWeight: 700 }}
+                  >
+                    Entrar
+                  </Button>
+                  <Button
+                    component={RouterLink}
+                    to="/auth/signup"
+                    variant="outlined"
+                    color="primary"
+                    sx={{ display: { xs: 'none', md: 'inline-flex' }, minHeight: 42, px: 1.7, fontSize: 13, fontWeight: 700 }}
+                  >
+                    Criar conta
+                  </Button>
+                </>
+              ) : user?.role === 'owner' ? (
+                <Stack direction="row" spacing={1} sx={{ display: { xs: 'none', md: 'flex' } }}>
+                  <Button component={RouterLink} to="/owner/products/new" variant="text" color="primary">
+                    Adicionar
+                  </Button>
+                  <Button component={RouterLink} to="/owner/dashboard" variant="outlined" color="primary">
+                    Painel
+                  </Button>
+                </Stack>
+              ) : null}
+              {status === 'authenticated' ? (
                 <Button
                   variant="text"
                   color="primary"
@@ -320,126 +314,126 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                 >
                   Sair
                 </Button>
-            ) : null}
-            {showHomeEditorialActions ? (
-              <>
-                <Button
-                  variant="outlined"
-                  color="inherit"
-                  sx={{
-                    display: { xs: 'none', md: 'inline-flex' },
-                    px: 2.1,
-                    minHeight: 50,
-                    borderRadius: 999,
-                    textTransform: 'none',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    borderColor: 'rgba(17,17,17,0.18)',
-                    color: '#111111',
-                    bgcolor: 'rgba(255,255,255,0.58)',
-                  }}
-                >
-                  pt-br
-                </Button>
-                <Button
-                  component="a"
-                  href="#home-contact"
-                  variant="outlined"
-                  color="inherit"
-                  sx={{
-                    display: { xs: 'none', md: 'inline-flex' },
-                    px: { md: 2.2, lg: 2.6 },
-                    minHeight: 50,
-                    borderRadius: 999,
-                    textTransform: 'none',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    borderColor: 'rgba(17,17,17,0.18)',
-                    color: '#111111',
-                    bgcolor: 'rgba(255,255,255,0.58)',
-                  }}
-                >
-                  Seja parceiro
-                </Button>
-              </>
-            ) : null}
-            <Button
-              component={RouterLink}
-              to="/catalog"
-              variant="contained"
-              color="primary"
-              sx={{
-                display: showHomeEditorialActions ? { xs: 'inline-flex', md: 'none' } : undefined,
-                px: { xs: 1.4, sm: 1.8, md: 2.1 },
-                minWidth: 0,
-                minHeight: { xs: 42, sm: 48 },
-                borderRadius: 999,
-                bgcolor: 'rgba(255, 240, 178, 0.96)',
-                color: '#111111',
-                boxShadow: '0 8px 20px rgba(255,223,0,0.14)',
-                border: '1px solid rgba(17,17,17,0.06)',
-                fontSize: { xs: 12, sm: 13 },
-                fontWeight: 700,
-                '&:hover': {
-                  bgcolor: 'rgba(255, 240, 178, 1)',
-                  boxShadow: '0 10px 22px rgba(255,223,0,0.18)',
-                },
-              }}
-            >
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                Ver catalogo
-              </Box>
-              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-                Loja
-              </Box>
-            </Button>
-            {showHomeEditorialActions ? (
+              ) : null}
+              {showHomeEditorialActions ? (
+                <>
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    sx={{
+                      display: { xs: 'none', md: 'inline-flex' },
+                      px: 2.1,
+                      minHeight: 50,
+                      borderRadius: 999,
+                      textTransform: 'none',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      borderColor: 'rgba(17,17,17,0.18)',
+                      color: '#111111',
+                      bgcolor: 'rgba(255,255,255,0.58)',
+                    }}
+                  >
+                    pt-br
+                  </Button>
+                  <Button
+                    component="a"
+                    href="#home-contact"
+                    variant="outlined"
+                    color="inherit"
+                    sx={{
+                      display: { xs: 'none', md: 'inline-flex' },
+                      px: { md: 2.2, lg: 2.6 },
+                      minHeight: 50,
+                      borderRadius: 999,
+                      textTransform: 'none',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      whiteSpace: 'nowrap',
+                      borderColor: 'rgba(17,17,17,0.18)',
+                      color: '#111111',
+                      bgcolor: 'rgba(255,255,255,0.58)',
+                    }}
+                  >
+                    Seja parceiro
+                  </Button>
+                </>
+              ) : null}
               <Button
                 component={RouterLink}
                 to="/catalog"
                 variant="contained"
                 color="primary"
                 sx={{
-                  display: { xs: 'none', md: 'inline-flex' },
-                  px: { md: 2.6, lg: 3.1 },
-                  minHeight: 50,
+                  display: showHomeEditorialActions ? { xs: 'inline-flex', md: 'none' } : undefined,
+                  px: { xs: 1.4, sm: 1.8, md: 2.1 },
+                  minWidth: 0,
+                  minHeight: { xs: 42, sm: 48 },
                   borderRadius: 999,
-                  textTransform: 'none',
-                  whiteSpace: 'nowrap',
-                  fontSize: 13,
-                  fontWeight: 700,
                   bgcolor: 'rgba(255, 240, 178, 0.96)',
                   color: '#111111',
-                  boxShadow: '0 8px 20px rgba(255,223,0,0.14)',
+                  boxShadow: '0 8px 20px rgba(255,234,0,0.14)',
                   border: '1px solid rgba(17,17,17,0.06)',
+                  fontSize: { xs: 12, sm: 13 },
+                  fontWeight: 700,
                   '&:hover': {
                     bgcolor: 'rgba(255, 240, 178, 1)',
-                    boxShadow: '0 10px 22px rgba(255,223,0,0.18)',
+                    boxShadow: '0 10px 22px rgba(255,234,0,0.18)',
                   },
                 }}
               >
-                Ver catalogo
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Ver catálogo
+                </Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                  Loja
+                </Box>
               </Button>
-            ) : null}
-            <IconButton
-              component={RouterLink}
-              to="/cart"
-              sx={{
-                display: showHomeEditorialActions ? { xs: 'inline-flex', md: 'none' } : undefined,
-                color: 'info.main',
-                bgcolor: 'rgba(255,255,255,0.9)',
-                border: '1px solid rgba(17,17,17,0.08)',
-                width: { xs: 42, sm: 46 },
-                height: { xs: 42, sm: 46 },
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.98)' }
-              }}
-            >
-              <Badge badgeContent={itemCount} color="secondary" overlap="circular" max={99}>
-                <ShoppingBagOutlinedIcon sx={{ fontSize: 22 }} />
-              </Badge>
-            </IconButton>
-          </Stack>
+              {showHomeEditorialActions ? (
+                <Button
+                  component={RouterLink}
+                  to="/catalog"
+                  variant="contained"
+                  color="primary"
+                  sx={{
+                    display: { xs: 'none', md: 'inline-flex' },
+                    px: { md: 2.6, lg: 3.1 },
+                    minHeight: 50,
+                    borderRadius: 999,
+                    textTransform: 'none',
+                    whiteSpace: 'nowrap',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    bgcolor: 'rgba(255, 240, 178, 0.96)',
+                    color: '#111111',
+                    boxShadow: '0 8px 20px rgba(255,234,0,0.14)',
+                    border: '1px solid rgba(17,17,17,0.06)',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 240, 178, 1)',
+                      boxShadow: '0 10px 22px rgba(255,234,0,0.18)',
+                    },
+                  }}
+                >
+                  Ver catálogo
+                </Button>
+              ) : null}
+              <IconButton
+                component={RouterLink}
+                to="/cart"
+                sx={{
+                  display: showHomeEditorialActions ? { xs: 'inline-flex', md: 'none' } : undefined,
+                  color: 'info.main',
+                  bgcolor: 'rgba(255,255,255,0.9)',
+                  border: '1px solid rgba(17,17,17,0.08)',
+                  width: { xs: 42, sm: 46 },
+                  height: { xs: 42, sm: 46 },
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.98)' }
+                }}
+              >
+                <Badge badgeContent={itemCount} color="secondary" overlap="circular" max={99}>
+                  <ShoppingBagOutlinedIcon sx={{ fontSize: 22 }} />
+                </Badge>
+              </IconButton>
+            </Stack>
           </Toolbar>
           <Box sx={{ px: { xs: 1, sm: 1.35 }, pb: 0.7, display: { xs: 'block', md: 'none' }, width: '100%', maxWidth: { lg: PUBLIC_SHELL_MAX_WIDTH }, mx: 'auto' }}>
             <Stack
@@ -469,7 +463,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                       fontWeight: active ? 700 : 600,
                       fontSize: 12,
                       bgcolor: active ? undefined : 'rgba(255,255,255,0.72)',
-                      borderColor: active ? undefined : 'rgba(12,22,44,0.09)',
+                      borderColor: active ? undefined : 'rgba(0,0,0,0.09)',
                       '& .MuiChip-label': { px: 1.3 },
                     }}
                   />
@@ -504,7 +498,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                   height: 140,
                   borderRadius: 3,
                   background:
-                    'radial-gradient(circle at 18% 30%, rgba(0,156,59,0.06), transparent 52%), radial-gradient(circle at 84% 22%, rgba(17,17,17,0.06), transparent 56%), linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0))',
+                    'radial-gradient(circle at 18% 30%, rgba(44,209,100,0.06), transparent 52%), radial-gradient(circle at 84% 22%, rgba(17,17,17,0.06), transparent 56%), linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0))',
                   pointerEvents: 'none',
                   zIndex: 0,
                 }}
@@ -549,155 +543,156 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                 inset: 0,
                 pointerEvents: 'none',
                 background:
-                  'radial-gradient(circle at 8% 15%, rgba(0,156,59,0.06), transparent 42%), radial-gradient(circle at 92% 12%, rgba(17,17,17,0.06), transparent 44%)',
+                  'radial-gradient(circle at 8% 15%, rgba(44,209,100,0.06), transparent 42%), radial-gradient(circle at 92% 12%, rgba(17,17,17,0.06), transparent 44%)',
               },
             }}
           >
-          <Container
-            maxWidth="xl"
-            sx={{
-              py: { xs: 4.5, md: 6 },
-              px: { xs: 1.6, sm: 2.8, md: 3.4 },
-              maxWidth: PUBLIC_CONTENT_MAX_WIDTH,
-            }}
-          >
-            <Stack direction={{ xs: 'column', lg: 'row' }} spacing={4} sx={{ mb: 3 }}>
-              <Box
-                sx={{
-                  flex: 1,
-                  p: { xs: 2, md: 2.4 },
-                  borderRadius: 3,
-                  border: '1px solid rgba(12,22,44,0.07)',
-                  bgcolor: 'rgba(255,255,255,0.72)',
-                  boxShadow: '0 12px 28px rgba(12,22,44,0.04)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                }}
-              >
-                <Typography variant="caption" color="primary" sx={{ mb: 1.25, letterSpacing: '0.12em', display: 'block' }}>
-                  RODANDO
-                </Typography>
-                <Typography variant="h4" sx={{ maxWidth: 700, letterSpacing: '-0.03em' }}>
-                  Catalogo claro. Medidas confiaveis. Marca mais profissional.
-                </Typography>
-              </Box>
-              <Stack sx={{ minWidth: { lg: 220 } }} justifyContent="flex-end">
-                <Button
-                  component={RouterLink}
-                  to="/catalog"
-                  variant="contained"
-                  color="primary"
-                  size="large"
-                  sx={{
-                    boxShadow: '0 10px 22px rgba(0,156,59,0.18)',
-                    minHeight: 48,
-                  }}
-                >
-                  Ver catalogo
-                </Button>
-              </Stack>
-            </Stack>
-
-            <Divider sx={{ borderColor: 'rgba(17,17,17,0.08)' }} />
-
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} sx={{ py: 3.5 }}>
-              <Box
-                sx={{
-                  flex: 1,
-                  p: { xs: 1.6, md: 1.8 },
-                  borderRadius: 2.5,
-                  border: '1px solid rgba(12,22,44,0.06)',
-                  bgcolor: 'rgba(255,255,255,0.62)',
-                }}
-              >
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, letterSpacing: '-0.03em' }}>
-                  RODANDO
-                  <Box component="span" sx={{ color: 'primary.main' }}>
-                    .BR
-                  </Box>
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.75, maxWidth: 380 }}>
-                  Especialistas em camaras de ar e componentes. Clareza, velocidade e confianca.
-                </Typography>
-              </Box>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.2} sx={{ flexWrap: 'wrap' }}>
-                <Stack
-                  spacing={1}
-                  sx={{
-                    p: 1.4,
-                    borderRadius: 2.2,
-                    border: '1px solid rgba(12,22,44,0.05)',
-                    bgcolor: 'rgba(255,255,255,0.55)',
-                    minWidth: { sm: 160 },
-                  }}
-                >
-                  <Typography variant="overline" sx={{ color: 'primary.main' }}>
-                    Navegacao
-                  </Typography>
-                  <Typography component={RouterLink} to="/" variant="body2" className="link-underline">
-                    Pagina inicial
-                  </Typography>
-                  <Typography component={RouterLink} to="/technical" variant="body2" className="link-underline">
-                    Medidas tecnicas
-                  </Typography>
-                  <Typography component={RouterLink} to="/catalog" variant="body2" className="link-underline">
-                    Loja virtual
-                  </Typography>
-                </Stack>
-                <Stack
-                  spacing={1}
-                  sx={{
-                    p: 1.4,
-                    borderRadius: 2.2,
-                    border: '1px solid rgba(12,22,44,0.05)',
-                    bgcolor: 'rgba(255,255,255,0.5)',
-                    minWidth: { sm: 160 },
-                  }}
-                >
-                  <Typography variant="overline" sx={{ color: 'primary.main' }}>
-                    Suporte
-                  </Typography>
-                  <Typography variant="body2">Comercial B2B</Typography>
-                  <Typography variant="body2">Atendimento</Typography>
-                  <Typography variant="body2">Politicas</Typography>  
-                </Stack>
-                <Stack
-                  spacing={1}
-                  sx={{
-                    p: 1.4,
-                    borderRadius: 2.2,
-                    border: '1px solid rgba(12,22,44,0.05)',
-                    bgcolor: 'rgba(255,255,255,0.5)',
-                    minWidth: { sm: 170 },
-                  }}
-                >
-                  <Typography variant="overline" sx={{ color: 'primary.main' }}>
-                    Canais oficiais
-                  </Typography>
-                  <Typography component="a" href={officialChannels.maps} target="_blank" rel="noreferrer" variant="body2" className="link-underline">
-                    Google Maps
-                  </Typography>
-                  <Typography component="a" href={officialChannels.instagram} target="_blank" rel="noreferrer" variant="body2" className="link-underline">
-                    Instagram
-                  </Typography>
-                  <Typography component="a" href={officialChannels.facebook} target="_blank" rel="noreferrer" variant="body2" className="link-underline">
-                    Facebook
-                  </Typography>
-                </Stack>
-              </Stack>
-            </Stack>
-
-            <Divider sx={{ borderColor: 'rgba(17,17,17,0.08)' }} />
-            <Typography
-              variant="caption"
-              sx={{ display: 'block', pt: 2.25, color: 'text.secondary', letterSpacing: '0.06em', textTransform: 'uppercase' }}
+            <Container
+              maxWidth="xl"
+              sx={{
+                py: { xs: 4.5, md: 6 },
+                px: { xs: 1.6, sm: 2.8, md: 3.4 },
+                maxWidth: PUBLIC_CONTENT_MAX_WIDTH,
+              }}
             >
-              © 2026 Rodando.com.br - Pecas Automotivas - CNPJ 10.174.972/0001-56
-            </Typography>
-          </Container>
+              <Stack direction={{ xs: 'column', lg: 'row' }} spacing={4} sx={{ mb: 3 }}>
+                <Box
+                  sx={{
+                    flex: 1,
+                    p: { xs: 2, md: 2.4 },
+                    borderRadius: 3,
+                    border: '1px solid rgba(0,0,0,0.07)',
+                    bgcolor: 'rgba(255,255,255,0.72)',
+                    boxShadow: '0 12px 28px rgba(0,0,0,0.04)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                  }}
+                >
+                  <Typography variant="caption" color="primary" sx={{ mb: 1.25, letterSpacing: '0.12em', display: 'block' }}>
+                    RODANDO
+                  </Typography>
+                  <Typography variant="h4" sx={{ maxWidth: 700, letterSpacing: '-0.03em' }}>
+                    Catálogo claro. Compra rápida. Marca mais profissional.
+                  </Typography>
+                </Box>
+                <Stack sx={{ minWidth: { lg: 220 } }} justifyContent="flex-end">
+                  <Button
+                    component={RouterLink}
+                    to="/catalog"
+                    variant="contained"
+                    color="primary"
+                    size="large"
+                    sx={{
+                      boxShadow: '0 10px 22px rgba(44,209,100,0.18)',
+                      minHeight: 48,
+                    }}
+                  >
+                    Ver catálogo
+                  </Button>
+                </Stack>
+              </Stack>
+
+              <Divider sx={{ borderColor: 'rgba(17,17,17,0.08)' }} />
+
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} sx={{ py: 3.5 }}>
+                <Box
+                  sx={{
+                    flex: 1,
+                    p: { xs: 1.6, md: 1.8 },
+                    borderRadius: 2.5,
+                    border: '1px solid rgba(0,0,0,0.06)',
+                    bgcolor: 'rgba(255,255,255,0.62)',
+                  }}
+                >
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, letterSpacing: '-0.03em' }}>
+                    RODANDO
+                    <Box component="span" sx={{ color: 'primary.main' }}>
+                      .BR
+                    </Box>
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1.75, maxWidth: 380 }}>
+                    Especialistas em câmaras de ar e componentes. Clareza, velocidade e confiança.
+                  </Typography>
+                </Box>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.2} sx={{ flexWrap: 'wrap' }}>
+                  <Stack
+                    spacing={1}
+                    sx={{
+                      p: 1.4,
+                      borderRadius: 2.2,
+                      border: '1px solid rgba(0,0,0,0.05)',
+                      bgcolor: 'rgba(255,255,255,0.55)',
+                      minWidth: { sm: 160 },
+                    }}
+                  >
+                    <Typography variant="overline" sx={{ color: 'primary.main' }}>
+                      Navegacao
+                    </Typography>
+                    <Typography component={RouterLink} to="/" variant="body2" className="link-underline">
+                      Página inicial
+                    </Typography>
+                    <Typography component={RouterLink} to="/catalog" variant="body2" className="link-underline">
+                      Categorias e produtos
+                    </Typography>
+                    <Typography component={RouterLink} to="/catalog" variant="body2" className="link-underline">
+                      Loja virtual
+                    </Typography>
+                  </Stack>
+                  <Stack
+                    spacing={1}
+                    sx={{
+                      p: 1.4,
+                      borderRadius: 2.2,
+                      border: '1px solid rgba(0,0,0,0.05)',
+                      bgcolor: 'rgba(255,255,255,0.5)',
+                      minWidth: { sm: 160 },
+                    }}
+                  >
+                    <Typography variant="overline" sx={{ color: 'primary.main' }}>
+                      Suporte
+                    </Typography>
+                    <Typography variant="body2">Comercial B2B</Typography>
+                    <Typography variant="body2">Atendimento</Typography>
+                    <Typography variant="body2">Políticas</Typography>
+                  </Stack>
+                  <Stack
+                    spacing={1}
+                    sx={{
+                      p: 1.4,
+                      borderRadius: 2.2,
+                      border: '1px solid rgba(0,0,0,0.05)',
+                      bgcolor: 'rgba(255,255,255,0.5)',
+                      minWidth: { sm: 170 },
+                    }}
+                  >
+                    <Typography variant="overline" sx={{ color: 'primary.main' }}>
+                      Canais oficiais
+                    </Typography>
+                    <Typography component="a" href={officialChannels.maps} target="_blank" rel="noreferrer" variant="body2" className="link-underline">
+                      Google Maps
+                    </Typography>
+                    <Typography component="a" href={officialChannels.instagram} target="_blank" rel="noreferrer" variant="body2" className="link-underline">
+                      Instagram
+                    </Typography>
+                    <Typography component="a" href={officialChannels.facebook} target="_blank" rel="noreferrer" variant="body2" className="link-underline">
+                      Facebook
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Stack>
+
+              <Divider sx={{ borderColor: 'rgba(17,17,17,0.08)' }} />
+              <Typography
+                variant="caption"
+                sx={{ display: 'block', pt: 2.25, color: 'text.secondary', letterSpacing: '0.06em', textTransform: 'uppercase' }}
+              >
+                © 2026 Rodando.com.br - Peças Automotivas - CNPJ 10.174.972/0001-56
+              </Typography>
+            </Container>
           </Box>
         </motion.div>
       </Box>
     </Box>
   )
 }
+

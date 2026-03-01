@@ -2,6 +2,7 @@ import Box from '@mui/material/Box'
 import type { BoxProps } from '@mui/material/Box'
 import type { PropsWithChildren } from 'react'
 import { Footer, Header } from '../components/sections'
+import { MobileBottomNav } from '../components/layout'
 import { UiContainer, type UiContainerProps } from '../components/ui'
 
 export interface AppShellProps extends PropsWithChildren {
@@ -32,14 +33,15 @@ export function AppShell({
             maxWidth: 'var(--app-content-max-width)',
             mx: 'auto',
             px: { xs: 1.5, sm: 2, md: 3 },
-            pt: { xs: 10, md: 13 },
-            pb: { xs: 5, md: 8 },
+            pt: { xs: 14.5, sm: 15, md: 12 },
+            pb: { xs: 11.5, md: 7 },
           },
           ...(Array.isArray(mainProps?.sx) ? mainProps.sx : [mainProps?.sx]),
         ]}
       >
         {contained ? <UiContainer {...containerProps}>{children}</UiContainer> : children}
       </Box>
+      <MobileBottomNav />
       <Footer />
     </Box>
   )

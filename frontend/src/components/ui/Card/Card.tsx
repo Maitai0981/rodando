@@ -15,13 +15,16 @@ export function UiCard({ interactive = false, sx, ...props }: UiCardProps) {
       sx={[
         {
           borderRadius: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
         },
         interactive
           ? {
               transition: 'transform 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1)',
               '&:hover': {
                 transform: 'translateY(-2px)',
-                boxShadow: '0 10px 28px rgba(8, 15, 30, 0.14)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
               },
             }
           : null,

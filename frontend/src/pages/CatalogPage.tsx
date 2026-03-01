@@ -1,750 +1,848 @@
-import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { Alert, Box, Button, Chip, Grid, MenuItem, Paper, Select, Stack, TextField, Typography, FormControl, InputLabel } from '@mui/material'
-import ArrowBackIosNewRoundedIcon from '@mui/icons-material/ArrowBackIosNewRounded'
-import ArrowForwardIosRoundedIcon from '@mui/icons-material/ArrowForwardIosRounded'
-import SortRoundedIcon from '@mui/icons-material/SortRounded'
+import { useEffect, useMemo, useState } from 'react'
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  Alert,
+  Box,
+  Breadcrumbs,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Drawer,
+  FormControl,
+  Grid,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Pagination,
+  Paper,
+  Rating,
+  Select,
+  Skeleton,
+  Slider,
+  Snackbar,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
 import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppShell } from '../layouts/AppShell'
-import { api, ApiError, type Product } from '../lib/api'
+import { api, ApiError, type Product, type ProductListParams } from '../lib/api'
 import { formatCurrency } from '../lib'
 import { useCart } from '../context/CartContext'
+import { useAuth } from '../context/AuthContext'
+import { useAssist } from '../context/AssistContext'
+import { AssistHintInline } from '../components/assist'
 
-type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc' | 'newest'
+const PAGE_SIZE = 12
+const PRICE_MIN = 0
+const PRICE_MAX = 1200
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 14 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.42, ease: 'easeOut' } },
-} as const
+type SortOption = NonNullable<ProductListParams['sort']>
+type AvailabilityFilter = 'all' | 'in-stock' | 'out-of-stock'
+type PromoFilter = 'all' | 'promo'
 
-const listStagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.05, delayChildren: 0.04 } },
-} as const
+function buildSearchParamsPatch(
+  current: URLSearchParams,
+  patch: Record<string, string | number | null | undefined>,
+) {
+  const next = new URLSearchParams(current)
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined || value === null || value === '') {
+      next.delete(key)
+      continue
+    }
+    next.set(key, String(value))
+  }
+  if (!next.get('page')) {
+    next.set('page', '1')
+  }
+  return next
+}
 
-const featuredSlideVariants = {
-  enter: (direction: number) => ({
-    opacity: 0,
-    x: direction > 0 ? 28 : -28,
-    scale: 0.985,
-  }),
-  center: {
-    opacity: 1,
-    x: 0,
-    scale: 1,
-    transition: { duration: 0.38 },
-  },
-  exit: (direction: number) => ({
-    opacity: 0,
-    x: direction > 0 ? -24 : 24,
-    scale: 0.99,
-    transition: { duration: 0.26 },
-  }),
-} as const
+function ProductCard({
+  item,
+  onRequestReview,
+}: {
+  item: Product
+  onRequestReview: (product: Product) => void
+}) {
+  const urgency = Number(item.stock || 0) <= 3 ? 'Ultimas unidades' : null
+
+  return (
+    <Paper
+      className="mobile-premium-card"
+      elevation={0}
+      sx={{
+        p: { xs: 1.6, md: 2 },
+        borderRadius: 2.5,
+        border: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          borderColor: 'primary.main',
+          boxShadow: '0 8px 24px rgba(15,23,42,0.14)',
+        },
+      }}
+    >
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1} sx={{ mb: 1 }}>
+        <Box>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+            {item.category}
+          </Typography>
+          <Typography component="p" variant="h6" sx={{ color: 'text.primary', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+            {item.name}
+          </Typography>
+        </Box>
+        <Chip size="small" label={`${item.stock} un.`} variant={Number(item.stock) > 0 ? 'filled' : 'outlined'} color={Number(item.stock) > 0 ? 'success' : 'default'} />
+      </Stack>
+
+      <Box
+        sx={{
+          mb: 1.4,
+          borderRadius: 2,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'grey.100',
+          height: { xs: 160, md: 180 },
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        <Box
+          component="img"
+          src={item.imageUrl}
+          alt={item.name}
+          loading="lazy"
+          sx={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transition: 'transform 250ms ease, opacity 220ms ease',
+            '.MuiPaper-root:hover &': {
+              transform: item.hoverImageUrl ? 'scale(1.03)' : 'scale(1.05)',
+              opacity: item.hoverImageUrl ? 0 : 1,
+            },
+          }}
+        />
+        {item.hoverImageUrl ? (
+          <Box
+            component="img"
+            src={item.hoverImageUrl}
+            alt={`${item.name} detalhe`}
+            loading="lazy"
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              opacity: 0,
+              transition: 'opacity 220ms ease',
+              '.MuiPaper-root:hover &': {
+                opacity: 1,
+              },
+            }}
+          />
+        ) : null}
+      </Box>
+
+      <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mb: 0.8 }}>
+        {item.discountPercent ? <Chip size="small" label={`${item.discountPercent}% OFF`} color="warning" /> : null}
+        {urgency ? <Chip size="small" label={urgency} color="error" variant="outlined" /> : null}
+      </Stack>
+
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.8 }}>
+        {item.manufacturer} • {item.bikeModel}
+      </Typography>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          minHeight: 34,
+          mb: 1.2,
+        }}
+      >
+        {item.description}
+      </Typography>
+
+      <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mt: 'auto' }}>
+        <Typography variant="h5" sx={{ color: 'info.main', fontWeight: 700 }}>
+          {formatCurrency(Number(item.price))}
+        </Typography>
+        {item.compareAtPrice && Number(item.compareAtPrice) > Number(item.price) ? (
+          <Typography variant="body2" color="text.secondary" sx={{ textDecoration: 'line-through' }}>
+            {formatCurrency(Number(item.compareAtPrice))}
+          </Typography>
+        ) : null}
+      </Stack>
+      <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+        SKU: {item.sku}
+      </Typography>
+      <Stack direction="row" spacing={0.8}>
+        <AddToCartButton product={item} />
+        <Button variant="outlined" color="primary" onClick={() => onRequestReview(item)}>
+          Avaliar
+        </Button>
+      </Stack>
+    </Paper>
+  )
+}
+
+function AddToCartButton({ product }: { product: Product }) {
+  const { addProduct } = useCart()
+  const { completeStep } = useAssist()
+  return (
+    <Button
+      data-testid={`catalog-add-${product.id}`}
+      variant="contained"
+      color="primary"
+      disabled={Number(product.stock) <= 0}
+      onClick={() => {
+        completeStep('add-to-bag', 'catalog')
+        void addProduct(product, 1)
+      }}
+      sx={{ flex: 1 }}
+    >
+      {Number(product.stock) > 0 ? 'Adicionar' : 'Sem estoque'}
+    </Button>
+  )
+}
+
+function FiltersPanel(props: {
+  search: string
+  onSearchChange: (value: string) => void
+  category: string
+  onCategoryChange: (value: string) => void
+  categories: string[]
+  manufacturer: string
+  onManufacturerChange: (value: string) => void
+  manufacturers: string[]
+  availability: AvailabilityFilter
+  onAvailabilityChange: (value: AvailabilityFilter) => void
+  promo: PromoFilter
+  onPromoChange: (value: PromoFilter) => void
+  sort: SortOption
+  onSortChange: (value: SortOption) => void
+  priceRange: [number, number]
+  onPriceRangeChange: (value: [number, number]) => void
+  onApply: () => void
+  onClear: () => void
+}) {
+  const {
+    search,
+    onSearchChange,
+    category,
+    onCategoryChange,
+    categories,
+    manufacturer,
+    onManufacturerChange,
+    manufacturers,
+    availability,
+    onAvailabilityChange,
+    promo,
+    onPromoChange,
+    sort,
+    onSortChange,
+    priceRange,
+    onPriceRangeChange,
+    onApply,
+    onClear,
+  } = props
+
+  return (
+    <Stack spacing={2}>
+      <TextField
+        inputProps={{ 'data-testid': 'catalog-search-input' }}
+        label="Buscar produto"
+        placeholder="Nome, SKU, fabricante..."
+        value={search}
+        onChange={(event) => onSearchChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') onApply()
+        }}
+      />
+      <FormControl fullWidth size="small">
+        <InputLabel id="catalog-category-label">Categoria</InputLabel>
+        <Select
+          labelId="catalog-category-label"
+          value={category}
+          label="Categoria"
+          onChange={(event) => onCategoryChange(String(event.target.value))}
+        >
+          <MenuItem value="">Todas</MenuItem>
+          {categories.map((item) => (
+            <MenuItem key={item} value={item}>
+              {item}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <FormControl fullWidth size="small">
+        <InputLabel id="catalog-manufacturer-label">Fabricante</InputLabel>
+        <Select
+          labelId="catalog-manufacturer-label"
+          value={manufacturer}
+          label="Fabricante"
+          onChange={(event) => onManufacturerChange(String(event.target.value))}
+        >
+          <MenuItem value="">Todos</MenuItem>
+          {manufacturers.map((item) => (
+            <MenuItem key={item} value={item}>
+              {item}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <FormControl fullWidth size="small">
+        <InputLabel id="catalog-availability-label">Disponibilidade</InputLabel>
+        <Select
+          labelId="catalog-availability-label"
+          value={availability}
+          label="Disponibilidade"
+          onChange={(event) => onAvailabilityChange(event.target.value as AvailabilityFilter)}
+        >
+          <MenuItem value="all">Todos</MenuItem>
+          <MenuItem value="in-stock">Com estoque</MenuItem>
+          <MenuItem value="out-of-stock">Sem estoque</MenuItem>
+        </Select>
+      </FormControl>
+
+      <FormControl fullWidth size="small">
+        <InputLabel id="catalog-promo-label">Promocoes</InputLabel>
+        <Select
+          labelId="catalog-promo-label"
+          value={promo}
+          label="Promocoes"
+          onChange={(event) => onPromoChange(event.target.value as PromoFilter)}
+        >
+          <MenuItem value="all">Todas</MenuItem>
+          <MenuItem value="promo">Apenas em promocao</MenuItem>
+        </Select>
+      </FormControl>
+
+      <FormControl fullWidth size="small">
+        <InputLabel id="catalog-sort-label">Ordenar por</InputLabel>
+        <Select
+          labelId="catalog-sort-label"
+          value={sort}
+          label="Ordenar por"
+          onChange={(event) => onSortChange(event.target.value as SortOption)}
+        >
+          <MenuItem value="best-sellers">Mais vendidos</MenuItem>
+          <MenuItem value="discount-desc">Maior desconto</MenuItem>
+          <MenuItem value="newest">Mais recentes</MenuItem>
+          <MenuItem value="price-asc">Menor preco</MenuItem>
+          <MenuItem value="price-desc">Maior preco</MenuItem>
+          <MenuItem value="name-asc">Nome (A-Z)</MenuItem>
+          <MenuItem value="name-desc">Nome (Z-A)</MenuItem>
+        </Select>
+      </FormControl>
+
+      <Box>
+        <Typography component="p" variant="subtitle2" sx={{ mb: 0.7, color: 'text.secondary' }}>
+          Faixa de preco
+        </Typography>
+        <Slider
+          value={priceRange}
+          onChange={(_event, value) => onPriceRangeChange(value as [number, number])}
+          getAriaLabel={(index) => (index === 0 ? 'Preco minimo' : 'Preco maximo')}
+          getAriaValueText={(value) => formatCurrency(value)}
+          min={PRICE_MIN}
+          max={PRICE_MAX}
+          step={10}
+          valueLabelDisplay="auto"
+        />
+        <Typography variant="caption" color="text.secondary">
+          {formatCurrency(priceRange[0])} - {formatCurrency(priceRange[1])}
+        </Typography>
+      </Box>
+
+      <Stack direction="row" spacing={1}>
+        <Button data-testid="catalog-apply-filters" variant="contained" color="primary" onClick={onApply} fullWidth>
+          Aplicar filtros
+        </Button>
+        <Button data-testid="catalog-clear-filters" variant="outlined" color="primary" onClick={onClear} fullWidth>
+          Limpar
+        </Button>
+      </Stack>
+    </Stack>
+  )
+}
 
 export default function CatalogPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [featuredIndex, setFeaturedIndex] = useState(0)
-  const [featuredDirection, setFeaturedDirection] = useState<1 | -1>(1)
-  const [query, setQuery] = useState('')
-  const [sortBy, setSortBy] = useState<SortOption>('name-asc')
-  const [categoryFilter, setCategoryFilter] = useState<string>('Todas')
-  const deferredQuery = useDeferredValue(query)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { addProduct } = useCart()
-  const prefersReducedMotion = useReducedMotion()
-  const featuredProducts = products.slice(0, 8)
-  const activeFeatured = featuredProducts[featuredIndex] ?? null
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { status } = useAuth()
+  const { completeStep } = useAssist()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [reviewRating, setReviewRating] = useState<number>(5)
+  const [reviewMessage, setReviewMessage] = useState('')
+  const [reviewFeedback, setReviewFeedback] = useState<string | null>(null)
 
-  // Extract unique categories from products
+  const search = searchParams.get('q') || ''
+  const category = searchParams.get('category') || ''
+  const manufacturer = searchParams.get('manufacturer') || ''
+  const availability = (searchParams.get('availability') || 'all') as AvailabilityFilter
+  const promo = searchParams.get('promo') === 'true' ? 'promo' : 'all'
+  const sort = (searchParams.get('sort') || 'best-sellers') as SortOption
+  const page = Math.max(1, Number(searchParams.get('page') || '1'))
+  const minPrice = Number(searchParams.get('minPrice') || String(PRICE_MIN))
+  const maxPrice = Number(searchParams.get('maxPrice') || String(PRICE_MAX))
+
+  const [draftSearch, setDraftSearch] = useState(search)
+  const [draftCategory, setDraftCategory] = useState(category)
+  const [draftManufacturer, setDraftManufacturer] = useState(manufacturer)
+  const [draftAvailability, setDraftAvailability] = useState<AvailabilityFilter>(availability)
+  const [draftPromo, setDraftPromo] = useState<PromoFilter>(promo)
+  const [draftSort, setDraftSort] = useState<SortOption>(sort)
+  const [draftPriceRange, setDraftPriceRange] = useState<[number, number]>([
+    Number.isFinite(minPrice) ? minPrice : PRICE_MIN,
+    Number.isFinite(maxPrice) ? maxPrice : PRICE_MAX,
+  ])
+
+  useEffect(() => {
+    setDraftSearch(search)
+    setDraftCategory(category)
+    setDraftManufacturer(manufacturer)
+    setDraftAvailability(availability)
+    setDraftPromo(promo)
+    setDraftSort(sort)
+    setDraftPriceRange([
+      Number.isFinite(minPrice) ? minPrice : PRICE_MIN,
+      Number.isFinite(maxPrice) ? maxPrice : PRICE_MAX,
+    ])
+  }, [search, category, manufacturer, availability, promo, sort, minPrice, maxPrice])
+
+  const inStock = availability === 'all' ? undefined : availability === 'in-stock'
+
+  const productsQuery = useQuery({
+    queryKey: ['catalog-products', search, category, manufacturer, availability, promo, sort, page, minPrice, maxPrice],
+    queryFn: () =>
+      api.listPublicProducts({
+        q: search || undefined,
+        category: category || undefined,
+        manufacturer: manufacturer || undefined,
+        inStock,
+        promo: promo === 'promo' ? true : undefined,
+        sort,
+        page,
+        pageSize: PAGE_SIZE,
+        minPrice,
+        maxPrice,
+        onlyWithImage: true,
+      }),
+  })
+
+  const categoriesQuery = useQuery({
+    queryKey: ['catalog-categories-source'],
+    queryFn: () => api.listPublicProducts({ page: 1, pageSize: 240, sort: 'name-asc', onlyWithImage: true }),
+  })
+
+  const productReviewsQuery = useQuery({
+    queryKey: ['catalog-product-comments', selectedProduct?.id],
+    enabled: Boolean(selectedProduct?.id),
+    queryFn: () => api.listComments({ limit: 5, productId: Number(selectedProduct?.id) }),
+  })
+
+  const createReviewMutation = useMutation({
+    mutationFn: (payload: { productId: number; rating: number; message: string }) => api.createComment(payload),
+    onSuccess: async () => {
+      setReviewFeedback('Avaliacao publicada com sucesso.')
+      setReviewMessage('')
+      setReviewRating(5)
+      await queryClient.invalidateQueries({ queryKey: ['catalog-product-comments', selectedProduct?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['home-comments'] })
+    },
+  })
+
+  const items = productsQuery.data?.items ?? []
+  const meta = productsQuery.data?.meta
+
   const categories = useMemo(() => {
-    const cats = new Set(products.map(p => p.category).filter(Boolean))
-    return ['Todas', ...Array.from(cats).sort()]
-  }, [products])
-
-  // Sort and filter products
-  const sortedProducts = useMemo(() => {
-    let filtered = products
-    
-    // Apply category filter
-    if (categoryFilter !== 'Todas') {
-      filtered = filtered.filter(p => p.category === categoryFilter)
+    const set = new Set<string>()
+    for (const item of categoriesQuery.data?.items ?? []) {
+      if (item.category) set.add(item.category)
     }
-    
-    // Apply sorting
-    return [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case 'name-asc':
-          return a.name.localeCompare(b.name, 'pt-BR')
-        case 'name-desc':
-          return b.name.localeCompare(a.name, 'pt-BR')
-        case 'price-asc':
-          return Number(a.price) - Number(b.price)
-        case 'price-desc':
-          return Number(b.price) - Number(a.price)
-        case 'newest':
-          return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0)
-        default:
-          return 0
-      }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [categoriesQuery.data?.items])
+
+  const manufacturers = useMemo(() => {
+    const set = new Set<string>()
+    for (const item of categoriesQuery.data?.items ?? []) {
+      if (item.manufacturer) set.add(item.manufacturer)
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [categoriesQuery.data?.items])
+
+  const errorMessage = productsQuery.error instanceof ApiError ? productsQuery.error.message : null
+  const reviewError = createReviewMutation.error instanceof ApiError ? createReviewMutation.error.message : null
+  const showingStart = (meta?.total ?? 0) === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const showingEnd = (page - 1) * PAGE_SIZE + items.length
+
+  function applyFilters() {
+    const next = buildSearchParamsPatch(searchParams, {
+      q: draftSearch.trim() || null,
+      category: draftCategory || null,
+      manufacturer: draftManufacturer || null,
+      availability: draftAvailability === 'all' ? null : draftAvailability,
+      promo: draftPromo === 'promo' ? 'true' : null,
+      sort: draftSort,
+      minPrice: draftPriceRange[0] === PRICE_MIN ? null : draftPriceRange[0],
+      maxPrice: draftPriceRange[1] === PRICE_MAX ? null : draftPriceRange[1],
+      page: 1,
     })
-  }, [products, sortBy, categoryFilter])
-
-  const loadProducts = useCallback(async (search: string) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await api.listPublicProducts(search)
-      startTransition(() => {
-        setProducts(result.items)
-      })
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao carregar catalogo.')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadProducts(deferredQuery)
-    }, 220)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [deferredQuery, loadProducts])
-
-  useEffect(() => {
-    if (featuredProducts.length === 0) {
-      setFeaturedIndex(0)
-      return
-    }
-    if (featuredIndex > featuredProducts.length - 1) {
-      setFeaturedIndex(0)
-    }
-  }, [featuredIndex, featuredProducts.length])
-
-  useEffect(() => {
-    if (featuredProducts.length <= 1) return
-
-    const intervalId = window.setInterval(() => {
-      setFeaturedDirection(1)
-      setFeaturedIndex((prev) => (prev + 1) % featuredProducts.length)
-    }, 2000)
-
-    return () => window.clearInterval(intervalId)
-  }, [featuredProducts.length])
-
-  function showPrevFeatured() {
-    setFeaturedDirection(-1)
-    setFeaturedIndex((prev) => {
-      if (featuredProducts.length === 0) return 0
-      return prev === 0 ? featuredProducts.length - 1 : prev - 1
-    })
-  }
-
-  function showNextFeatured() {
-    setFeaturedDirection(1)
-    setFeaturedIndex((prev) => {
-      if (featuredProducts.length === 0) return 0
-      return (prev + 1) % featuredProducts.length
-    })
+    setSearchParams(next)
+    setMobileFiltersOpen(false)
+    completeStep('filter-applied', 'catalog')
   }
 
   function clearFilters() {
-    setQuery('')
-    setCategoryFilter('Todas')
-    setSortBy('name-asc')
+    setDraftSearch('')
+    setDraftCategory('')
+    setDraftManufacturer('')
+    setDraftAvailability('all')
+    setDraftPromo('all')
+    setDraftSort('best-sellers')
+    setDraftPriceRange([PRICE_MIN, PRICE_MAX])
+    setSearchParams(new URLSearchParams({ sort: 'best-sellers', page: '1' }))
+    setMobileFiltersOpen(false)
   }
 
-  const hasActiveFilters = query !== '' || categoryFilter !== 'Todas' || sortBy !== 'name-asc'
+  function openReviewModal(product: Product) {
+    if (status !== 'authenticated') {
+      navigate('/auth')
+      return
+    }
+    setSelectedProduct(product)
+    setReviewRating(5)
+    setReviewMessage('')
+    setReviewFeedback(null)
+  }
+
+  async function submitReview() {
+    if (!selectedProduct) return
+    await createReviewMutation.mutateAsync({
+      productId: selectedProduct.id,
+      rating: Math.max(1, Math.min(5, Math.round(reviewRating))),
+      message: reviewMessage.trim(),
+    })
+  }
 
   return (
     <AppShell contained={false}>
-      <Stack spacing={{ xs: 2.5, md: 3.5 }}>
+      <Stack spacing={{ xs: 2, md: 3 }}>
         <Paper
-          component={motion.div}
-          initial={prefersReducedMotion ? false : 'hidden'}
-          animate="visible"
-          variants={fadeUp}
+          className="mobile-premium-hero"
           elevation={0}
           sx={{
-            p: { xs: 2, md: 2.5 },
+            p: { xs: 1.4, md: 2.2 },
             borderRadius: 3,
-            border: '1px solid rgba(12,22,44,0.08)',
-            background:
-              'radial-gradient(circle at 10% 12%, rgba(0,156,59,0.06), transparent 44%), radial-gradient(circle at 92% 12%, rgba(17,17,17,0.06), transparent 46%), linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(252,253,255,0.9) 100%)',
-            boxShadow: '0 16px 32px rgba(12,22,44,0.04)',
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              inset: 0,
-              pointerEvents: 'none',
-              background:
-                'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 42%)',
-            },
+            border: '1px solid',
+            borderColor: { xs: 'divider', md: 'divider' },
+            bgcolor: { xs: 'transparent', md: 'background.paper' },
           }}
         >
-          <Grid container spacing={2} alignItems="center">
-            <Grid size={{ xs: 12, lg: 5 }}>
-              <Typography variant="caption" sx={{ color: 'primary.main', letterSpacing: '0.12em' }}>
-                CATALOGO
+          <Stack spacing={{ xs: 0.6, md: 1 }}>
+            <Breadcrumbs separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+              <Typography component={RouterLink} to="/" variant="body2" color="text.secondary" sx={{ color: { xs: 'text.secondary', md: 'text.secondary' } }}>
+                Inicio
               </Typography>
-              <Typography
-                variant="h3"
-                sx={{ color: 'info.main', letterSpacing: '-0.03em', lineHeight: 0.98, mb: 0.45 }}
-              >
-                Pecas para motos
+              <Typography variant="body2" color="text.secondary" sx={{ color: { xs: 'text.secondary', md: 'text.secondary' } }}>
+                Catalogo
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Busca rapida por nome, categoria ou fabricante.
-              </Typography>
-              <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
-                <Chip size="small" label={`${products.length} itens carregados`} variant="outlined" />
-                <Chip size="small" label={`${Math.max(categories.length - 1, 0)} categorias`} variant="outlined" />
-              </Stack>
-            </Grid>
-
-            <Grid size={{ xs: 12, lg: 7 }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                <TextField
-                  fullWidth
-                  placeholder="Buscar por nome, categoria, fabricante..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && void loadProducts(query)}
-                />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => void loadProducts(query)}
-                  sx={{ minWidth: { sm: 132 }, width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Buscar
-                </Button>
-              </Stack>
-              
-              {/* Category Filter Chips */}
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={1}
-                alignItems={{ xs: 'stretch', sm: 'center' }}
-                sx={{ mt: 1.5 }}
-              >
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-                  <FilterListRoundedIcon color="action" sx={{ fontSize: 18 }} />
-                  <Typography variant="body2" color="text.secondary" sx={{ mr: 0.5 }}>
-                    Categoria:
-                  </Typography>
-                </Stack>
-                <Stack
-                  direction="row"
-                  spacing={0.6}
-                  flexWrap={{ xs: 'nowrap', sm: 'wrap' }}
-                  useFlexGap
-                  sx={{
-                    overflowX: { xs: 'auto', sm: 'visible' },
-                    pb: { xs: 0.25, sm: 0 },
-                    '&::-webkit-scrollbar': { display: 'none' },
-                    scrollbarWidth: 'none',
-                  }}
-                >
-                  {categories.map((cat) => (
-                    <Chip
-                      key={cat}
-                      label={cat}
-                      size="small"
-                      onClick={() => setCategoryFilter(cat)}
-                      variant={categoryFilter === cat ? 'filled' : 'outlined'}
-                      color={categoryFilter === cat ? 'primary' : 'default'}
-                      sx={{ fontWeight: categoryFilter === cat ? 700 : 500 }}
-                    />
-                  ))}
-                </Stack>
-              </Stack>
-
-              {/* Results Info and Sort */}
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.5 }} flexWrap="wrap" gap={1}>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  <Chip size="small" label={`${sortedProducts.length} produtos`} />
-                  <AnimatePresence>
-                    {query && (
-                      <motion.div
-                        key="search-chip"
-                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.18 }}
-                      >
-                        <Chip 
-                          size="small" 
-                          label={`Busca: "${query}"`} 
-                          variant="outlined" 
-                          onDelete={() => setQuery('')}
-                        />
-                      </motion.div>
-                    )}
-                    {categoryFilter !== 'Todas' && (
-                      <motion.div
-                        key="category-chip"
-                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.18 }}
-                      >
-                        <Chip 
-                          size="small" 
-                          label={categoryFilter} 
-                          color="primary"
-                          variant="filled"
-                          onDelete={() => setCategoryFilter('Todas')}
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  {hasActiveFilters && (
-                    <Button size="small" onClick={clearFilters} sx={{ ml: 0.5 }}>
-                      Limpar filtros
-                    </Button>
-                  )}
-                </Stack>
-                
-                <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } }}>
-                  <InputLabel id="sort-label">Ordenar por</InputLabel>
-                  <Select
-                    labelId="sort-label"
-                    value={sortBy}
-                    label="Ordenar por"
-                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    startAdornment={<SortRoundedIcon sx={{ mr: 0.5, fontSize: 18 }} />}
-                  >
-                    <MenuItem value="name-asc">Nome (A-Z)</MenuItem>
-                    <MenuItem value="name-desc">Nome (Z-A)</MenuItem>
-                    <MenuItem value="price-asc">Menor preco</MenuItem>
-                    <MenuItem value="price-desc">Maior preco</MenuItem>
-                    <MenuItem value="newest">Mais recentes</MenuItem>
-                  </Select>
-                </FormControl>
-              </Stack>
-            </Grid>
-          </Grid>
-        </Paper>
-
-        <Paper
-          component={motion.div}
-          initial={prefersReducedMotion ? false : 'hidden'}
-          animate="visible"
-          variants={fadeUp}
-          elevation={0}
-          sx={{
-            p: { xs: 2, md: 2.5 },
-            borderRadius: 3,
-            border: '1px solid rgba(12,22,44,0.08)',
-            background:
-              'linear-gradient(180deg, rgba(255,255,255,0.93) 0%, rgba(248,251,249,0.88) 100%)',
-            boxShadow: '0 14px 28px rgba(12,22,44,0.035)',
-          }}
-        >
-          <Stack spacing={2}>
-            <Box aria-hidden sx={{ height: 1, borderRadius: 999, bgcolor: 'rgba(17,17,17,0.08)' }} />
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1.5} alignItems={{ sm: 'center' }}>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'primary.main', letterSpacing: '0.14em' }}>
-                  DESTAQUES DO CATALOGO
-                </Typography>
-                <Typography variant="h5" sx={{ color: 'info.main', letterSpacing: '-0.03em' }}>
-                  Produtos em rotacao
-                </Typography>
-              </Box>
-              <Stack direction="row" spacing={1}>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  onClick={showPrevFeatured}
-                  disabled={loading || featuredProducts.length <= 1}
-                  sx={{ minWidth: 42, px: 0 }}
-                  aria-label="Produto anterior"
-                >
-                  <ArrowBackIosNewRoundedIcon sx={{ fontSize: 16 }} />
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  onClick={showNextFeatured}
-                  disabled={loading || featuredProducts.length <= 1}
-                  sx={{ minWidth: 42, px: 0 }}
-                  aria-label="Proximo produto"
-                >
-                  <ArrowForwardIosRoundedIcon sx={{ fontSize: 16 }} />
-                </Button>
-              </Stack>
-            </Stack>
-
-            {loading ? (
-              <Paper elevation={0} sx={{ p: 3, borderRadius: 2.5, border: '1px solid rgba(12,22,44,0.07)', bgcolor: 'rgba(255,255,255,0.82)' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Carregando destaques...
-                </Typography>
-              </Paper>
-            ) : error ? (
-              <Paper elevation={0} sx={{ p: 3, borderRadius: 2.5, border: '1px solid rgba(12,22,44,0.07)', bgcolor: 'rgba(255,255,255,0.82)' }}>
-                <Typography variant="body2" color="error.main">
-                  {error}
-                </Typography>
-              </Paper>
-            ) : featuredProducts.length === 0 ? (
-              <Paper elevation={0} sx={{ p: 3, borderRadius: 2.5, border: '1px solid rgba(12,22,44,0.07)', bgcolor: 'rgba(255,255,255,0.82)' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Nenhum produto para exibir no carrossel.
-                </Typography>
-              </Paper>
-            ) : (
-              <>
-                <Box
-                  sx={{
-                    overflow: 'hidden',
-                    borderRadius: 2.5,
-                    border: '1px solid rgba(12,22,44,0.07)',
-                    bgcolor: 'rgba(255,255,255,0.84)',
-                  }}
-                >
-                  <AnimatePresence mode="wait" custom={featuredDirection}>
-                    {activeFeatured ? (
-                      <motion.div
-                        key={activeFeatured.id}
-                        custom={featuredDirection}
-                        variants={featuredSlideVariants}
-                        initial={prefersReducedMotion ? false : 'enter'}
-                        animate="center"
-                        exit={prefersReducedMotion ? undefined : 'exit'}
-                      >
-                        <Box sx={{ p: { xs: 1.5, md: 2 } }}>
-                          <Grid container spacing={2} alignItems="stretch">
-                            <Grid size={{ xs: 12, md: 6.8 }}>
-                              <Stack spacing={1.2} sx={{ height: '100%' }}>
-                                <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
-                                  <Chip size="small" label={activeFeatured.category} color="primary" variant="outlined" />
-                                  <Chip
-                                    size="small"
-                                    label={activeFeatured.stock > 0 ? `${activeFeatured.stock} un.` : 'Sem estoque'}
-                                    color={activeFeatured.stock > 0 ? 'secondary' : 'default'}
-                                    variant={activeFeatured.stock > 0 ? 'filled' : 'outlined'}
-                                  />
-                                </Stack>
-                                  <Typography variant="h4" sx={{ color: 'info.main', letterSpacing: '-0.03em', lineHeight: 1, fontSize: { xs: '1.55rem', md: '2rem' } }}>
-                                    {activeFeatured.name}
-                                  </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  {activeFeatured.manufacturer} • {activeFeatured.bikeModel}
-                                </Typography>
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical',
-                                    overflow: 'hidden',
-                                    minHeight: 40,
-                                  }}
-                                >
-                                  {activeFeatured.description}
-                                </Typography>
-                                <Typography variant="h4" sx={{ color: 'info.main', letterSpacing: '-0.03em', mt: 'auto' }}>
-                                  {formatCurrency(Number(activeFeatured.price))}
-                                </Typography>
-                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                                  <Button
-                                    variant="contained"
-                                    color="primary"
-                                    disabled={activeFeatured.stock <= 0}
-                                    onClick={() => void addProduct(activeFeatured, 1)}
-                                  >
-                                    {activeFeatured.stock > 0 ? 'Adicionar na mochila' : 'Sem estoque'}
-                                  </Button>
-                                  <Button variant="outlined" color="primary" onClick={() => setQuery(activeFeatured.name)}>
-                                    Filtrar este item
-                                  </Button>
-                                </Stack>
-                              </Stack>
-                            </Grid>
-
-                            <Grid size={{ xs: 12, md: 5.2 }}>
-                              <Box
-                                sx={{
-                                  height: '100%',
-                                  minHeight: { xs: 170, md: 220 },
-                                  borderRadius: 2.25,
-                                  border: '1px solid rgba(12,22,44,0.07)',
-                                  bgcolor: 'rgba(247,250,248,0.96)',
-                                  position: 'relative',
-                                  overflow: 'hidden',
-                                  display: 'grid',
-                                  placeItems: 'center',
-                                }}
-                              >
-                                <Box
-                                  sx={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    background:
-                                      'radial-gradient(circle at 30% 75%, rgba(0,156,59,0.08), transparent 44%), radial-gradient(circle at 75% 20%, rgba(17,17,17,0.07), transparent 40%), radial-gradient(circle at 58% 22%, rgba(255,223,0,0.08), transparent 38%)',
-                                  }}
-                                />
-                                {activeFeatured.imageUrl ? (
-                                  <Box
-                                    component="img"
-                                    src={activeFeatured.imageUrl}
-                                    alt={activeFeatured.name}
-                                    sx={{
-                                      width: '100%',
-                                      height: '100%',
-                                      objectFit: 'contain',
-                                      p: 2,
-                                      zIndex: 1,
-                                    }}
-                                  />
-                                ) : (
-                                  <Box
-                                    sx={{
-                                      width: 84,
-                                      height: 84,
-                                      borderRadius: '50%',
-                                      border: '2px dashed rgba(17,17,17,0.18)',
-                                      zIndex: 1,
-                                    }}
-                                  />
-                                )}
-                              </Box>
-                            </Grid>
-                          </Grid>
-                        </Box>
-                      </motion.div>
-                    ) : null}
-                  </AnimatePresence>
-                </Box>
-
-                <Stack direction="row" spacing={0.6} justifyContent="center">
-                  {featuredProducts.map((item, index) => (
-                    <Box
-                      key={item.id}
-                      component={motion.button}
-                      layout
-                      whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
-                      whileTap={prefersReducedMotion ? undefined : { scale: 0.95 }}
-                      type="button"
-                      onClick={() => {
-                        setFeaturedDirection(index >= featuredIndex ? 1 : -1)
-                        setFeaturedIndex(index)
-                      }}
-                      aria-label={`Ir para destaque ${index + 1}`}
-                      sx={{
-                        width: index === featuredIndex ? 20 : 8,
-                        height: 8,
-                        borderRadius: 999,
-                        border: 'none',
-                        bgcolor: index === featuredIndex ? 'primary.main' : 'rgba(17,17,17,0.18)',
-                        transition: 'all 180ms ease',
-                        cursor: 'pointer',
-                      }}
-                    />
-                  ))}
-                </Stack>
-              </>
-            )}
+              {category ? <Typography variant="body2" sx={{ color: { xs: 'text.primary', md: 'text.primary' } }}>{category}</Typography> : null}
+            </Breadcrumbs>
+            <Typography variant="h3" sx={{ color: { xs: 'text.primary', md: 'text.primary' }, fontSize: { xs: 'clamp(1.7rem, 7.4vw, 2.25rem)', md: 'inherit' } }}>
+              Catalogo de pecas
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ color: { xs: 'text.secondary', md: 'text.secondary' } }}>
+              Filtros reais por categoria, fabricante, preco, promocao, disponibilidade e ordenacao.
+            </Typography>
           </Stack>
         </Paper>
 
-        <AnimatePresence>
-          {error ? (
-            <motion.div
-              key="catalog-error"
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
-              transition={{ duration: 0.22 }}
+        <Grid container spacing={{ xs: 1.6, md: 2.2 }} alignItems="flex-start">
+          <Grid size={{ xs: 12, lg: 3 }}>
+            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', position: { lg: 'sticky' }, top: { lg: 110 }, display: { xs: 'none', lg: 'block' } }}>
+              <FiltersPanel
+                search={draftSearch}
+                onSearchChange={setDraftSearch}
+                category={draftCategory}
+                onCategoryChange={setDraftCategory}
+                categories={categories}
+                manufacturer={draftManufacturer}
+                onManufacturerChange={setDraftManufacturer}
+                manufacturers={manufacturers}
+                availability={draftAvailability}
+                onAvailabilityChange={setDraftAvailability}
+                promo={draftPromo}
+                onPromoChange={setDraftPromo}
+                sort={draftSort}
+                onSortChange={setDraftSort}
+                priceRange={draftPriceRange}
+                onPriceRangeChange={setDraftPriceRange}
+                onApply={applyFilters}
+                onClear={clearFilters}
+              />
+            </Paper>
+
+            <Button
+              variant="outlined"
+              color="primary"
+              fullWidth
+              startIcon={<FilterListRoundedIcon />}
+              onClick={() => setMobileFiltersOpen(true)}
+              sx={{
+                display: { xs: 'inline-flex', lg: 'none' },
+                minHeight: 44,
+                borderRadius: 2.5,
+                bgcolor: { xs: '#FFFDF7', lg: 'transparent' },
+                color: { xs: 'primary.main', lg: 'primary.main' },
+                borderColor: { xs: 'divider', lg: 'primary.main' },
+              }}
             >
-              <Alert severity="error">{error}</Alert>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
-        {loading ? (
-          <Paper
-            component={motion.div}
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            elevation={0}
-            sx={{
-              p: 4,
-              borderRadius: 3,
-              border: '1px solid rgba(12,22,44,0.08)',
-              bgcolor: 'rgba(255,255,255,0.88)',
-            }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              Carregando catalogo...
-            </Typography>
-          </Paper>
-        ) : sortedProducts.length === 0 ? (
-          <Paper
-            component={motion.div}
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            elevation={0}
-            sx={{
-              p: 5,
-              borderRadius: 3,
-              border: '1px solid rgba(12,22,44,0.08)',
-              bgcolor: 'rgba(255,255,255,0.88)',
-              textAlign: 'center',
-            }}
-          >
-            <Typography variant="h6" sx={{ color: 'info.main', mb: 1 }}>
-              Nenhum produto encontrado
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {hasActiveFilters 
-                ? 'Ajuste os filtros ou limpe a busca para ver todos os produtos.'
-                : 'Tente buscar por outro termo.'}
-            </Typography>
-            {hasActiveFilters && (
-              <Button variant="outlined" color="primary" onClick={clearFilters}>
-                Limpar todos os filtros
-              </Button>
-            )}
-          </Paper>
-        ) : (
-          <Grid
-            container
-            spacing={2}
-            component={motion.div}
-            variants={listStagger}
-            initial={prefersReducedMotion ? false : 'hidden'}
-            animate="visible"
-          >
-            {sortedProducts.map((item) => (
-              <Grid size={{ xs: 12, md: 6, xl: 4 }} key={item.id}>
-                <motion.div
-                  variants={fadeUp}
-                  whileHover={prefersReducedMotion ? undefined : { y: -4 }}
-                  transition={{ duration: 0.18 }}
-                  style={{ height: '100%' }}
-                >
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      borderRadius: 2.5,
-                      border: '1px solid rgba(12,22,44,0.08)',
-                      bgcolor: 'rgba(255,255,255,0.9)',
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                    }}
-                  >
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1} sx={{ mb: 1.25 }}>
-                    <Box>
-                      <Typography variant="caption" color="primary" sx={{ fontWeight: 700 }}>
-                        {item.category}
-                      </Typography>
-                      <Typography variant="h6" sx={{ color: 'info.main', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-                        {item.name}
-                      </Typography>
-                    </Box>
-                    <Chip
-                      size="small"
-                      label={item.stock > 0 ? `${item.stock} un.` : 'Sem estoque'}
-                      color={item.stock > 0 ? 'secondary' : 'default'}
-                      variant={item.stock > 0 ? 'filled' : 'outlined'}
-                      sx={{ flexShrink: 0 }}
-                    />
-                  </Stack>
-
-                  <Box
-                    sx={{
-                      mb: 1.5,
-                      borderRadius: 2,
-                      border: '1px solid rgba(12,22,44,0.06)',
-                      bgcolor: 'rgba(248,250,248,0.95)',
-                      height: 130,
-                      display: 'grid',
-                      placeItems: 'center',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {item.imageUrl ? (
-                      <motion.div
-                        whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
-                        transition={{ duration: 0.2 }}
-                        style={{ width: '100%', height: '100%' }}
-                      >
-                        <Box
-                          component="img"
-                          src={item.imageUrl}
-                          alt={item.name}
-                          sx={{ width: '100%', height: '100%', objectFit: 'contain', p: 1.25 }}
-                        />
-                      </motion.div>
-                    ) : (
-                      <Box sx={{ width: 48, height: 48, borderRadius: '50%', border: '1px dashed rgba(17,17,17,0.22)' }} />
-                    )}
-                  </Box>
-
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                    {item.manufacturer} • {item.bikeModel}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      minHeight: 34,
-                      mb: 1.4,
-                    }}
-                  >
-                    {item.description}
-                  </Typography>
-
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    justifyContent="space-between"
-                    alignItems={{ xs: 'stretch', sm: 'center' }}
-                    spacing={{ xs: 1, sm: 0 }}
-                    sx={{ mt: 'auto', pt: 0.75 }}
-                  >
-                    <Box>
-                      <Typography variant="h6" sx={{ color: 'info.main', lineHeight: 1.1 }}>
-                        {formatCurrency(Number(item.price))}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        SKU: {item.sku}
-                      </Typography>
-                    </Box>
-                    <Button
-                      component={motion.button}
-                      whileTap={prefersReducedMotion ? undefined : { scale: 0.96 }}
-                      variant="outlined"
-                      color="primary"
-                      disabled={item.stock <= 0}
-                      onClick={() => void addProduct(item, 1)}
-                      sx={{ width: { xs: '100%', sm: 'auto' } }}
-                    >
-                      {item.stock > 0 ? 'Adicionar' : 'Sem estoque'}
-                    </Button>
-                  </Stack>
-                  </Paper>
-                </motion.div>
-              </Grid>
-            ))}
+              Filtros e ordenacao
+            </Button>
+            <AssistHintInline tipId="catalog-tip-filter" routeKey="catalog">
+              Dica: aplique filtros antes de decidir a compra.
+            </AssistHintInline>
           </Grid>
-        )}
+
+          <Grid size={{ xs: 12, lg: 9 }}>
+            <Paper elevation={0} sx={{ p: { xs: 1.2, md: 2 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', mb: { xs: 1.6, md: 2 } }}>
+              <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.2}>
+                <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
+                  <Chip label={`${meta?.total ?? 0} produtos`} size="small" />
+                  {search ? <Chip label={`Busca: ${search}`} size="small" /> : null}
+                  {category ? <Chip label={`Categoria: ${category}`} size="small" /> : null}
+                  {manufacturer ? <Chip label={`Fabricante: ${manufacturer}`} size="small" /> : null}
+                  {promo === 'promo' ? <Chip label="Somente promocao" size="small" color="warning" /> : null}
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  Mostrando {showingStart} - {showingEnd} de {meta?.total ?? 0} produtos
+                </Typography>
+              </Stack>
+            </Paper>
+
+            {errorMessage ? (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {errorMessage}
+              </Alert>
+            ) : null}
+
+            {productsQuery.isLoading ? (
+              <Grid container spacing={2}>
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <Grid key={`catalog-skeleton-${index}`} size={{ xs: 12, md: 6, xl: 4 }}>
+                    <Paper elevation={0} sx={{ p: 2, borderRadius: 2.5, border: '1px solid', borderColor: 'divider' }}>
+                      <Stack spacing={1.1}>
+                        <Skeleton variant="text" width={140} />
+                        <Skeleton variant="rounded" sx={{ width: '100%', height: 170 }} />
+                        <Skeleton variant="text" width={100} />
+                        <Skeleton variant="rounded" height={44} />
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            ) : items.length === 0 ? (
+              <Paper elevation={0} sx={{ p: { xs: 2.6, md: 4 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
+                <Typography component="h4" variant="h6" sx={{ color: 'text.primary', mb: 0.8 }}>
+                  Nenhum produto encontrado
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Ajuste os filtros ou limpe a busca para ver outros itens.
+                </Typography>
+                <Button variant="outlined" color="primary" onClick={clearFilters}>
+                  Limpar filtros
+                </Button>
+              </Paper>
+            ) : (
+              <Grid container spacing={2}>
+                {items.map((item) => (
+                  <Grid key={item.id} size={{ xs: 12, md: 6, xl: 4 }}>
+                    <ProductCard item={item} onRequestReview={openReviewModal} />
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+
+            <Stack alignItems="center" sx={{ mt: { xs: 1.6, md: 2.5 } }}>
+              <Pagination
+                data-testid="catalog-pagination"
+                count={Math.max(meta?.totalPages || 1, 1)}
+                page={page}
+                color="primary"
+                shape="rounded"
+                onChange={(_event, nextPage) => {
+                  setSearchParams(buildSearchParamsPatch(searchParams, { page: nextPage }))
+                }}
+              />
+            </Stack>
+          </Grid>
+        </Grid>
       </Stack>
+
+      <Drawer
+        anchor="right"
+        open={mobileFiltersOpen}
+        onClose={() => setMobileFiltersOpen(false)}
+        PaperProps={{
+          sx: {
+            width: 'min(88vw, 360px)',
+            p: 2,
+            bgcolor: 'background.default',
+            color: 'text.primary',
+          },
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+          <Typography component="h4" variant="h6" sx={{ color: 'text.primary' }}>
+            Filtros
+          </Typography>
+          <IconButton onClick={() => setMobileFiltersOpen(false)}>
+            <CloseRoundedIcon />
+          </IconButton>
+        </Stack>
+        <FiltersPanel
+          search={draftSearch}
+          onSearchChange={setDraftSearch}
+          category={draftCategory}
+          onCategoryChange={setDraftCategory}
+          categories={categories}
+          manufacturer={draftManufacturer}
+          onManufacturerChange={setDraftManufacturer}
+          manufacturers={manufacturers}
+          availability={draftAvailability}
+          onAvailabilityChange={setDraftAvailability}
+          promo={draftPromo}
+          onPromoChange={setDraftPromo}
+          sort={draftSort}
+          onSortChange={setDraftSort}
+          priceRange={draftPriceRange}
+          onPriceRangeChange={setDraftPriceRange}
+          onApply={applyFilters}
+          onClear={clearFilters}
+        />
+      </Drawer>
+
+      <Dialog
+        open={Boolean(selectedProduct)}
+        onClose={() => setSelectedProduct(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Avaliar produto</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.4} sx={{ pt: 0.5 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              {selectedProduct?.name}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Comentario real vinculado ao usuario e ao produto.
+            </Typography>
+
+            {productReviewsQuery.data?.summaryByProduct ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Rating value={productReviewsQuery.data.summaryByProduct.averageRating} readOnly precision={0.1} />
+                <Typography variant="caption" color="text.secondary">
+                  {productReviewsQuery.data.summaryByProduct.averageRating.toFixed(1)} ({productReviewsQuery.data.summaryByProduct.totalReviews} avaliacoes)
+                </Typography>
+              </Stack>
+            ) : null}
+
+            <Stack spacing={0.4}>
+              <Typography variant="caption" color="text.secondary">Nota</Typography>
+              <Rating value={reviewRating} onChange={(_, value) => setReviewRating(value || 5)} precision={1} />
+            </Stack>
+
+            <TextField
+              inputProps={{ 'data-testid': 'catalog-review-message-input' }}
+              label="Comentario"
+              multiline
+              minRows={3}
+              value={reviewMessage}
+              onChange={(event) => setReviewMessage(event.target.value)}
+              helperText="Minimo de 8 caracteres."
+            />
+
+            {reviewError ? <Alert severity="error">{reviewError}</Alert> : null}
+            {reviewFeedback ? <Alert severity="success">{reviewFeedback}</Alert> : null}
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.8 }}>
+                Comentarios recentes do produto
+              </Typography>
+              {productReviewsQuery.isLoading ? (
+                <Stack spacing={0.8}>
+                  <Skeleton variant="text" width="80%" />
+                  <Skeleton variant="text" width="70%" />
+                  <Skeleton variant="text" width="65%" />
+                </Stack>
+              ) : (productReviewsQuery.data?.items || []).length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  Este produto ainda nao possui avaliacoes publicadas.
+                </Typography>
+              ) : (
+                <Stack spacing={1}>
+                  {productReviewsQuery.data?.items.map((review) => (
+                    <Paper key={review.id} elevation={0} sx={{ p: 1.2, border: '1px solid', borderColor: 'divider' }}>
+                      <Stack spacing={0.4}>
+                        <Rating value={review.rating} readOnly size="small" />
+                        <Typography variant="body2" color="text.secondary">
+                          "{review.message}"
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {review.authorName}
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedProduct(null)} variant="text" color="inherit">
+            Fechar
+          </Button>
+          <Button
+            data-testid="catalog-review-submit-button"
+            onClick={() => void submitReview()}
+            variant="contained"
+            color="primary"
+            disabled={createReviewMutation.isPending || reviewMessage.trim().length < 8}
+          >
+            {createReviewMutation.isPending ? 'Publicando...' : 'Publicar avaliacao'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={Boolean(reviewFeedback)} autoHideDuration={2600} onClose={() => setReviewFeedback(null)}>
+        <Alert severity="success" variant="filled" onClose={() => setReviewFeedback(null)}>
+          {reviewFeedback}
+        </Alert>
+      </Snackbar>
     </AppShell>
   )
 }

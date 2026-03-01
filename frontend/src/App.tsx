@@ -1,29 +1,71 @@
-import { Suspense } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Box } from '@mui/material'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigationType } from 'react-router-dom'
 import RouteFallback from './components/common/RouteFallback'
+import { AssistChecklistCard, AssistOverlayIntro } from './components/assist'
 import { AppRoutes } from './routes'
+import { resolveTransitionDirection, toDirectionLabel } from './routes/transitionMap'
 
 export default function App() {
   const location = useLocation()
+  const navigationType = useNavigationType()
   const reduceMotion = useReducedMotion()
+  const previousPathRef = useRef(location.pathname)
+
+  const direction = useMemo(
+    () =>
+      resolveTransitionDirection(
+        previousPathRef.current,
+        location.pathname,
+        navigationType,
+      ),
+    [location.pathname, navigationType],
+  )
+
+  useEffect(() => {
+    previousPathRef.current = location.pathname
+  }, [location.pathname])
+
+  const routeDirectionLabel = toDirectionLabel(direction)
 
   return (
     <Suspense fallback={<RouteFallback />}>
-      <Box sx={{ width: '100%', minHeight: '100vh', overflowX: 'clip', position: 'relative' }}>
-        <AnimatePresence mode="wait" initial={false}>
+      <Box sx={{ width: '100%', minHeight: '100vh', overflowX: 'hidden', position: 'relative' }}>
+        <AnimatePresence mode="wait" initial={false} custom={direction}>
           <motion.div
             key={location.pathname}
-            initial={reduceMotion ? false : { opacity: 0, x: 34 }}
-            animate={reduceMotion ? undefined : { opacity: 1, x: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, x: -34 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            custom={direction}
+            initial={reduceMotion ? false : 'enter'}
+            animate="center"
+            exit="exit"
+            variants={{
+              enter: (currentDirection: number) => {
+                if (reduceMotion) return { opacity: 0, x: 0 }
+                if (currentDirection === 1) return { opacity: 0, x: 34 }
+                if (currentDirection === -1) return { opacity: 0, x: -34 }
+                return { opacity: 0, x: 0 }
+              },
+              center: { opacity: 1, x: 0 },
+              exit: (currentDirection: number) => {
+                if (reduceMotion) return { opacity: 0, x: 0 }
+                if (currentDirection === 1) return { opacity: 0, x: -34 }
+                if (currentDirection === -1) return { opacity: 0, x: 34 }
+                return { opacity: 0, x: 0 }
+              },
+            }}
+            transition={{
+              duration: reduceMotion ? 0.18 : 0.28,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            data-route-direction={routeDirectionLabel}
             style={{ width: '100%', minHeight: '100vh', position: 'relative' }}
           >
             <AppRoutes />
           </motion.div>
         </AnimatePresence>
+        <AssistOverlayIntro />
+        <AssistChecklistCard />
       </Box>
     </Suspense>
   )

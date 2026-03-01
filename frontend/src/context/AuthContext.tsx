@@ -3,7 +3,15 @@ import type { PropsWithChildren } from 'react'
 import { api, ApiError, type AuthUser } from '../lib/api'
 
 type SignInPayload = { email: string; password: string }
-type SignUpPayload = { name: string; email: string; password: string }
+type SignUpPayload = {
+  name: string
+  email: string
+  password: string
+  cep: string
+  addressStreet?: string
+  addressCity?: string
+  addressState?: string
+}
 
 type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
 
@@ -12,6 +20,7 @@ type AuthContextValue = {
   status: AuthStatus
   refreshSession: () => Promise<AuthUser | null>
   signIn: (payload: SignInPayload) => Promise<AuthUser>
+  signInOwner: (payload: SignInPayload) => Promise<AuthUser>
   signUp: (payload: SignUpPayload) => Promise<AuthUser>
   logout: () => Promise<void>
 }
@@ -87,6 +96,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return result.user
   }
 
+  async function signInOwner(payload: SignInPayload): Promise<AuthUser> {
+    const result = await api.ownerSignIn(payload)
+    startTransition(() => {
+      setUser(result.user)
+      setStatus('authenticated')
+    })
+    return result.user
+  }
+
   async function logout(): Promise<void> {
     await api.logout()
     startTransition(() => {
@@ -102,6 +120,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         status,
         refreshSession,
         signIn,
+        signInOwner,
         signUp,
         logout,
       }}

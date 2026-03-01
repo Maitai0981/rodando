@@ -38,7 +38,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
   useEffect(() => {
     if (status === 'loading') return
     if (status === 'anonymous') {
-      navigate('/auth', { replace: true })
+      navigate('/owner/login', { replace: true })
       return
     }
     if (user && user.role !== 'owner') {
@@ -55,7 +55,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
     try {
       await logout()
     } finally {
-      navigate('/auth', { replace: true })
+      navigate('/owner/login', { replace: true })
       setLoggingOut(false)
     }
   }
@@ -78,6 +78,8 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
   const ownerLinks = [
     { to: '/owner/dashboard', label: 'Dashboard' },
     { to: '/owner/products', label: 'Produtos' },
+    { to: '/owner/orders', label: 'Pedidos' },
+    { to: '/owner/settings', label: 'Configurações' },
   ]
 
   const drawerContent = (
@@ -109,13 +111,13 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
         </Typography>
       </Toolbar>
 
-      <Divider sx={{ bgcolor: 'rgba(255,255,255,0.12)', mx: 1.5 }} />
+      <Divider sx={{ borderColor: 'divider', mx: 1.5 }} />
 
       <Box sx={{ px: 1.1, pt: 1.15, pb: 0.6 }}>
         <Typography
           sx={{
             px: 1.15,
-            color: 'rgba(255,255,255,0.56)',
+            color: 'text.secondary',
             fontSize: 11,
             fontWeight: 700,
             letterSpacing: '0.14em',
@@ -141,23 +143,23 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
                   minHeight: 44,
                   px: 1.2,
                   borderRadius: 2,
-                  color: '#fff',
+                  color: 'text.primary',
                   border: '1px solid transparent',
-                  bgcolor: active ? 'rgba(255,255,255,0.09)' : 'transparent',
-                  borderColor: active ? 'rgba(255,255,255,0.12)' : 'transparent',
+                  bgcolor: active ? 'rgba(22,163,74,0.1)' : 'transparent',
+                  borderColor: active ? 'rgba(22,163,74,0.3)' : 'transparent',
                   '& .MuiListItemText-primary': {
                     fontSize: 14,
                     fontWeight: active ? 700 : 600,
                     letterSpacing: '-0.01em',
                   },
                   '&:hover': {
-                    bgcolor: active ? 'rgba(255,255,255,0.11)' : 'rgba(255,255,255,0.05)',
+                    bgcolor: active ? 'rgba(22,163,74,0.14)' : 'rgba(15,23,42,0.04)',
                   },
                   '&.Mui-selected': {
-                    bgcolor: 'rgba(255,255,255,0.09)',
+                    bgcolor: 'rgba(22,163,74,0.1)',
                   },
                   '&.Mui-selected:hover': {
-                    bgcolor: 'rgba(255,255,255,0.12)',
+                    bgcolor: 'rgba(22,163,74,0.14)',
                   },
                 }}
               >
@@ -173,14 +175,15 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
           sx={{
             p: 1.4,
             borderRadius: 2.2,
-            border: '1px solid rgba(255,255,255,0.08)',
-            bgcolor: 'rgba(255,255,255,0.03)',
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
           }}
         >
-          <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.58)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          <Typography sx={{ fontSize: 11, color: 'text.secondary', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             Painel
           </Typography>
-          <Typography sx={{ mt: 0.4, fontSize: 13, lineHeight: 1.35, color: 'rgba(255,255,255,0.86)' }}>
+          <Typography sx={{ mt: 0.4, fontSize: 13, lineHeight: 1.35, color: 'text.primary' }}>
             Gerencie produtos e acompanhe a operacao da loja.
           </Typography>
         </Box>
@@ -189,7 +192,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
   )
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', background: '#F7F8F4', overflowX: 'clip' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', background: '#EEF0F3', overflowX: 'hidden' }}>
       {isDesktop ? (
         <motion.div
           initial={reduceMotion ? false : { opacity: 0, x: -28 }}
@@ -204,10 +207,10 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
               [`& .MuiDrawer-paper`]: {
                 width: drawerWidth,
                 boxSizing: 'border-box',
-                background: 'linear-gradient(180deg, #121212 0%, #0a0a0a 100%)',
-                color: '#fff',
-                borderRight: '0',
-                boxShadow: '8px 0 24px rgba(0,0,0,0.18)',
+                background: '#FFFFFF',
+                color: '#0F172A',
+                borderRight: '1px solid #E5E7EB',
+                boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
               }
             }}
           >
@@ -224,12 +227,12 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
           sx={{
             display: { xs: 'block', md: 'none' },
             [`& .MuiDrawer-paper`]: {
-              width: 'min(84vw, 300px)',
+              width: 'min(80vw, 286px)',
               boxSizing: 'border-box',
-              background: 'linear-gradient(180deg, #121212 0%, #0a0a0a 100%)',
-              color: '#fff',
-              borderRight: '0',
-              boxShadow: '12px 0 34px rgba(0,0,0,0.28)',
+              background: '#FFFFFF',
+              color: '#0F172A',
+              borderRight: '1px solid #E5E7EB',
+              boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
             },
           }}
         >
@@ -237,7 +240,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
         </Drawer>
       )}
 
-      <Box sx={{ flexGrow: 1 }}>
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
         <AppBar component={motion.div} position="sticky" color="transparent" elevation={0}
           initial={reduceMotion ? false : { opacity: 0, y: -8 }}
           animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
@@ -252,7 +255,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
                   onClick={() => setMobileDrawerOpen(true)}
                   sx={{
                     border: '1px solid rgba(17,17,17,0.12)',
-                    bgcolor: 'rgba(255,255,255,0.7)',
+                    bgcolor: '#FFFFFF',
                     width: 40,
                     height: 40,
                   }}
@@ -285,7 +288,9 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
           animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
         >
-          <Container sx={{ py: 5.5 }}>{children}</Container>
+          <Container maxWidth={false} sx={{ width: '100%', px: { xs: 1.25, sm: 2, md: 2.5 }, py: 5.5 }}>
+            {children}
+          </Container>
         </motion.div>
       </Box>
     </Box>

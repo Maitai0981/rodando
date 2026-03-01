@@ -1,182 +1,275 @@
 import { createTheme } from '@mui/material/styles'
 import { palette } from './palette'
 import { typography } from './typography'
+import { tokens } from '../styles/tokens'
 
 export const theme = createTheme({
   palette,
   typography,
   shape: {
-    borderRadius: 18
+    borderRadius: tokens.radius.md,
   },
   components: {
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          colorScheme: 'light'
+          colorScheme: 'light',
+          backgroundColor: tokens.color.bg,
+          color: tokens.color.textPrimary,
         },
         '*, *::before, *::after': {
-          borderColor: 'rgba(17, 17, 17, 0.1)'
-        }
-      }
+          borderColor: tokens.color.border,
+        },
+      },
     },
     MuiContainer: {
       defaultProps: {
-        maxWidth: 'xl'
+        maxWidth: 'xl',
       },
       styleOverrides: {
         root: {
-          position: 'relative'
-        }
-      }
+          position: 'relative',
+        },
+      },
     },
     MuiButton: {
       defaultProps: {
-        disableElevation: true
+        disableElevation: true,
       },
       styleOverrides: {
         root: {
-          borderRadius: 999,
-          paddingLeft: 20,
-          paddingRight: 20,
+          borderRadius: tokens.radius.md,
+          paddingLeft: 16,
+          paddingRight: 16,
           paddingTop: 10,
           paddingBottom: 10,
-          borderWidth: 1.25,
+          borderWidth: 1,
           lineHeight: 1.1,
           transition: 'transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease',
+          minHeight: 44,
+          textTransform: 'none',
           '&:hover': {
-            transform: 'translateY(-1px)'
+            transform: 'translateY(-1px)',
           },
           '&:active': {
-            transform: 'translateY(0)'
-          }
+            transform: 'translateY(0)',
+          },
+          '&.Mui-disabled': {
+            opacity: 0.46,
+            cursor: 'not-allowed',
+          },
+          '&.Mui-focusVisible': {
+            outline: '2px solid rgba(22,163,74,0.8)',
+            outlineOffset: 2,
+          },
         },
         contained: {
-          color: '#f8fffb',
-          backgroundImage: 'linear-gradient(135deg, #0a8f3a 0%, #11a649 58%, #0b0b0b 140%)',
-          boxShadow: '0 12px 28px rgba(17, 17, 17, 0.14)',
-          border: '1px solid rgba(255,255,255,0.16)',
+          color: '#FFFFFF',
+          backgroundImage: 'none',
+          backgroundColor: tokens.color.primary,
+          boxShadow: tokens.elevation.sm,
+          border: '1px solid rgba(28,156,75,0.35)',
           '&:hover': {
-            boxShadow: '0 16px 34px rgba(17, 17, 17, 0.18)',
-            backgroundImage: 'linear-gradient(135deg, #088335 0%, #0f9e45 58%, #090909 140%)'
-          }
+            boxShadow: tokens.elevation.md,
+            backgroundColor: tokens.color.primaryHover,
+          },
         },
         outlined: {
-          borderWidth: 1.25,
-          backgroundColor: 'rgba(255, 255, 255, 0.72)',
-          borderColor: 'rgba(17, 17, 17, 0.12)',
-          boxShadow: '0 4px 16px rgba(17, 17, 17, 0.04)',
+          borderWidth: 1,
+          backgroundColor: 'transparent',
+          borderColor: 'rgba(28,156,75,0.6)',
+          color: tokens.color.primary,
+          boxShadow: 'none',
           '&:hover': {
-            borderColor: 'rgba(17, 17, 17, 0.22)',
-            backgroundColor: 'rgba(255, 255, 255, 0.88)'
-          }
+            borderColor: 'rgba(28,156,75,0.85)',
+            color: tokens.color.primary,
+            backgroundColor: 'rgba(28,156,75,0.08)',
+          },
         },
         text: {
+          color: tokens.color.primary,
           '&:hover': {
-            backgroundColor: 'rgba(17, 17, 17, 0.04)'
-          }
-        }
-      }
+            color: tokens.color.primaryHover,
+            backgroundColor: 'rgba(15,23,42,0.04)',
+          },
+        },
+      },
+      variants: [
+        {
+          props: { color: 'error', variant: 'contained' },
+          style: {
+            color: '#FFFFFF',
+            backgroundColor: tokens.color.error,
+            borderColor: 'rgba(220,38,38,0.5)',
+            '&:hover': {
+              backgroundColor: '#B91C1C',
+            },
+          },
+        },
+        {
+          props: { color: 'secondary', variant: 'outlined' },
+          style: {
+            borderColor: tokens.color.amberBorder,
+            color: tokens.color.amberDark,
+            backgroundColor: 'transparent',
+            '&:hover': {
+              borderColor: tokens.color.amberMain,
+              backgroundColor: 'rgba(194,138,14,0.1)',
+            },
+          },
+        },
+        {
+          props: { color: 'secondary', variant: 'text' },
+          style: {
+            color: tokens.color.amberDark,
+            '&:hover': {
+              color: tokens.color.amberMain,
+              backgroundColor: 'rgba(194,138,14,0.1)',
+            },
+          },
+        },
+      ],
     },
     MuiChip: {
       styleOverrides: {
         root: {
           borderRadius: 999,
-          border: '1px solid rgba(17, 17, 17, 0.08)',
-          backgroundColor: 'rgba(255,255,255,0.78)',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)',
-          backdropFilter: 'blur(8px)'
-        }
-      }
+          border: `1px solid ${tokens.color.border}`,
+          backgroundColor: tokens.color.surfaceElevated,
+          color: tokens.color.textPrimary,
+          boxShadow: 'none',
+        },
+      },
+      variants: [
+        {
+          props: { color: 'secondary' },
+          style: {
+            color: tokens.color.amberDark,
+            borderColor: tokens.color.amberBorder,
+            backgroundColor: tokens.color.amberSoft,
+          },
+        },
+      ],
     },
     MuiPaper: {
       styleOverrides: {
         root: {
           backgroundImage: 'none',
-          border: '1px solid rgba(17, 17, 17, 0.08)',
-          backgroundColor: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(14px) saturate(1.02)',
-          boxShadow: '0 14px 40px rgba(17, 17, 17, 0.06), 0 3px 10px rgba(17, 17, 17, 0.03)'
-        }
-      }
+          border: `1px solid ${tokens.color.border}`,
+          backgroundColor: tokens.color.surface,
+          color: tokens.color.textPrimary,
+          backdropFilter: 'none',
+          boxShadow: tokens.elevation.sm,
+        },
+      },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 20,
-          border: '1px solid rgba(17, 17, 17, 0.08)',
-          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.86) 100%)'
-        }
-      }
+          borderRadius: 16,
+          border: `1px solid ${tokens.color.border}`,
+          backgroundImage: 'none',
+          backgroundColor: tokens.color.surface,
+        },
+      },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
           backgroundImage: 'none',
-          boxShadow: 'none',
-          borderBottom: '1px solid rgba(17, 17, 17, 0.06)'
-        }
-      }
+          backgroundColor: 'rgba(255,255,255,0.92)',
+          boxShadow: '0 4px 18px rgba(15,23,42,0.08)',
+          borderBottom: `1px solid ${tokens.color.amberBorder}`,
+        },
+      },
     },
     MuiIconButton: {
       styleOverrides: {
         root: {
           transition: 'background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease',
           '&:hover': {
-            transform: 'translateY(-1px)'
-          }
-        }
-      }
+            transform: 'translateY(-1px)',
+            backgroundColor: 'rgba(22,163,74,0.08)',
+          },
+          '&.Mui-focusVisible': {
+            outline: '2px solid rgba(22,163,74,0.8)',
+            outlineOffset: 2,
+          },
+        },
+      },
     },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          backgroundColor: 'rgba(255, 255, 255, 0.82)',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)',
+          borderRadius: 14,
+          color: tokens.color.textPrimary,
+          backgroundColor: tokens.color.surface,
+          boxShadow: 'none',
           transition: 'box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease',
           '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 0.9)'
+            backgroundColor: tokens.color.surfaceElevated,
           },
           '&.Mui-focused': {
-            boxShadow: '0 0 0 4px rgba(10, 143, 58, 0.12)'
-          }
+            boxShadow: '0 0 0 3px rgba(28,156,75,0.18)',
+          },
         },
         notchedOutline: {
-          borderColor: 'rgba(17, 17, 17, 0.12)'
-        }
-      }
+          borderColor: 'rgba(20,34,53,0.2)',
+        },
+      },
     },
     MuiTextField: {
       defaultProps: {
-        variant: 'outlined'
-      }
+        variant: 'outlined',
+      },
     },
     MuiDivider: {
       styleOverrides: {
         root: {
-          borderColor: 'rgba(17, 17, 17, 0.08)'
-        }
-      }
+          borderColor: tokens.color.border,
+        },
+      },
+    },
+    MuiLink: {
+      styleOverrides: {
+        root: {
+          color: tokens.color.primary,
+          textDecorationColor: 'transparent',
+          textUnderlineOffset: '3px',
+          transition: 'color 0.18s ease, text-decoration-color 0.18s ease',
+          '&:hover': {
+            color: tokens.color.amberDark,
+            textDecorationColor: 'currentColor',
+          },
+          '&:focus-visible': {
+            outline: '2px solid rgba(22,163,74,0.8)',
+            outlineOffset: 2,
+            borderRadius: 4,
+          },
+        },
+      },
     },
     MuiTooltip: {
       styleOverrides: {
         tooltip: {
-          backgroundColor: 'rgba(17, 17, 17, 0.88)',
-          border: '1px solid rgba(255,255,255,0.12)',
-          backdropFilter: 'blur(8px)',
-          fontSize: '0.75rem'
-        }
-      }
+          backgroundColor: '#0F172A',
+          border: '1px solid rgba(255,255,255,0.08)',
+          fontSize: '0.75rem',
+        },
+      },
     },
     MuiTableCell: {
       styleOverrides: {
         head: {
           fontWeight: 700,
-          color: '#111111',
-          backgroundColor: 'rgba(242, 198, 23, 0.08)',
-          borderBottom: '1px solid rgba(17, 17, 17, 0.08)'
-        }
-      }
-    }
-  }
+          color: tokens.color.textPrimary,
+          backgroundColor: '#F2F3EE',
+          borderBottom: `1px solid ${tokens.color.border}`,
+        },
+        root: {
+          borderBottom: `1px solid ${tokens.color.border}`,
+        },
+      },
+    },
+  },
 })

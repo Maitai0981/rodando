@@ -15,7 +15,9 @@ export function UiChip({ emphasis = 'default', sx, ...props }: UiChipProps) {
       sx={[
         emphasis === 'soft'
           ? {
-              bgcolor: 'rgba(255,255,255,0.72)',
+              bgcolor: 'background.default',
+              border: '1px solid',
+              borderColor: 'divider',
             }
           : null,
         ...(Array.isArray(sx) ? sx : [sx]),

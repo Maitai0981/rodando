@@ -1,4 +1,4 @@
-import { createContext, startTransition, useContext, useEffect, useState } from 'react'
+import { createContext, startTransition, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import { api, ApiError, type BagItem, type Product } from '../lib/api'
 import { useAuth } from './AuthContext'
@@ -15,193 +15,114 @@ type CartContextValue = {
   refresh: () => Promise<void>
 }
 
-const STORAGE_KEY = 'rodando_guest_bag_v1'
+const LEGACY_STORAGE_KEY = 'rodando_guest_bag_v1'
 
 const CartContext = createContext<CartContextValue | null>(null)
 
-function parseStoredGuestBag(): BagItem[] {
+function parseLegacyGuestBag(): BagItem[] {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!window.localStorage || typeof window.localStorage.getItem !== 'function') return []
+    const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed.filter(isBagItemLike).map(normalizeBagItem)
+    return parsed
+      .filter((item) => typeof item === 'object' && item !== null)
+      .map((item) => ({
+        productId: Number((item as Partial<BagItem>).productId || 0),
+        quantity: Math.max(1, Number((item as Partial<BagItem>).quantity || 1)),
+        name: String((item as Partial<BagItem>).name || ''),
+        sku: String((item as Partial<BagItem>).sku || ''),
+        manufacturer: String((item as Partial<BagItem>).manufacturer || ''),
+        category: String((item as Partial<BagItem>).category || ''),
+        bikeModel: String((item as Partial<BagItem>).bikeModel || ''),
+        price: Number((item as Partial<BagItem>).price || 0),
+        stock: Math.max(0, Number((item as Partial<BagItem>).stock || 0)),
+        imageUrl: String((item as Partial<BagItem>).imageUrl || ''),
+        description: String((item as Partial<BagItem>).description || ''),
+        isActive: (item as Partial<BagItem>).isActive === false || (item as Partial<BagItem>).isActive === 0 ? 0 : 1,
+      }))
+      .filter((item) => item.productId > 0 && item.quantity > 0)
   } catch {
     return []
   }
 }
 
-function isBagItemLike(value: unknown): value is Partial<BagItem> {
-  return typeof value === 'object' && value !== null && 'productId' in value && 'quantity' in value
-}
-
-function normalizeBagItem(item: Partial<BagItem>): BagItem {
-  return {
-    productId: Number(item.productId || 0),
-    quantity: Math.max(1, Number(item.quantity || 1)),
-    name: String(item.name || ''),
-    sku: String(item.sku || ''),
-    manufacturer: String(item.manufacturer || ''),
-    category: String(item.category || ''),
-    bikeModel: String(item.bikeModel || ''),
-    price: Number(item.price || 0),
-    stock: Math.max(0, Number(item.stock || 0)),
-    imageUrl: String(item.imageUrl || ''),
-    description: String(item.description || ''),
-    isActive: item.isActive === false || item.isActive === 0 ? 0 : 1,
-  }
-}
-
-function saveGuestBag(items: BagItem[]) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+function clearLegacyGuestBag() {
+  if (!window.localStorage || typeof window.localStorage.removeItem !== 'function') return
+  window.localStorage.removeItem(LEGACY_STORAGE_KEY)
 }
 
 export function CartProvider({ children }: PropsWithChildren) {
-  const { user, status } = useAuth()
+  const { status } = useAuth()
   const [items, setItems] = useState<BagItem[]>([])
   const [loading, setLoading] = useState(false)
+  const migratedLegacyRef = useRef(false)
 
-  useEffect(() => {
-    if (status === 'loading') return
+  const migrateLegacyGuestBagIfNeeded = useCallback(async () => {
+    if (migratedLegacyRef.current) return
+    migratedLegacyRef.current = true
 
-    if (status === 'anonymous') {
-      startTransition(() => {
-        setItems(parseStoredGuestBag())
-      })
+    const legacyItems = parseLegacyGuestBag()
+    if (legacyItems.length === 0) {
+      clearLegacyGuestBag()
       return
     }
 
-    let active = true
-    void hydrateServerBag().catch(() => {
-      if (!active) return
-      startTransition(() => setItems([]))
-    })
-    return () => {
-      active = false
-    }
-  }, [status, user?.id])
-
-  async function hydrateServerBag() {
-    setLoading(true)
-    try {
-      const guestItems = parseStoredGuestBag()
-      if (guestItems.length > 0) {
-        saveGuestBag([])
-        for (const guestItem of guestItems) {
-          if (guestItem.productId > 0 && guestItem.quantity > 0) {
-            try {
-              await api.addBagItem({ productId: guestItem.productId, quantity: guestItem.quantity })
-            } catch {
-              // Ignore merge conflicts per item and continue syncing the rest.
-            }
-          }
-        }
+    for (const legacyItem of legacyItems) {
+      try {
+        await api.addBagItem({ productId: legacyItem.productId, quantity: legacyItem.quantity })
+      } catch {
+        // Best-effort migration: ignore invalid/removed products and keep going.
       }
-
-      const result = await api.getBag()
-      startTransition(() => setItems(result.items))
-    } finally {
-      setLoading(false)
     }
-  }
 
-  async function refresh() {
+    clearLegacyGuestBag()
+  }, [])
+
+  const refresh = useCallback(async () => {
     if (status === 'loading') return
-    if (status === 'anonymous') {
-      startTransition(() => setItems(parseStoredGuestBag()))
-      return
-    }
+
     setLoading(true)
     try {
+      await migrateLegacyGuestBagIfNeeded()
       const result = await api.getBag()
       startTransition(() => setItems(result.items))
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        startTransition(() => setItems(parseStoredGuestBag()))
+        startTransition(() => setItems([]))
         return
       }
       throw err
     } finally {
       setLoading(false)
     }
-  }
+  }, [migrateLegacyGuestBagIfNeeded, status])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
 
   async function addProduct(product: Product, quantity = 1) {
-    if (status === 'authenticated') {
-      const result = await api.addBagItem({ productId: product.id, quantity })
-      startTransition(() => setItems(result.items))
-      return
-    }
+    const nextQuantity = Math.max(1, Math.min(quantity, Number(product.stock || 0)))
+    if (nextQuantity <= 0) return
 
-    const current = parseStoredGuestBag()
-    const existing = current.find((item) => item.productId === product.id)
-    const nextQty = Math.min(Number(product.stock || 0), Number(existing?.quantity || 0) + quantity)
-    if (nextQty <= 0) return
-
-    const nextItems = existing
-      ? current.map((item) => (
-        item.productId === product.id
-          ? { ...item, quantity: nextQty, stock: product.stock, imageUrl: product.imageUrl || item.imageUrl || '' }
-          : item
-      ))
-      : [
-          {
-            productId: product.id,
-            quantity: Math.min(quantity, product.stock),
-            name: product.name,
-            sku: product.sku,
-            manufacturer: product.manufacturer,
-            category: product.category,
-            bikeModel: product.bikeModel,
-            price: product.price,
-            stock: product.stock,
-            imageUrl: product.imageUrl || '',
-            description: product.description,
-            isActive: product.isActive,
-          },
-          ...current,
-        ]
-    saveGuestBag(nextItems)
-    startTransition(() => setItems(nextItems))
+    const result = await api.addBagItem({ productId: product.id, quantity: nextQuantity })
+    startTransition(() => setItems(result.items))
   }
 
   async function updateQty(productId: number, quantity: number) {
-    if (status === 'authenticated') {
-      const result = await api.updateBagItem(productId, quantity)
-      startTransition(() => setItems(result.items))
-      return
-    }
-
-    const current = parseStoredGuestBag()
-    const nextItems = quantity <= 0
-      ? current.filter((item) => item.productId !== productId)
-      : current.map((item) => (
-        item.productId === productId
-          ? { ...item, quantity: Math.min(Math.max(1, quantity), Math.max(1, item.stock || quantity)) }
-          : item
-      ))
-    saveGuestBag(nextItems)
-    startTransition(() => setItems(nextItems))
+    const result = await api.updateBagItem(productId, quantity)
+    startTransition(() => setItems(result.items))
   }
 
   async function removeItem(productId: number) {
-    if (status === 'authenticated') {
-      await api.removeBagItem(productId)
-      startTransition(() => setItems((prev) => prev.filter((item) => item.productId !== productId)))
-      return
-    }
-
-    const nextItems = parseStoredGuestBag().filter((item) => item.productId !== productId)
-    saveGuestBag(nextItems)
-    startTransition(() => setItems(nextItems))
+    await api.removeBagItem(productId)
+    startTransition(() => setItems((prev) => prev.filter((item) => item.productId !== productId)))
   }
 
   async function clear() {
-    if (status === 'authenticated') {
-      await api.clearBag()
-    } else {
-      saveGuestBag([])
-    }
+    await api.clearBag()
     startTransition(() => setItems([]))
   }
 

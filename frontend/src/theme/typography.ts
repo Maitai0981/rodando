@@ -1,40 +1,40 @@
 import type { TypographyVariantsOptions } from '@mui/material/styles'
 
 export const typography: TypographyVariantsOptions = {
-  fontFamily: '"Space Grotesk", "Sora", "Helvetica Neue", Arial, sans-serif',
+  fontFamily: '"Manrope", "Space Grotesk", "Sora", "Helvetica Neue", Arial, sans-serif',
   h1: {
     fontFamily: '"Sora", "Space Grotesk", sans-serif',
     fontWeight: 800,
-    letterSpacing: '-0.055em',
-    fontSize: 'clamp(2.65rem, 5.8vw, 5.2rem)',
-    lineHeight: 0.94
+    letterSpacing: '-0.038em',
+    fontSize: 'clamp(2.2rem, 4.6vw, 3.9rem)',
+    lineHeight: 1.04
   },
   h2: {
     fontFamily: '"Sora", "Space Grotesk", sans-serif',
     fontWeight: 700,
-    letterSpacing: '-0.04em',
-    fontSize: 'clamp(1.95rem, 4vw, 3.15rem)',
-    lineHeight: 0.98
+    letterSpacing: '-0.03em',
+    fontSize: 'clamp(1.85rem, 3.6vw, 3rem)',
+    lineHeight: 1.05
   },
   h3: {
     fontFamily: '"Sora", "Space Grotesk", sans-serif',
     fontWeight: 700,
-    letterSpacing: '-0.03em',
-    fontSize: 'clamp(1.3rem, 2vw, 1.95rem)',
-    lineHeight: 1.05
+    letterSpacing: '-0.02em',
+    fontSize: 'clamp(1.25rem, 1.9vw, 2.05rem)',
+    lineHeight: 1.12
   },
-  h4: { fontFamily: '"Sora", sans-serif', fontWeight: 700, fontSize: '1.32rem', letterSpacing: '-0.025em', lineHeight: 1.08 },
-  h5: { fontFamily: '"Sora", sans-serif', fontWeight: 650, letterSpacing: '-0.02em', lineHeight: 1.12 },
-  h6: { fontFamily: '"Sora", sans-serif', fontWeight: 650, letterSpacing: '-0.02em', lineHeight: 1.14 },
-  body1: { fontSize: '0.995rem', lineHeight: 1.68, letterSpacing: '-0.012em' },
-  body2: { fontSize: '0.93rem', lineHeight: 1.62, letterSpacing: '-0.01em' },
-  subtitle1: { fontWeight: 600 },
+  h4: { fontFamily: '"Sora", sans-serif', fontWeight: 700, fontSize: '1.28rem', letterSpacing: '-0.02em', lineHeight: 1.14 },
+  h5: { fontFamily: '"Sora", sans-serif', fontWeight: 650, letterSpacing: '-0.015em', lineHeight: 1.16 },
+  h6: { fontFamily: '"Sora", sans-serif', fontWeight: 650, letterSpacing: '-0.01em', lineHeight: 1.18 },
+  body1: { fontSize: '1rem', lineHeight: 1.64, letterSpacing: '-0.005em' },
+  body2: { fontSize: '0.93rem', lineHeight: 1.58, letterSpacing: '-0.004em' },
+  subtitle1: { fontWeight: 600, lineHeight: 1.32 },
   subtitle2: {
     fontFamily: '"IBM Plex Mono", monospace',
-    fontWeight: 500,
-    letterSpacing: '0.12em',
+    fontWeight: 550,
+    letterSpacing: '0.1em',
     textTransform: 'uppercase',
-    fontSize: '0.72rem',
+    fontSize: '0.7rem',
     lineHeight: 1.35
   },
   overline: {
