@@ -16,11 +16,7 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-<<<<<<< HEAD
-        <BrowserRouter>
-=======
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
->>>>>>> 00d9f8b1cd49468b71d5f26d93d4a98448814a55
           <AuthProvider>
             <AssistProvider>
               <CartProvider>

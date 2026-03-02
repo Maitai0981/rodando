@@ -38,22 +38,14 @@ export const theme = createTheme({
       },
       styleOverrides: {
         root: {
-<<<<<<< HEAD
           borderRadius: 14,
-=======
-          borderRadius: tokens.radius.md,
->>>>>>> 00d9f8b1cd49468b71d5f26d93d4a98448814a55
           paddingLeft: 16,
           paddingRight: 16,
           paddingTop: 10,
           paddingBottom: 10,
           borderWidth: 1,
           lineHeight: 1.1,
-<<<<<<< HEAD
           transition: 'transform 0.18s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease',
-=======
-          transition: 'transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease',
->>>>>>> 00d9f8b1cd49468b71d5f26d93d4a98448814a55
           minHeight: 44,
           textTransform: 'none',
           '&:hover': {
@@ -73,21 +65,12 @@ export const theme = createTheme({
         },
         contained: {
           color: '#FFFFFF',
-<<<<<<< HEAD
           backgroundImage: 'linear-gradient(180deg, #1EA551 0%, #188743 100%)',
           backgroundColor: tokens.color.primary,
           boxShadow: '0 8px 18px rgba(28,156,75,0.24)',
           border: '1px solid rgba(28,156,75,0.35)',
           '&:hover': {
             boxShadow: '0 12px 24px rgba(21,122,57,0.3)',
-=======
-          backgroundImage: 'none',
-          backgroundColor: tokens.color.primary,
-          boxShadow: tokens.elevation.sm,
-          border: '1px solid rgba(28,156,75,0.35)',
-          '&:hover': {
-            boxShadow: tokens.elevation.md,
->>>>>>> 00d9f8b1cd49468b71d5f26d93d4a98448814a55
             backgroundColor: tokens.color.primaryHover,
           },
         },
@@ -172,19 +155,11 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
-<<<<<<< HEAD
           border: '1px solid rgba(216,211,194,0.86)',
           backgroundColor: tokens.color.surface,
           color: tokens.color.textPrimary,
           backdropFilter: 'none',
           boxShadow: '0 8px 20px rgba(15,23,42,0.08)',
-=======
-          border: `1px solid ${tokens.color.border}`,
-          backgroundColor: tokens.color.surface,
-          color: tokens.color.textPrimary,
-          backdropFilter: 'none',
-          boxShadow: tokens.elevation.sm,
->>>>>>> 00d9f8b1cd49468b71d5f26d93d4a98448814a55
         },
       },
     },

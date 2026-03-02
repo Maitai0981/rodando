@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-<<<<<<< HEAD
 .home-luxe-main {
   position: relative;
 }
@@ -83,36 +82,6 @@
   to {
     opacity: 1;
     transform: translateY(0);
-=======
-.mobile-premium-hero,
-.mobile-premium-card {
-  transition: color var(--motion-fast), background-color var(--motion-fast), border-color var(--motion-fast);
-}
-
-.mobile-premium-kicker {
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-@media (max-width: 899px) {
-  .mobile-premium-hero {
-    border-radius: 1rem;
-    border: 1px solid #d8d3c2;
-    background:
-      radial-gradient(circle at 100% 0%, rgba(194, 138, 14, 0.14), transparent 42%),
-      linear-gradient(180deg, #fff7de 0%, #fffdf7 100%);
-    color: #142235;
-    box-shadow: 0 8px 20px rgba(20, 34, 53, 0.1);
-  }
-
-  .mobile-premium-card {
-    border-radius: 1rem;
-    border: 1px solid #d8d3c2;
-    background: #ffffff;
-    box-shadow: 0 6px 16px rgba(20, 34, 53, 0.08);
->>>>>>> 00d9f8b1cd49468b71d5f26d93d4a98448814a55
   }
 }
 
@@ -122,15 +91,12 @@
   }
 }
 
-<<<<<<< HEAD
 @media (max-width: 899px) {
   .home-luxe-display {
     max-width: 100%;
   }
 }
 
-=======
->>>>>>> 00d9f8b1cd49468b71d5f26d93d4a98448814a55
 /* (a) Reset + Base */
 *,
 *::before,
