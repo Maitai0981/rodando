@@ -201,7 +201,11 @@ export function AssistProvider({ children }: PropsWithChildren) {
   const [checklistOpen, setChecklistOpenState] = useState<boolean>(() => readChecklistOpen())
 
   const envEnabled = String(import.meta.env.VITE_ASSIST_ENABLED ?? '1') !== '0'
+<<<<<<< HEAD
   const rolloutPercent = 0
+=======
+  const rolloutPercent = Math.max(0, Math.min(100, Number(import.meta.env.VITE_ASSIST_ROLLOUT_PERCENT ?? 25)))
+>>>>>>> 00d9f8b1cd49468b71d5f26d93d4a98448814a55
   const rolloutBucket = useMemo(() => resolveRolloutBucket(user?.id ?? null), [user?.id])
   const enabled = envEnabled && rolloutBucket < rolloutPercent
   const authenticated = status === 'authenticated' && Boolean(user?.id)

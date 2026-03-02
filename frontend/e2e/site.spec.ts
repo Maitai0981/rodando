@@ -159,7 +159,11 @@ test('home institucional: sem overflow horizontal e secao de loja fisica compact
   await expect(page.getByTestId('home-hero-section')).toBeVisible()
   await expect(page.getByTestId('home-catalog-cta')).toBeVisible()
   await expect(page.getByTestId('home-contact-section')).toBeVisible()
+<<<<<<< HEAD
   await expect(page.getByAltText(/Foto da loja/i)).toBeVisible()
+=======
+  await expect(page.getByAltText('Foto da loja física Rodando Moto Center')).toBeVisible()
+>>>>>>> 00d9f8b1cd49468b71d5f26d93d4a98448814a55
 
   const hasGlobalOverflow = await page.evaluate(() => {
     const root = document.documentElement
