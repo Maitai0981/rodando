@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "allowJs": true,
+    "checkJs": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "rootDir": "..",
+    "rootDirs": ["./src", "../shared-types/src"]
+  },
+  "include": ["src", "../shared-types/src"],
+  "exclude": ["node_modules", "data"]
+}
