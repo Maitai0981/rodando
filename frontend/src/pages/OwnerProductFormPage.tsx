@@ -1,3 +1,4 @@
+import { ArrowBackRoundedIcon, Inventory2RoundedIcon, NavigateNextRoundedIcon, SaveRoundedIcon } from '@/ui/primitives/Icon'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -15,10 +16,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded'
-import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
-import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import OwnerLayout from '../layouts/OwnerLayout'
 import { api, ApiError, type Product } from '../lib/api'
 import { useAssist } from '../context/AssistContext'
@@ -211,7 +208,7 @@ export default function OwnerProductFormPage() {
     <OwnerLayout>
       <Stack spacing={3}>
         <Stack spacing={1.5}>
-          <Breadcrumbs separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} aria-label="breadcrumb">
+          <Breadcrumbs separator={<NavigateNextRoundedIcon size="sm" />} aria-label="breadcrumb">
             <Typography component={RouterLink} to="/owner/dashboard" variant="body2" color="text.secondary">
               Dashboard
             </Typography>
@@ -233,7 +230,7 @@ export default function OwnerProductFormPage() {
               </Typography>
             </Box>
             <Stack direction="row" spacing={1.25}>
-              <Button component={RouterLink} to="/owner/products" variant="outlined" startIcon={<ArrowBackRoundedIcon />}>
+              <Button component={RouterLink} to="/owner/products" variant="outlined" startIcon={<ArrowBackRoundedIcon size="sm" />}>
                 Voltar
               </Button>
               <Button
@@ -242,7 +239,7 @@ export default function OwnerProductFormPage() {
                 form="owner-product-form"
                 variant="contained"
                 color="primary"
-                startIcon={<SaveRoundedIcon />}
+                startIcon={<SaveRoundedIcon size="sm" />}
                 disabled={saving || loading}
               >
                 {saving ? 'Salvando...' : isCreate ? 'Criar produto' : 'Salvar alteracoes'}
@@ -489,7 +486,7 @@ export default function OwnerProductFormPage() {
                       color: 'primary.main',
                     }}
                   >
-                    <Inventory2RoundedIcon fontSize="small" />
+                    <Inventory2RoundedIcon size="sm" />
                   </Box>
                   <Typography variant="h6">Resumo</Typography>
                 </Stack>

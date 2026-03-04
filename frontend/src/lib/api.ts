@@ -82,6 +82,46 @@ export type Product = {
   offerBadge?: string | null
   offerEndsAt?: string | null
   discountPercent?: number
+  seoSlug?: string | null
+  seoMetaTitle?: string | null
+  seoMetaDescription?: string | null
+}
+
+export type ProductDetails = {
+  item: Product
+  gallery: {
+    mainUrl: string
+    hoverUrl: string
+    extra: string[]
+  }
+  pricing: {
+    price: number
+    compareAtPrice: number | null
+    discountPercent: number
+  }
+  availability: {
+    stock: number
+    isActive: boolean
+    urgencyLabel: string | null
+  }
+  compatibility: {
+    bikeModel: string
+    fitments: Array<{ label: string; value: string }>
+  }
+  seo: {
+    slug: string
+    metaTitle: string
+    metaDescription: string
+  }
+  socialProof: {
+    averageRating: number
+    totalReviews: number
+  }
+}
+
+export type VariantSelection = {
+  fitment: string | null
+  quantity: number
 }
 
 export type OwnerDashboardParams = {
@@ -537,6 +577,28 @@ export class ApiError extends Error {
   }
 }
 
+export function buildProductUrl(product: Pick<Product, 'id' | 'name' | 'seoSlug'>) {
+  const rawSlug = String(product.seoSlug || product.name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `/produto/${product.id}-${rawSlug || 'produto'}`
+}
+
+export function parseProductRouteId(idSlug: string) {
+  const value = String(idSlug || '')
+  const match = value.match(/^(\d+)(?:-(.*))?$/)
+  if (!match) {
+    return { id: null, slug: '' }
+  }
+  return {
+    id: Number(match[1]),
+    slug: String(match[2] || '').trim().toLowerCase(),
+  }
+}
+
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
@@ -672,6 +734,8 @@ export const api = {
     const suffix = query.size > 0 ? `?${query.toString()}` : ''
     return apiRequest<{ items: Product[]; meta: { page: number; pageSize: number; total: number; totalPages: number } }>(`/api/products${suffix}`)
   },
+  getPublicProduct: (id: number) =>
+    apiRequest<ProductDetails>(`/api/products/${id}`),
   listCatalogHighlights: () =>
     apiRequest<{ items: Product[] }>('/api/catalog/highlights'),
   listCatalogRecommendations: (params: { limit?: number; exclude?: number[] } = {}) => {

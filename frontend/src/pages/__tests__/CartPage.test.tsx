@@ -79,7 +79,7 @@ describe('CartPage', () => {
     expect(screen.getByTestId('cart-empty-catalog-cta')).toBeInTheDocument()
   })
 
-  it('bloqueia checkout quando faltam dados críticos e exige confirmação para limpar mochila', async () => {
+  it('exige confirmacao antes de limpar mochila e permite seguir para checkout com itens', async () => {
     mockAuthState.user = { name: '', document: '', phone: '' }
     mockCartState.items = [
       {
@@ -98,24 +98,11 @@ describe('CartPage', () => {
     mockCartState.itemCount = 1
 
     vi.spyOn(api, 'listCatalogRecommendations').mockResolvedValue({ items: [] })
-    vi.spyOn(api, 'listAddresses').mockResolvedValue({ items: [] })
-    vi.spyOn(api, 'quoteOrder').mockResolvedValue({
-      quote: {
-        deliveryMethod: 'pickup',
-        distanceKm: 0,
-        etaDays: 1,
-        shippingCost: 0,
-        freeShippingApplied: true,
-        ruleApplied: 'pickup',
-      },
-    })
 
     renderWithProviders(<CartPage />)
 
     await waitFor(() => expect(screen.getByText('Produto Guardrail')).toBeInTheDocument())
-    expect(screen.getByText('Falta concluir:')).toBeInTheDocument()
-    expect(screen.getByText('• Informar nome do destinatário')).toBeInTheDocument()
-    expect(screen.getByTestId('cart-checkout-button')).toBeDisabled()
+    expect(screen.getByTestId('cart-checkout-button')).toBeEnabled()
 
     fireEvent.click(screen.getByTestId('cart-clear'))
     expect(screen.getByRole('dialog', { name: 'Limpar mochila?' })).toBeInTheDocument()

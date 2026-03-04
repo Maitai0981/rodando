@@ -3,7 +3,7 @@ import { ThemeProvider } from '@mui/material'
 import { render, type RenderOptions } from '@testing-library/react'
 import type { ReactElement, PropsWithChildren } from 'react'
 import { MemoryRouter } from 'react-router-dom'
-import { theme } from '../theme'
+import { dsTheme } from '../design-system/theme'
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -23,7 +23,7 @@ export function renderWithProviders(ui: ReactElement, options?: RenderOptions) {
 
   function Wrapper({ children }: PropsWithChildren) {
     return (
-      <ThemeProvider theme={theme}>
+      <ThemeProvider theme={dsTheme}>
         <QueryClientProvider client={queryClient}>
           <MemoryRouter>{children}</MemoryRouter>
         </QueryClientProvider>

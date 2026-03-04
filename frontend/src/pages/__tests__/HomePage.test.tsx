@@ -197,4 +197,21 @@ describe('HomePage', () => {
       restoreViewport()
     }
   })
+
+  it('seta do hero rola para a proxima secao', async () => {
+    mockWithEmptyData()
+    const scrollSpy = vi.fn()
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: scrollSpy,
+    })
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => expect(screen.getByTestId('home-next-section-trigger')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /proxima secao/i })).toBeInTheDocument()
+    screen.getByTestId('home-next-section-trigger').click()
+    expect(scrollSpy).toHaveBeenCalled()
+  })
 })

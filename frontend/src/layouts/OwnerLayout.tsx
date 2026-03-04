@@ -1,3 +1,4 @@
+import { MenuRoundedIcon } from '@/ui/primitives/Icon'
 import { useEffect, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import {
@@ -18,8 +19,6 @@ import {
 } from '@mui/material'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
-import { motion, useReducedMotion } from 'motion/react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -31,7 +30,6 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
   const { user, status, logout } = useAuth()
   const [loggingOut, setLoggingOut] = useState(false)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
-  const reduceMotion = useReducedMotion()
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
 
@@ -194,11 +192,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', background: '#EEF0F3', overflowX: 'hidden' }}>
       {isDesktop ? (
-        <motion.div
-          initial={reduceMotion ? false : { opacity: 0, x: -28 }}
-          animate={reduceMotion ? undefined : { opacity: 1, x: 0 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        >
+        <Box sx={{ transition: 'opacity 260ms ease, transform 260ms ease' }}>
           <Drawer
             variant="permanent"
             sx={{
@@ -216,7 +210,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
           >
             {drawerContent}
           </Drawer>
-        </motion.div>
+        </Box>
       ) : (
         <Drawer
           variant="temporary"
@@ -227,12 +221,15 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
           sx={{
             display: { xs: 'block', md: 'none' },
             [`& .MuiDrawer-paper`]: {
-              width: 'min(80vw, 286px)',
+              width: 'min(86vw, 320px)',
               boxSizing: 'border-box',
               background: '#FFFFFF',
               color: '#0F172A',
               borderRight: '1px solid #E5E7EB',
               boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
+              borderTopRightRadius: 14,
+              borderBottomRightRadius: 14,
+              overflow: 'hidden',
             },
           }}
         >
@@ -241,11 +238,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
       )}
 
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-        <AppBar component={motion.div} position="sticky" color="transparent" elevation={0}
-          initial={reduceMotion ? false : { opacity: 0, y: -8 }}
-          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
-        >
+        <AppBar position="sticky" color="transparent" elevation={0}>
           <Toolbar sx={{ justifyContent: 'space-between', gap: 2, minHeight: 60 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.1 }}>
               {!isDesktop && (
@@ -260,7 +253,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
                     height: 40,
                   }}
                 >
-                  <MenuRoundedIcon sx={{ fontSize: 22 }} />
+                  <MenuRoundedIcon size="lg" />
                 </IconButton>
               )}
               <Box>
@@ -283,15 +276,11 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
             </Button>
           </Toolbar>
         </AppBar>
-        <motion.div
-          initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
-        >
+        <Box sx={{ transition: 'opacity 260ms ease, transform 260ms ease' }}>
           <Container maxWidth={false} sx={{ width: '100%', px: { xs: 1.25, sm: 2, md: 2.5 }, py: 5.5 }}>
             {children}
           </Container>
-        </motion.div>
+        </Box>
       </Box>
     </Box>
   )

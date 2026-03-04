@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Box,
   Button,
   Chip,
+  CircularProgress,
   FormControl,
   Grid,
   InputLabel,
@@ -49,6 +50,8 @@ export default function OwnerDashboardPage() {
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const latestRequestRef = useRef(0)
+  const kpiStepMarkedRef = useRef(false)
 
   const categoryOptions = useMemo(
     () => dashboard?.facets?.categories || [],
@@ -61,18 +64,29 @@ export default function OwnerDashboardPage() {
   )
 
   const loadDashboard = useCallback(async (nextFilters: OwnerDashboardParams) => {
+    const requestId = Date.now() + Math.random()
+    latestRequestRef.current = requestId
     setLoading(true)
     setError(null)
     try {
       const data = await api.ownerDashboard(nextFilters)
+      if (latestRequestRef.current !== requestId) return
       setDashboard(data)
-      completeStep('kpi-read', 'owner-dashboard')
     } catch (err) {
+      if (latestRequestRef.current !== requestId) return
       setError(err instanceof ApiError ? err.message : 'Falha ao carregar dashboard de produtos.')
     } finally {
-      setLoading(false)
+      if (latestRequestRef.current === requestId) {
+        setLoading(false)
+      }
     }
-  }, [completeStep])
+  }, [])
+
+  useEffect(() => {
+    if (!dashboard || kpiStepMarkedRef.current) return
+    kpiStepMarkedRef.current = true
+    completeStep('kpi-read', 'owner-dashboard')
+  }, [dashboard, completeStep])
 
   useEffect(() => {
     void loadDashboard(filters)
@@ -226,7 +240,7 @@ export default function OwnerDashboardPage() {
 
   return (
     <OwnerLayout>
-      <Stack spacing={2.2}>
+      <Stack spacing={2.2} aria-busy={loading || exporting ? 'true' : 'false'}>
         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.2}>
           <Box>
             <Typography variant="h4" sx={{ color: 'text.primary', lineHeight: 1.05 }}>
@@ -241,12 +255,49 @@ export default function OwnerDashboardPage() {
               </AssistHintInline>
             </Box>
           </Box>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-            <Button variant="outlined" color="primary" onClick={handleExportCsv} disabled={exporting || loading}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1}
+            sx={{
+              width: { xs: '100%', md: 'auto' },
+              alignItems: 'stretch',
+              justifyContent: { sm: 'flex-end' },
+            }}
+          >
+            <Button
+              data-testid="owner-dashboard-export-csv-button"
+              variant="outlined"
+              color="primary"
+              onClick={handleExportCsv}
+              disabled={exporting || loading}
+              sx={{
+                minHeight: 42,
+                minWidth: { sm: 152 },
+                width: { xs: '100%', sm: 152 },
+                whiteSpace: 'nowrap',
+              }}
+            >
               {exporting ? 'Exportando...' : 'Exportar CSV'}
             </Button>
-            <Button variant="contained" color="primary" onClick={() => void loadDashboard(filters)} disabled={loading}>
-              {loading ? 'Atualizando...' : 'Atualizar'}
+            <Button
+              data-testid="owner-dashboard-refresh-button"
+              variant="contained"
+              color="primary"
+              onClick={() => void loadDashboard(filters)}
+              disabled={loading || exporting}
+              startIcon={(
+                <Box sx={{ width: 16, height: 16, display: 'inline-grid', placeItems: 'center' }}>
+                  {loading ? <CircularProgress size={14} color="inherit" /> : null}
+                </Box>
+              )}
+              sx={{
+                minHeight: 42,
+                minWidth: { sm: 152 },
+                width: { xs: '100%', sm: 152 },
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Atualizar
             </Button>
           </Stack>
         </Stack>
@@ -580,7 +631,7 @@ export default function OwnerDashboardPage() {
                       size="small"
                       color="primary"
                       component={RouterLink}
-                      to={`/owner/products/${item.id}`}
+                      to={`/owner/products/${item.id}/edit`}
                       sx={{ textTransform: 'none', fontWeight: 600 }}
                     >
                       Editar

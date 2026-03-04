@@ -1,17 +1,14 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import { Alert, Box, Button, Link, TextField, Typography, InputAdornment, IconButton } from '@mui/material'
-import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import VisibilityIcon from '@mui/icons-material/Visibility'
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 import AuthSplitLayout from '../components/auth/AuthSplitLayout'
 import { useAuth } from '../context/AuthContext'
 import { useAssist } from '../context/AssistContext'
 import { ApiError } from '../lib/api'
 import { isStrongPassword, isValidEmail } from '../lib'
 import { AssistHintInline } from '../components/assist'
+import { EmailOutlinedIcon, LockOutlinedIcon, VisibilityIcon, VisibilityOffIcon } from '@/ui/primitives/Icon'
 
 interface FormErrors {
   email?: string
@@ -20,6 +17,7 @@ interface FormErrors {
 
 export default function SignInPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { signIn } = useAuth()
   const { completeStep } = useAssist()
   const [email, setEmail] = useState('')
@@ -60,7 +58,8 @@ export default function SignInPage() {
       await signIn({ email, password })
       completeStep('credentials-filled', 'auth-signin')
       completeStep('signin-complete', 'auth-signin')
-      navigate('/')
+      const returnTo = searchParams.get('returnTo')
+      navigate(returnTo || '/')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Falha ao entrar.')
     } finally {
@@ -105,7 +104,7 @@ export default function SignInPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <EmailOutlinedIcon color="action" />
+                    <EmailOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
               }}
@@ -127,7 +126,7 @@ export default function SignInPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <LockOutlinedIcon color="action" />
+                    <LockOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
                 endAdornment: (
@@ -137,7 +136,7 @@ export default function SignInPage() {
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
                     >
-                      {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      {showPassword ? <VisibilityOffIcon tone="muted" size="md" /> : <VisibilityIcon tone="muted" size="md" />}
                     </IconButton>
                   </InputAdornment>
                 ),

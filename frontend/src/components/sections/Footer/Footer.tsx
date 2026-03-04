@@ -1,7 +1,3 @@
-import FacebookRoundedIcon from '@mui/icons-material/FacebookRounded'
-import InstagramIcon from '@mui/icons-material/Instagram'
-import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded'
-import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
@@ -9,6 +5,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router-dom'
 import { UiContainer } from '../../ui'
+import { FacebookRoundedIcon, InstagramIcon, PlaceRoundedIcon, WhatsAppIcon } from '@/ui/primitives/Icon'
 
 const QUICK_LINKS = [
   { label: 'Inicio', href: '/' },
@@ -59,7 +56,7 @@ export function Footer() {
                 <Button
                   variant="outlined"
                   size="small"
-                  startIcon={<WhatsAppIcon />}
+                  startIcon={<WhatsAppIcon size="sm" />}
                   component="a"
                   href="https://wa.me/5545999346779"
                   target="_blank"
@@ -70,7 +67,7 @@ export function Footer() {
                 <Button
                   variant="text"
                   size="small"
-                  startIcon={<PlaceRoundedIcon />}
+                  startIcon={<PlaceRoundedIcon size="sm" />}
                   component="a"
                   href="https://www.google.com/maps/place/Rodando+Moto+Center/@-24.9539372,-53.4823137,17z/data=!3m1!4b1!4m6!3m5!1s0x94f3d6abd0f76d39:0x4c1de863cd816ba6!8m2!3d-24.9539372!4d-53.4823137!16s%2Fg%2F1thnpyhg?entry=ttu&g_ep=EgoyMDI2MDIyMi4wIKXMDSoASAFQAw%3D%3D"
                   target="_blank"
@@ -124,7 +121,7 @@ export function Footer() {
                   }}
                 >
                   <Stack direction="row" spacing={0.6} alignItems="center">
-                    <InstagramIcon sx={{ fontSize: 16 }} />
+                    <InstagramIcon size="sm" />
                     <span>Instagram</span>
                   </Stack>
                 </Typography>
@@ -142,7 +139,7 @@ export function Footer() {
                   }}
                 >
                   <Stack direction="row" spacing={0.6} alignItems="center">
-                    <FacebookRoundedIcon sx={{ fontSize: 16 }} />
+                    <FacebookRoundedIcon size="sm" />
                     <span>Facebook</span>
                   </Stack>
                 </Typography>

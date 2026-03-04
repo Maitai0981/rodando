@@ -8,13 +8,20 @@ import App from './App.tsx'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import { AssistProvider } from './context/AssistContext'
-import { theme } from './theme'
+import { dsTheme } from './design-system/theme'
 import { queryClient } from './lib/queryClient'
+import { startWebVitals } from './lib/webVitals'
+
+if (import.meta.env.DEV || String(import.meta.env.VITE_WEB_VITALS || '0') === '1') {
+  startWebVitals((sample) => {
+    console.info('[web-vitals]', sample.name, sample.value)
+  })
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
+      <ThemeProvider theme={dsTheme}>
         <CssBaseline />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>

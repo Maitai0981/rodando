@@ -11,7 +11,7 @@ import CartPage from '../pages/CartPage'
 import SignInPage from '../pages/SignInPage'
 import OwnerProductsPage from '../pages/OwnerProductsPage'
 import { api } from '../lib/api'
-import { theme } from '../theme'
+import { dsTheme } from '../design-system/theme'
 
 vi.mock('../layouts/AppShell', () => ({
   AppShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -43,7 +43,7 @@ function wrap(ui: ReactNode) {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={dsTheme}>
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>{ui}</MemoryRouter>
       </QueryClientProvider>

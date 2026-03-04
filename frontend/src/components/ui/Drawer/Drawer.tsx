@@ -1,10 +1,10 @@
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import MuiDrawer from '@mui/material/Drawer'
 import type { DrawerProps as MuiDrawerProps } from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { ReactNode } from 'react'
+import { CloseRoundedIcon } from '@/ui/primitives/Icon'
 
 export interface UiDrawerProps extends Omit<MuiDrawerProps, 'children'> {
   headerTitle?: ReactNode
@@ -44,7 +44,7 @@ export function UiDrawer({
           >
             <Typography variant="subtitle1">{headerTitle}</Typography>
             <IconButton aria-label="Fechar menu" onClick={(event) => onClose?.(event, 'escapeKeyDown')}>
-              <CloseRoundedIcon />
+              <CloseRoundedIcon size="md" />
             </IconButton>
           </Stack>
         ) : null}

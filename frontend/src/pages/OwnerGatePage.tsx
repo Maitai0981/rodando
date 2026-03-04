@@ -21,7 +21,7 @@ export default function OwnerGatePage() {
       <Paper elevation={0} sx={{ p: { xs: 2, sm: 3, md: 4 }, borderRadius: { xs: 3, md: 4 }, width: '100%', maxWidth: 540 }}>
         <Stack spacing={2}>
           <Typography variant="subtitle2" color="primary">Owner Access</Typography>
-          <Typography variant="h3" sx={{ fontSize: { xs: '1.6rem', sm: '2rem', md: '2.4rem' }, lineHeight: 1 }}>
+          <Typography variant="h3">
             Area administrativa de produtos
           </Typography>
           <Typography variant="body2" color="text.secondary">

@@ -59,4 +59,36 @@ test('catalog: filtros, meta, highlights e recommendations', async () => {
   const recs = await guestAgent.get(`/api/catalog/recommendations?exclude=${productId}&limit=4`)
   assert.equal(recs.status, 200)
   assert.ok(recs.body.items.every((item) => Number(item.id) !== productId))
+
+  const details = await guestAgent.get(`/api/products/${productId}`)
+  assert.equal(details.status, 200)
+  assert.equal(Number(details.body?.item?.id), productId)
+  assert.ok(details.body?.gallery)
+  assert.ok(details.body?.pricing)
+  assert.ok(details.body?.availability)
+  assert.ok(details.body?.compatibility)
+  assert.ok(details.body?.seo)
+  assert.ok(details.body?.socialProof)
+
+  const missing = await guestAgent.get('/api/products/99999999')
+  assert.equal(missing.status, 404)
+
+  const inactiveSku = `CAT-INACTIVE-${Date.now()}`
+  const inactiveCreate = await ownerAgent.post('/api/owner/products').send({
+    name: 'Produto Inativo Catalog',
+    sku: inactiveSku,
+    manufacturer: 'Factory QA',
+    category: 'Pneu',
+    bikeModel: 'CG 160',
+    price: 79.9,
+    stock: 2,
+    imageUrl: 'https://images.unsplash.com/photo-1621947081720-86970823b77a?auto=format&fit=crop&w=900&q=80',
+    description: 'Produto inativo para teste de PDP.',
+    isActive: false,
+  })
+  assert.equal(inactiveCreate.status, 201)
+  const inactiveProductId = Number(inactiveCreate.body.item.id)
+
+  const inactiveDetails = await guestAgent.get(`/api/products/${inactiveProductId}`)
+  assert.equal(inactiveDetails.status, 404)
 })

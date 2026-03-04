@@ -1,3 +1,4 @@
+import { CloseRoundedIcon, FilterListRoundedIcon, NavigateNextRoundedIcon } from '@/ui/primitives/Icon'
 import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -27,17 +28,15 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
-import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppShell } from '../layouts/AppShell'
-import { api, ApiError, type Product, type ProductListParams } from '../lib/api'
+import { api, ApiError, buildProductUrl, type Product, type ProductListParams } from '../lib/api'
 import { formatCurrency } from '../lib'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { useAssist } from '../context/AssistContext'
 import { AssistHintInline } from '../components/assist'
+import { ResponsiveImage } from '../ui'
 
 const PAGE_SIZE = 12
 const PRICE_MIN = 0
@@ -68,15 +67,19 @@ function buildSearchParamsPatch(
 function ProductCard({
   item,
   onRequestReview,
+  onOpenDetails,
+  onPrefetchDetails,
 }: {
   item: Product
   onRequestReview: (product: Product) => void
+  onOpenDetails: (product: Product) => void
+  onPrefetchDetails: (product: Product) => void
 }) {
   const urgency = Number(item.stock || 0) <= 3 ? 'Ultimas unidades' : null
 
   return (
     <Paper
-      className="mobile-premium-card"
+      className="store-surface"
       elevation={0}
       sx={{
         p: { xs: 1.6, md: 2 },
@@ -100,7 +103,7 @@ function ProductCard({
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
             {item.category}
           </Typography>
-          <Typography component="p" variant="h6" sx={{ color: 'text.primary', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+          <Typography component="button" onClick={() => onOpenDetails(item)} variant="h6" sx={{ color: 'text.primary', lineHeight: 1.1, letterSpacing: '-0.02em', p: 0, border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}>
             {item.name}
           </Typography>
         </Box>
@@ -108,6 +111,9 @@ function ProductCard({
       </Stack>
 
       <Box
+        onClick={() => onOpenDetails(item)}
+        onMouseEnter={() => onPrefetchDetails(item)}
+        onFocus={() => onPrefetchDetails(item)}
         sx={{
           mb: 1.4,
           borderRadius: 2,
@@ -117,17 +123,14 @@ function ProductCard({
           height: { xs: 160, md: 180 },
           overflow: 'hidden',
           position: 'relative',
+          cursor: 'pointer',
         }}
       >
-        <Box
-          component="img"
+        <ResponsiveImage
           src={item.imageUrl}
           alt={item.name}
-          loading="lazy"
+          sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 33vw"
           sx={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
             transition: 'transform 250ms ease, opacity 220ms ease',
             '.MuiPaper-root:hover &': {
               transform: item.hoverImageUrl ? 'scale(1.03)' : 'scale(1.05)',
@@ -136,17 +139,13 @@ function ProductCard({
           }}
         />
         {item.hoverImageUrl ? (
-          <Box
-            component="img"
+          <ResponsiveImage
             src={item.hoverImageUrl}
             alt={`${item.name} detalhe`}
-            loading="lazy"
+            sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 33vw"
             sx={{
               position: 'absolute',
               inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
               opacity: 0,
               transition: 'opacity 220ms ease',
               '.MuiPaper-root:hover &': {
@@ -195,6 +194,15 @@ function ProductCard({
       </Typography>
       <Stack direction="row" spacing={0.8}>
         <AddToCartButton product={item} />
+        <Button
+          variant="outlined"
+          color="primary"
+          onMouseEnter={() => onPrefetchDetails(item)}
+          onFocus={() => onPrefetchDetails(item)}
+          onClick={() => onOpenDetails(item)}
+        >
+          Ver detalhes
+        </Button>
         <Button variant="outlined" color="primary" onClick={() => onRequestReview(item)}>
           Avaliar
         </Button>
@@ -450,6 +458,7 @@ export default function CatalogPage() {
         maxPrice,
         onlyWithImage: true,
       }),
+    placeholderData: keepPreviousData,
   })
 
   const categoriesQuery = useQuery({
@@ -547,11 +556,24 @@ export default function CatalogPage() {
     })
   }
 
+  const prefetchProductDetails = useMemo(
+    () =>
+      (product: Product) => {
+        if (!Number.isInteger(Number(product.id)) || Number(product.id) <= 0) return
+        void queryClient.prefetchQuery({
+          queryKey: ['product-details', Number(product.id)],
+          queryFn: () => api.getPublicProduct(Number(product.id)),
+          staleTime: 30_000,
+        })
+      },
+    [queryClient],
+  )
+
   return (
     <AppShell contained={false}>
       <Stack spacing={{ xs: 2, md: 3 }}>
         <Paper
-          className="mobile-premium-hero"
+          className="store-section"
           elevation={0}
           sx={{
             p: { xs: 1.4, md: 2.2 },
@@ -562,7 +584,7 @@ export default function CatalogPage() {
           }}
         >
           <Stack spacing={{ xs: 0.6, md: 1 }}>
-            <Breadcrumbs separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+            <Breadcrumbs separator={<NavigateNextRoundedIcon size="sm" />}>
               <Typography component={RouterLink} to="/" variant="body2" color="text.secondary" sx={{ color: { xs: 'text.secondary', md: 'text.secondary' } }}>
                 Inicio
               </Typography>
@@ -571,7 +593,7 @@ export default function CatalogPage() {
               </Typography>
               {category ? <Typography variant="body2" sx={{ color: { xs: 'text.primary', md: 'text.primary' } }}>{category}</Typography> : null}
             </Breadcrumbs>
-            <Typography variant="h3" sx={{ color: { xs: 'text.primary', md: 'text.primary' }, fontSize: { xs: 'clamp(1.7rem, 7.4vw, 2.25rem)', md: 'inherit' } }}>
+            <Typography variant="h3" sx={{ color: { xs: 'text.primary', md: 'text.primary' } }}>
               Catalogo de pecas
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ color: { xs: 'text.secondary', md: 'text.secondary' } }}>
@@ -609,7 +631,7 @@ export default function CatalogPage() {
               variant="outlined"
               color="primary"
               fullWidth
-              startIcon={<FilterListRoundedIcon />}
+              startIcon={<FilterListRoundedIcon size="sm" />}
               onClick={() => setMobileFiltersOpen(true)}
               sx={{
                 display: { xs: 'inline-flex', lg: 'none' },
@@ -680,7 +702,12 @@ export default function CatalogPage() {
               <Grid container spacing={2}>
                 {items.map((item) => (
                   <Grid key={item.id} size={{ xs: 12, md: 6, xl: 4 }}>
-                    <ProductCard item={item} onRequestReview={openReviewModal} />
+                    <ProductCard
+                      item={item}
+                      onRequestReview={openReviewModal}
+                      onOpenDetails={(product) => navigate(buildProductUrl(product))}
+                      onPrefetchDetails={prefetchProductDetails}
+                    />
                   </Grid>
                 ))}
               </Grid>
@@ -720,7 +747,7 @@ export default function CatalogPage() {
             Filtros
           </Typography>
           <IconButton onClick={() => setMobileFiltersOpen(false)}>
-            <CloseRoundedIcon />
+            <CloseRoundedIcon size="md" />
           </IconButton>
         </Stack>
         <FiltersPanel

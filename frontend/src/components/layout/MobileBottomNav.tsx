@@ -1,18 +1,19 @@
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
-import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded'
-import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined'
-import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import type { ReactNode } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
+import { NavAccountIcon, NavBagIcon, NavCatalogIcon, NavHomeIcon } from '@/ui/primitives/Icon'
+import { shouldShowMobileBottomNav } from '../../layouts/mobileNavVisibility'
+import { prefetchRouteChunk } from '../../routes/prefetch'
 
 type NavItem = {
   label: string
   to: string
-  icon: ReactNode
+  renderIcon: (active: boolean) => ReactNode
   active: (pathname: string) => boolean
   testId: string
 }
@@ -23,9 +24,20 @@ function isRoute(pathname: string, target: string) {
 }
 
 export function MobileBottomNav() {
+  const theme = useTheme()
+  const isMobileViewport = useMediaQuery('(max-width:1024px)')
   const location = useLocation()
   const { status, user } = useAuth()
   const { itemCount } = useCart()
+  const isVisibleOnRoute = shouldShowMobileBottomNav(location.pathname)
+
+  function handlePrefetch(pathname: string) {
+    prefetchRouteChunk(pathname)
+  }
+
+  if (!isMobileViewport || !isVisibleOnRoute) {
+    return null
+  }
 
   const accountHref = status === 'authenticated'
     ? (user?.role === 'owner' ? '/owner/dashboard' : '/account/profile')
@@ -35,28 +47,28 @@ export function MobileBottomNav() {
     {
       label: 'Início',
       to: '/',
-      icon: <HomeRoundedIcon sx={{ fontSize: 20 }} />,
+      renderIcon: (active) => <NavHomeIcon size="md" tone={active ? 'inverse' : 'muted'} />,
       active: (pathname) => pathname === '/',
       testId: 'mobile-nav-home',
     },
     {
       label: 'Catálogo',
       to: '/catalog',
-      icon: <StorefrontRoundedIcon sx={{ fontSize: 20 }} />,
-      active: (pathname) => isRoute(pathname, '/catalog'),
+      renderIcon: (active) => <NavCatalogIcon size="md" tone={active ? 'inverse' : 'muted'} />,
+      active: (pathname) => isRoute(pathname, '/catalog') || isRoute(pathname, '/produto'),
       testId: 'mobile-nav-catalog',
     },
     {
       label: itemCount > 0 ? `Mochila (${itemCount})` : 'Mochila',
       to: '/cart',
-      icon: <ShoppingBagOutlinedIcon sx={{ fontSize: 20 }} />,
-      active: (pathname) => isRoute(pathname, '/cart'),
+      renderIcon: (active) => <NavBagIcon size="md" tone={active ? 'inverse' : 'muted'} />,
+      active: (pathname) => isRoute(pathname, '/cart') || isRoute(pathname, '/checkout'),
       testId: 'mobile-nav-cart',
     },
     {
       label: status === 'authenticated' ? 'Conta' : 'Entrar',
       to: accountHref,
-      icon: <PersonOutlineRoundedIcon sx={{ fontSize: 20 }} />,
+      renderIcon: (active) => <NavAccountIcon size="md" tone={active ? 'inverse' : 'muted'} />,
       active: (pathname) => isRoute(pathname, '/auth') || isRoute(pathname, '/owner') || isRoute(pathname, '/account') || isRoute(pathname, '/orders'),
       testId: 'mobile-nav-account',
     },
@@ -66,25 +78,27 @@ export function MobileBottomNav() {
     <Box
       data-testid="mobile-bottom-nav"
       sx={{
-        display: { xs: 'block', md: 'none' },
+        display: 'block',
         position: 'fixed',
-        left: 12,
-        right: 12,
-        bottom: 'calc(14px + env(safe-area-inset-bottom, 0px))',
-        zIndex: (theme) => theme.zIndex.appBar + 5,
+        left: { xs: 10, sm: 12 },
+        right: { xs: 10, sm: 12 },
+        bottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+        zIndex: theme.zIndex.modal - 5,
       }}
     >
       <Box
         sx={{
-          borderRadius: 2.5,
+          maxWidth: 'var(--ds-content-max-width)',
+          mx: 'auto',
+          borderRadius: 3,
           border: '1px solid',
           borderColor: '#D8D3C2',
-          backgroundColor: 'rgba(255,255,255,0.96)',
+          backgroundColor: 'rgba(255,255,255,0.98)',
           px: 1,
-          py: 1,
-          boxShadow: '0 10px 24px rgba(20,34,53,0.18)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          py: 0.95,
+          boxShadow: '0 12px 28px rgba(20,34,53,0.2)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
         }}
       >
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 0.5 }}>
@@ -97,15 +111,18 @@ export function MobileBottomNav() {
                 to={item.to}
                 data-testid={item.testId}
                 aria-current={active ? 'page' : undefined}
+                onMouseEnter={() => handlePrefetch(item.to)}
+                onFocus={() => handlePrefetch(item.to)}
+                onTouchStart={() => handlePrefetch(item.to)}
                 sx={{
                   textDecoration: 'none',
-                  minHeight: 52,
+                  minHeight: 54,
                   borderRadius: 2,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 0.3,
+                  gap: 0.35,
                   color: active ? '#FFFFFF' : '#34475D',
                   backgroundColor: active ? '#1C9C4B' : 'transparent',
                   border: active ? '1px solid rgba(21,122,57,0.9)' : '1px solid transparent',
@@ -114,14 +131,14 @@ export function MobileBottomNav() {
                     backgroundColor: active ? '#1C9C4B' : 'rgba(20,34,53,0.06)',
                   },
                 }}
-              >
-                {item.icon}
+                >
+                {item.renderIcon(active)}
                 <Typography
                   component="span"
                   sx={{
-                    fontSize: 10.5,
-                    lineHeight: 1,
-                    letterSpacing: '0.01em',
+                    fontSize: { xs: 11, sm: 11.5 },
+                    lineHeight: 1.05,
+                    letterSpacing: '-0.005em',
                     fontWeight: active ? 700 : 600,
                     color: 'inherit',
                   }}

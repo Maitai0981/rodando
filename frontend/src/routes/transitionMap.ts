@@ -25,12 +25,14 @@ const ROUTE_FLOW: Array<{
   { path: '/owner/products/:id/edit', group: 'owner', index: 4 },
   { path: '/', group: 'public', index: 0 },
   { path: '/catalog', group: 'public', index: 1 },
-  { path: '/cart', group: 'public', index: 2 },
-  { path: '/auth', group: 'public', index: 3 },
-  { path: '/auth/signup', group: 'public', index: 4 },
-  { path: '/account/profile', group: 'public', index: 5 },
-  { path: '/orders', group: 'public', index: 6 },
-  { path: '/orders/:id', group: 'public', index: 7 },
+  { path: '/produto/:idSlug', group: 'public', index: 2 },
+  { path: '/cart', group: 'public', index: 3 },
+  { path: '/checkout', group: 'public', index: 4 },
+  { path: '/auth', group: 'public', index: 5 },
+  { path: '/auth/signup', group: 'public', index: 6 },
+  { path: '/account/profile', group: 'public', index: 7 },
+  { path: '/orders', group: 'public', index: 8 },
+  { path: '/orders/:id', group: 'public', index: 9 },
 ]
 
 export function resolveRouteMeta(pathname: string): RouteMeta {

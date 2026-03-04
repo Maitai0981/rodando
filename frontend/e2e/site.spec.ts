@@ -108,6 +108,9 @@ test('fluxo real: catalogo, pesquisa, mochila, compra e comentario', async ({ pa
   await page.goto('/cart')
   await expect(page.getByText(`Produto E2E ${suffix}`)).toBeVisible()
   await page.getByRole('button', { name: 'Ir para checkout' }).click()
+  await expect(page).toHaveURL(/\/checkout/)
+  await page.getByTestId('checkout-submit-button').click()
+  await expect(page).toHaveURL(/\/orders\/\d+/)
   await expect(page.getByText('Pedido #')).toBeVisible()
 
   await page.goto('/catalog')
@@ -117,6 +120,41 @@ test('fluxo real: catalogo, pesquisa, mochila, compra e comentario', async ({ pa
   await page.getByTestId('catalog-review-message-input').fill(`Comentario real E2E ${suffix} para validar persistencia.`)
   await page.getByTestId('catalog-review-submit-button').click()
   await expect(page.getByRole('dialog', { name: 'Avaliar produto' }).getByText('Avaliacao publicada com sucesso.')).toBeVisible()
+})
+
+test('pdp: abre via plp e aplica redirecionamento canonico de slug', async ({ page, request }) => {
+  await ensureOwnerSession(request)
+
+  const suffix = Date.now()
+  const createdProduct = await request.post(`${API_BASE}/api/owner/products`, {
+    data: {
+      name: `Produto Canonico ${suffix}`,
+      sku: `SEO-${suffix}`,
+      manufacturer: 'QA SEO',
+      category: 'Teste',
+      bikeModel: 'CG 160',
+      price: 189.9,
+      stock: 6,
+      imageUrl: 'https://images.unsplash.com/photo-1621947081720-86970823b77a?auto=format&fit=crop&w=1200&q=80',
+      description: 'Produto para validar rota canonica de PDP.',
+      seoSlug: `produto-canonico-${suffix}`,
+      isActive: true,
+    },
+  })
+  expect(createdProduct.ok()).toBeTruthy()
+  const payload = await createdProduct.json()
+  const productId = Number(payload?.item?.id)
+
+  await page.goto(`/produto/${productId}-slug-errado`)
+  await expect(page).toHaveURL(new RegExp(`/produto/${productId}-produto-canonico-${suffix}$`))
+  await expect(page.getByRole('heading', { name: `Produto Canonico ${suffix}` })).toBeVisible()
+
+  await page.goto('/catalog')
+  await page.getByLabel('Buscar produto').fill(`Produto Canonico ${suffix}`)
+  await page.getByRole('button', { name: 'Aplicar filtros' }).first().click()
+  await expect(page.getByText(`Produto Canonico ${suffix}`).first()).toBeVisible()
+  await page.getByRole('button', { name: 'Ver detalhes' }).first().click()
+  await expect(page).toHaveURL(new RegExp(`/produto/${productId}-produto-canonico-${suffix}$`))
 })
 
 test('nao-funcional: sem erro de console e carregamento rapido de navegacao', async ({ page }) => {
@@ -134,20 +172,29 @@ test('nao-funcional: sem erro de console e carregamento rapido de navegacao', as
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 
-  const homeTiming = await page.evaluate(() => {
-    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
-    return nav ? nav.domContentLoadedEventEnd : 0
-  })
-  expect(homeTiming).toBeLessThan(5000)
-
-  await page.goto('/catalog')
+  const catalogNavStart = Date.now()
+  await page.getByTestId('header-nav-catalog').click()
+  await expect(page).toHaveURL(/\/catalog/)
   await expect(page.getByText('Catalogo de pecas')).toBeVisible()
+  const catalogNavDuration = Date.now() - catalogNavStart
+  expect(catalogNavDuration).toBeLessThan(5000)
 
-  const catalogTiming = await page.evaluate(() => {
-    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
-    return nav ? nav.domContentLoadedEventEnd : 0
-  })
-  expect(catalogTiming).toBeLessThan(5000)
+  const cartNavStart = Date.now()
+  await page.getByTestId('header-cart-button').click()
+  await expect(page).toHaveURL(/\/cart/)
+  await expect(page.getByText('Itens selecionados')).toBeVisible()
+  const cartNavDuration = Date.now() - cartNavStart
+  expect(cartNavDuration).toBeLessThan(5000)
+
+  const homeNavStart = Date.now()
+  await page.getByTestId('header-nav-home').click()
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByTestId('home-hero-section')).toBeVisible()
+  const homeNavDuration = Date.now() - homeNavStart
+  expect(homeNavDuration).toBeLessThan(5000)
+
+  expect(errors).not.toContainEqual(expect.stringContaining('Maximum update depth exceeded'))
+  expect(errors).not.toContainEqual(expect.stringContaining('React Router caught the following error'))
 
   expect(errors).toEqual([])
 })
@@ -171,6 +218,18 @@ test('home institucional: sem overflow horizontal e secao de loja fisica compact
     Math.round(el.getBoundingClientRect().height)
   )
   expect(contactHeight).toBeLessThan(900)
+})
+
+test('home: seta do hero leva para a proxima secao', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/')
+  await expect(page.getByTestId('home-next-section-trigger')).toBeVisible()
+
+  const initialScrollY = await page.evaluate(() => window.scrollY)
+  await page.getByTestId('home-next-section-trigger').click()
+  await expect
+    .poll(async () => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(initialScrollY + 40)
 })
 
 test('destaques da semana: quantidade respeita uma unica linha por breakpoint', async ({ page }) => {
@@ -230,7 +289,23 @@ test('mobile: home, catalogo e mochila sem corte no topo e sem overflow horizont
   await page.goto('/catalog')
   await expect(page.getByText('Catalogo de pecas')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Filtros e ordenacao' })).toBeVisible()
+  await expect(page.getByTestId('mobile-bottom-nav')).toHaveCount(1)
+  const mobileNavPosition = await page.getByTestId('mobile-bottom-nav').evaluate((el) => getComputedStyle(el as HTMLElement).position)
+  expect(mobileNavPosition).toBe('fixed')
+  const navRectBeforeScroll = await page.getByTestId('mobile-bottom-nav').evaluate((el) => {
+    const rect = (el as HTMLElement).getBoundingClientRect()
+    return { bottom: rect.bottom, height: rect.height }
+  })
+  const viewportHeightBeforeScroll = await page.evaluate(() => window.innerHeight)
+  expect(Math.abs(navRectBeforeScroll.bottom - viewportHeightBeforeScroll)).toBeLessThanOrEqual(24)
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
   await expect(page.getByTestId('mobile-bottom-nav')).toBeVisible()
+  const navRectAfterScroll = await page.getByTestId('mobile-bottom-nav').evaluate((el) => {
+    const rect = (el as HTMLElement).getBoundingClientRect()
+    return { bottom: rect.bottom, height: rect.height }
+  })
+  const viewportHeightAfterScroll = await page.evaluate(() => window.innerHeight)
+  expect(Math.abs(navRectAfterScroll.bottom - viewportHeightAfterScroll)).toBeLessThanOrEqual(24)
   await expect(page.getByTestId('mobile-nav-home')).toBeVisible()
   await expect(page.getByTestId('mobile-nav-catalog')).toBeVisible()
   await expect(page.getByTestId('mobile-nav-cart')).toBeVisible()
@@ -251,6 +326,14 @@ test('mobile: home, catalogo e mochila sem corte no topo e sem overflow horizont
   await page.getByTestId('mobile-nav-cart').click()
   await expect(page).toHaveURL(/\/cart/)
   await expect(page.getByText('Itens selecionados')).toBeVisible()
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  await expect(page.getByTestId('mobile-bottom-nav')).toBeVisible()
+  const navRectCartAfterScroll = await page.getByTestId('mobile-bottom-nav').evaluate((el) => {
+    const rect = (el as HTMLElement).getBoundingClientRect()
+    return { bottom: rect.bottom, height: rect.height }
+  })
+  const viewportHeightCartAfterScroll = await page.evaluate(() => window.innerHeight)
+  expect(Math.abs(navRectCartAfterScroll.bottom - viewportHeightCartAfterScroll)).toBeLessThanOrEqual(24)
   await expect(page.getByText('Resumo')).toBeVisible()
   hasGlobalOverflow = await page.evaluate(() => {
     const root = document.documentElement
@@ -267,9 +350,41 @@ test('mobile: home, catalogo e mochila sem corte no topo e sem overflow horizont
     return root.scrollWidth - root.clientWidth > 1
   })
   expect(hasGlobalOverflow).toBeFalsy()
+
+  await page.goto('/auth')
+  await expect(page.getByTestId('mobile-bottom-nav')).toBeHidden()
+
+  await page.goto('/owner/login')
+  await expect(page.getByTestId('mobile-bottom-nav')).toBeHidden()
+})
+
+test('mobile nav: visivel ate 1024 e oculta acima de 1024', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 })
+  await page.goto('/catalog')
+  await expect(page.getByTestId('mobile-bottom-nav')).toHaveCount(1)
+  const navPosition1024 = await page.getByTestId('mobile-bottom-nav').evaluate((el) => getComputedStyle(el as HTMLElement).position)
+  expect(navPosition1024).toBe('fixed')
+  const navRect1024 = await page.getByTestId('mobile-bottom-nav').evaluate((el) => (el as HTMLElement).getBoundingClientRect().bottom)
+  const viewportHeight1024 = await page.evaluate(() => window.innerHeight)
+  expect(Math.abs(navRect1024 - viewportHeight1024)).toBeLessThanOrEqual(24)
+
+  await page.setViewportSize({ width: 1025, height: 900 })
+  await page.goto('/catalog')
+  await expect(page.getByTestId('mobile-bottom-nav')).toBeHidden()
 })
 
 test('transicao direcional por origem e destino', async ({ page }) => {
+  const errors: string[] = []
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      const text = msg.text()
+      if (!text.includes('favicon') && !text.includes('404')) {
+        errors.push(text)
+      }
+    }
+  })
+
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
   await expect(page.locator('[data-route-direction="fade"]')).toBeVisible()
@@ -289,6 +404,10 @@ test('transicao direcional por origem e destino', async ({ page }) => {
   await page.getByRole('link', { name: '/owner/login' }).click()
   await expect(page).toHaveURL(/\/owner\/login/)
   await expect(page.locator('[data-route-direction="fade"]')).toBeVisible()
+
+  expect(errors).not.toContainEqual(expect.stringContaining('Maximum update depth exceeded'))
+  expect(errors).not.toContainEqual(expect.stringContaining('React Router caught the following error'))
+  expect(errors).toEqual([])
 })
 
 test('auth: setas de voltar estao visiveis e retornam para home', async ({ page }) => {
@@ -317,12 +436,30 @@ test('owner dashboard: tabela sem corte lateral e acoes visiveis', async ({ page
   await expect(page.getByRole('heading', { name: 'Dashboard de produtos' })).toBeVisible()
   await expect(page.getByText('Acoes').first()).toBeVisible()
   await expect(page.getByTestId('owner-dashboard-table-scroll')).toBeVisible()
+  await expect(page.getByTestId('owner-dashboard-export-csv-button')).toBeVisible()
+  await expect(page.getByTestId('owner-dashboard-refresh-button')).toBeVisible()
 
   const hasGlobalOverflow = await page.evaluate(() => {
     const root = document.documentElement
     return root.scrollWidth - root.clientWidth > 1
   })
   expect(hasGlobalOverflow).toBeFalsy()
+})
+
+test('assist: dica inline aparece apenas na primeira visita da rota no browser', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('rodando.assist.rollout.v1', '0')
+  })
+
+  await page.goto('/catalog')
+  const firstHintTrigger = page.getByTestId('assist-hint-trigger-catalog-tip-filter')
+  await expect(firstHintTrigger).toBeVisible()
+
+  await page.goto('/cart')
+  await expect(page.getByTestId('cart-checkout-button')).toBeVisible()
+
+  await page.goto('/catalog')
+  await expect(page.getByTestId('assist-hint-trigger-catalog-tip-filter')).toHaveCount(0)
 })
 
 test('cleanup e2e: produtos criados em um teste nao persistem para o teste seguinte', async ({ request }) => {

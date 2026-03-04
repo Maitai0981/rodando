@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import { useLocation } from 'react-router-dom'
 import type { AssistChecklistState } from '../lib/api'
@@ -20,6 +20,7 @@ type AssistContextValue = {
   enabled: boolean
   activeRoute: AssistRouteDefinition | null
   activeRouteState: AssistRouteState
+  isRouteFirstVisit: (routeKey?: AssistRouteKey | string) => boolean
   checklistOpen: boolean
   setChecklistOpen: (open: boolean) => void
   completeStep: (stepId: string, routeKey?: AssistRouteKey | string) => void
@@ -33,6 +34,8 @@ type AssistContextValue = {
 const ASSIST_LOCAL_STATE_KEY = 'rodando.assist.local.v1'
 const ASSIST_UI_STATE_KEY = 'rodando.assist.ui.v1'
 const ASSIST_ROLLOUT_KEY = 'rodando.assist.rollout.v1'
+const ASSIST_FIRST_VISIT_KEY = 'rodando.assist.first-visit.browser.v1'
+let inMemoryFirstVisitRoutes: Record<string, boolean> = {}
 const EMPTY_ROUTE_STATE: AssistRouteState = {
   checklistState: {},
   dismissedTips: [],
@@ -44,6 +47,7 @@ const AssistContext = createContext<AssistContextValue>({
   enabled: false,
   activeRoute: null,
   activeRouteState: EMPTY_ROUTE_STATE,
+  isRouteFirstVisit: () => false,
   checklistOpen: true,
   setChecklistOpen: () => {},
   completeStep: () => {},
@@ -106,6 +110,35 @@ function writeChecklistOpen(open: boolean) {
   }
 }
 
+function readFirstVisitRoutes() {
+  if (typeof window === 'undefined') return { ...inMemoryFirstVisitRoutes }
+  try {
+    const raw = window.localStorage.getItem(ASSIST_FIRST_VISIT_KEY)
+    if (!raw) return { ...inMemoryFirstVisitRoutes }
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ...inMemoryFirstVisitRoutes }
+    const normalized: Record<string, boolean> = {}
+    for (const [routeKey, visited] of Object.entries(parsed)) {
+      if (!getAssistRouteByKey(routeKey)) continue
+      normalized[routeKey] = Boolean(visited)
+    }
+    inMemoryFirstVisitRoutes = { ...normalized }
+    return normalized
+  } catch {
+    return { ...inMemoryFirstVisitRoutes }
+  }
+}
+
+function writeFirstVisitRoutes(next: Record<string, boolean>) {
+  inMemoryFirstVisitRoutes = { ...next }
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(ASSIST_FIRST_VISIT_KEY, JSON.stringify(next))
+  } catch {
+    // noop
+  }
+}
+
 function sanitizeRouteState(value: unknown): AssistRouteState {
   const source = value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -142,6 +175,28 @@ function mergeRouteStates(base: AssistRouteState, patch: AssistRouteState): Assi
     overlaySeen: Boolean(base.overlaySeen || patch.overlaySeen),
     updatedAt: patch.updatedAt || base.updatedAt || null,
   }
+}
+
+function areRouteStatesEqual(a: AssistRouteState, b: AssistRouteState) {
+  if (a.overlaySeen !== b.overlaySeen) return false
+  if ((a.updatedAt || null) !== (b.updatedAt || null)) return false
+
+  const aChecklistKeys = Object.keys(a.checklistState)
+  const bChecklistKeys = Object.keys(b.checklistState)
+  if (aChecklistKeys.length !== bChecklistKeys.length) return false
+  for (const key of aChecklistKeys) {
+    if (Boolean(a.checklistState[key]) !== Boolean(b.checklistState[key])) {
+      return false
+    }
+  }
+
+  if (a.dismissedTips.length !== b.dismissedTips.length) return false
+  for (let index = 0; index < a.dismissedTips.length; index += 1) {
+    if (a.dismissedTips[index] !== b.dismissedTips[index]) {
+      return false
+    }
+  }
+  return true
 }
 
 function normalizeStateMap(raw: AssistStateMap): AssistStateMap {
@@ -199,9 +254,12 @@ export function AssistProvider({ children }: PropsWithChildren) {
   const { status, user } = useAuth()
   const [states, setStates] = useState<AssistStateMap>({})
   const [checklistOpen, setChecklistOpenState] = useState<boolean>(() => readChecklistOpen())
+  const firstVisitByRouteRef = useRef<Record<string, boolean>>(readFirstVisitRoutes())
+  const [firstVisitByRoute, setFirstVisitByRoute] = useState<Record<string, boolean>>(firstVisitByRouteRef.current)
+  const [activeRouteFirstVisit, setActiveRouteFirstVisit] = useState(false)
 
   const envEnabled = String(import.meta.env.VITE_ASSIST_ENABLED ?? '1') !== '0'
-  const rolloutPercent = 0
+  const rolloutPercent = Math.max(0, Math.min(100, Number(import.meta.env.VITE_ASSIST_ROLLOUT_PERCENT ?? '100')))
   const rolloutBucket = useMemo(() => resolveRolloutBucket(user?.id ?? null), [user?.id])
   const enabled = envEnabled && rolloutBucket < rolloutPercent
   const authenticated = status === 'authenticated' && Boolean(user?.id)
@@ -242,6 +300,23 @@ export function AssistProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     writeChecklistOpen(checklistOpen)
   }, [checklistOpen])
+
+  useEffect(() => {
+    if (!activeRoute?.key) {
+      setActiveRouteFirstVisit(false)
+      return
+    }
+
+    const routeKey = activeRoute.key
+    const seenBefore = Boolean(firstVisitByRouteRef.current[routeKey])
+    setActiveRouteFirstVisit(!seenBefore)
+    if (seenBefore) return
+
+    const next = { ...firstVisitByRouteRef.current, [routeKey]: true }
+    firstVisitByRouteRef.current = next
+    setFirstVisitByRoute(next)
+    writeFirstVisitRoutes(next)
+  }, [activeRoute?.key])
 
   const setChecklistOpen = useCallback((open: boolean) => {
     setChecklistOpenState(open)
@@ -300,6 +375,9 @@ export function AssistProvider({ children }: PropsWithChildren) {
       setStates((previous) => {
         const current = previous[routeKey] ? sanitizeRouteState(previous[routeKey]) : EMPTY_ROUTE_STATE
         const next = sanitizeRouteState(updater(current))
+        if (areRouteStatesEqual(next, current)) {
+          return previous
+        }
         const nextMap = { ...previous, [routeKey]: next }
         if (!authenticated) {
           writeLocalState(nextMap)
@@ -318,22 +396,28 @@ export function AssistProvider({ children }: PropsWithChildren) {
 
     const route = getAssistRouteByKey(key)
     if (!route || !route.checklist.some((step) => step.id === stepId)) return
+    let completedNow = false
+    let routeFinishedNow = false
 
-    persistRouteState(key, (current) => ({
-      ...current,
-      checklistState: { ...current.checklistState, [stepId]: true },
-      updatedAt: new Date().toISOString(),
-    }))
-    trackAssistEvent('assist_step_completed', { routeKey: key, stepId })
-
-    const routeCompleted = route.checklist.every((step) => {
-      if (step.id === stepId) return true
-      return Boolean(states[key]?.checklistState?.[step.id])
+    persistRouteState(key, (current) => {
+      if (current.checklistState[stepId]) {
+        return current
+      }
+      completedNow = true
+      const nextChecklistState = { ...current.checklistState, [stepId]: true }
+      routeFinishedNow = route.checklist.every((step) => Boolean(nextChecklistState[step.id]))
+      return {
+        ...current,
+        checklistState: nextChecklistState,
+        updatedAt: new Date().toISOString(),
+      }
     })
-    if (routeCompleted) {
+    if (!completedNow) return
+    trackAssistEvent('assist_step_completed', { routeKey: key, stepId })
+    if (routeFinishedNow) {
       trackAssistEvent('assist_checklist_finished', { routeKey: key })
     }
-  }, [activeRoute?.key, persistRouteState, states, trackAssistEvent])
+  }, [activeRoute?.key, persistRouteState, trackAssistEvent])
 
   const dismissTip = useCallback((tipId: string, routeKey?: AssistRouteKey | string) => {
     const key = String(routeKey || activeRoute?.key || '').trim()
@@ -362,6 +446,15 @@ export function AssistProvider({ children }: PropsWithChildren) {
     return Boolean(states[key]?.checklistState?.[stepId])
   }, [activeRoute?.key, states])
 
+  const isRouteFirstVisit = useCallback((routeKey?: AssistRouteKey | string) => {
+    const key = String(routeKey || activeRoute?.key || '').trim()
+    if (!key || !getAssistRouteByKey(key)) return false
+    if (activeRoute?.key === key) {
+      return activeRouteFirstVisit || !firstVisitByRoute[key]
+    }
+    return !firstVisitByRoute[key]
+  }, [activeRoute?.key, activeRouteFirstVisit, firstVisitByRoute])
+
   const resetAssist = useCallback(async () => {
     if (authenticated) {
       await api.resetAssistState()
@@ -378,6 +471,7 @@ export function AssistProvider({ children }: PropsWithChildren) {
     enabled,
     activeRoute,
     activeRouteState,
+    isRouteFirstVisit,
     checklistOpen,
     setChecklistOpen,
     completeStep,
@@ -390,6 +484,7 @@ export function AssistProvider({ children }: PropsWithChildren) {
     enabled,
     activeRoute,
     activeRouteState,
+    isRouteFirstVisit,
     checklistOpen,
     setChecklistOpen,
     completeStep,

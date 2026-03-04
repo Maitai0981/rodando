@@ -120,10 +120,83 @@ jobs:
         working-directory: frontend
         run: npm audit --audit-level=high
 
+  performance-report:
+    name: Performance report
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/rodando_perf
+      DB_RESET: 1
+      SEED_BASE_CATALOG: 1
+      SEED_DEMO_DATA: 1
+      OWNER_SEED_EMAIL: owner_test@rodando.local
+      OWNER_SEED_PASSWORD: 123456
+      OWNER_SEED_NAME: Owner Test
+      API_BASE: http://127.0.0.1:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Collect backend API perf
+        working-directory: backend
+        run: |
+          npm run start > perf-backend.out.log 2> perf-backend.err.log &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4000/api/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          if ! curl -fsS http://127.0.0.1:4000/api/health >/dev/null; then
+            echo "Backend did not become healthy in time"
+            cat perf-backend.err.log || true
+            exit 1
+          fi
+          npm run perf:api
+      - name: Collect frontend build perf
+        working-directory: frontend
+        run: |
+          npm run perf:build
+          npm run perf:bundle
+      - name: Build consolidated perf report
+        run: node scripts/perf-report.mjs
+      - name: Upload perf artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-artifacts
+          path: |
+            backend/perf
+            backend/perf-backend.out.log
+            backend/perf-backend.err.log
+            frontend/perf
+            docs/performance-pass-report.md
+          if-no-files-found: ignore
+
   quality-summary:
     name: Quality summary
     runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-quality, frontend-e2e, security-audit]
+    needs: [backend-tests, frontend-quality, frontend-e2e, security-audit, performance-report]
     if: always()
     steps:
       - name: Final gate
@@ -132,7 +205,9 @@ jobs:
           echo "frontend-quality=${{ needs.frontend-quality.result }}"
           echo "frontend-e2e=${{ needs.frontend-e2e.result }}"
           echo "security-audit=${{ needs.security-audit.result }}"
+          echo "performance-report=${{ needs.performance-report.result }}"
           test "${{ needs.backend-tests.result }}" = "success"
           test "${{ needs.frontend-quality.result }}" = "success"
           test "${{ needs.frontend-e2e.result }}" = "success"
           test "${{ needs.security-audit.result }}" = "success"
+          test "${{ needs.performance-report.result }}" = "success"

@@ -1,3 +1,4 @@
+import { ShoppingBagOutlinedIcon } from '@/ui/primitives/Icon'
 import { useEffect, useRef } from 'react'
 import type { PropsWithChildren } from 'react'
 import {
@@ -13,8 +14,6 @@ import {
   Toolbar,
   Typography
 } from '@mui/material'
-import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined'
-import { motion, useReducedMotion } from 'motion/react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
@@ -51,7 +50,6 @@ export default function PublicLayout({ children }: PropsWithChildren) {
   const visibleNavLinks = user?.role === 'owner'
     ? [...primaryNavLinks, { label: 'Painel', to: '/owner/dashboard' }]
     : primaryNavLinks
-  const reduceMotion = useReducedMotion()
   const jellyRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -119,16 +117,12 @@ export default function PublicLayout({ children }: PropsWithChildren) {
         <Box className="bg-stripe bg-stripe-blue" />
       </Box>
 
-      <motion.div
-        initial={reduceMotion ? false : { opacity: 0, y: -10 }}
-        animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      >
+      <Box sx={{ transition: 'opacity 260ms ease, transform 260ms ease' }}>
         <AppBar
           position="sticky"
           color="transparent"
           elevation={0}
-          className="glass-nav"
+         
           sx={{
             top: 0,
             left: 0,
@@ -430,7 +424,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                 }}
               >
                 <Badge badgeContent={itemCount} color="secondary" overlap="circular" max={99}>
-                  <ShoppingBagOutlinedIcon sx={{ fontSize: 22 }} />
+                  <ShoppingBagOutlinedIcon size="lg" />
                 </Badge>
               </IconButton>
             </Stack>
@@ -472,14 +466,10 @@ export default function PublicLayout({ children }: PropsWithChildren) {
             </Stack>
           </Box>
         </AppBar>
-      </motion.div>
+      </Box>
 
       <Box ref={jellyRef} className="jelly-scroll-layer">
-        <motion.div
-          initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
-        >
+        <Box sx={{ transition: 'opacity 260ms ease, transform 260ms ease' }}>
           <Box sx={{ pt: { xs: 0.05, md: 0.15 } }}>
             <Container
               maxWidth="xl"
@@ -506,7 +496,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
               <Box sx={{ position: 'relative', zIndex: 1 }}>{children}</Box>
             </Container>
           </Box>
-        </motion.div>
+        </Box>
 
         <Box
           aria-hidden
@@ -519,15 +509,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
           }}
         />
 
-        <motion.div
-          initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.08 }}
-          variants={{
-            hidden: { opacity: 0, y: 18 },
-            visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
-          }}
-        >
+        <Box sx={{ transition: 'opacity 260ms ease, transform 260ms ease' }}>
           <Box
             component="footer"
             sx={{
@@ -690,9 +672,8 @@ export default function PublicLayout({ children }: PropsWithChildren) {
               </Typography>
             </Container>
           </Box>
-        </motion.div>
+        </Box>
       </Box>
     </Box>
   )
 }
-

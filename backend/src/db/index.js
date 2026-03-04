@@ -2,6 +2,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 const crypto = require('node:crypto')
 const { Pool } = require('pg')
+const { recordQuery } = require('../perf/metrics')
+const logger = require('../perf/logger')
 
 const DEFAULT_DATABASE_URL = 'postgres://postgres:postgres@127.0.0.1:5432/rodando'
 const connectionString = process.env.DATABASE_URL || DEFAULT_DATABASE_URL
@@ -15,6 +17,11 @@ const schemaSql = fs.readFileSync(schemaPath, 'utf8')
 const pool = new Pool({
   connectionString,
   max: Number(process.env.DB_POOL_MAX || 12),
+  idleTimeoutMillis: Number(process.env.DB_POOL_IDLE_TIMEOUT_MS || 30_000),
+  connectionTimeoutMillis: Number(process.env.DB_POOL_CONNECTION_TIMEOUT_MS || 5_000),
+  maxUses: Number(process.env.DB_POOL_MAX_USES || 7_500),
+  statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS || 8_000),
+  query_timeout: Number(process.env.DB_QUERY_TIMEOUT_MS || 8_000),
 })
 
 let initPromise = null
@@ -76,7 +83,36 @@ function escapeIdent(identifier) {
 }
 
 async function query(text, params = []) {
-  return pool.query(text, params)
+  const startedAt = process.hrtime.bigint()
+  try {
+    const result = await pool.query(text, params)
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000
+    recordQuery(durationMs)
+    const slowThreshold = Number(process.env.DB_SLOW_QUERY_MS || 250)
+    if (durationMs >= slowThreshold) {
+      logger.warn('db_slow_query', {
+        durationMs: Number(durationMs.toFixed(2)),
+        rowCount: Number(result?.rowCount || 0),
+        preview: String(typeof text === 'string' ? text : text?.text || '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 240),
+      })
+    }
+    return result
+  } catch (error) {
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000
+    recordQuery(durationMs)
+    logger.error('db_query_error', {
+      durationMs: Number(durationMs.toFixed(2)),
+      preview: String(typeof text === 'string' ? text : text?.text || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 240),
+      error,
+    })
+    throw error
+  }
 }
 
 async function queryOne(text, params = []) {
@@ -420,7 +456,7 @@ async function resetNonUserData({ reseedBase = true } = {}) {
   }
 }
 
-function isDemoUserEmail(email) {
+function isTestUserEmail(email) {
   const safeEmail = String(email || '').trim().toLowerCase()
   if (!safeEmail) return false
 
@@ -430,6 +466,31 @@ function isDemoUserEmail(email) {
   if (safeEmail.endsWith('@rodando.local') && safeEmail.startsWith('customer_e2e_')) return true
   if (safeEmail.endsWith('@rodando.local') && safeEmail.includes('_e2e_')) return true
   return false
+}
+
+function isDemoUserEmail(email) {
+  return isTestUserEmail(email)
+}
+
+async function purgeTestComments() {
+  return withTransaction(async (tx) => {
+    const rows = await tx.query(
+      `SELECT DISTINCT u.id, u.email
+       FROM users u
+       JOIN reviews r ON r.user_id = u.id`,
+    )
+    let removed = 0
+
+    for (const row of rows.rows) {
+      const userId = Number(row.id)
+      if (!Number.isInteger(userId) || userId <= 0) continue
+      if (!isTestUserEmail(row.email)) continue
+      const deleted = await tx.query('DELETE FROM reviews WHERE user_id = $1', [userId])
+      removed += Number(deleted.rowCount || 0)
+    }
+
+    return { removed }
+  })
 }
 
 async function purgeDemoUsers() {
@@ -497,6 +558,8 @@ module.exports = {
   reseedBaseCatalog,
   resetNonUserData,
   purgeDemoUsers,
+  purgeTestComments,
+  isTestUserEmail,
   cleanRealData,
   collectOperationalCounts,
   closePool,

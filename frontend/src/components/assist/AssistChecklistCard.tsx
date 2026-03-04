@@ -1,8 +1,4 @@
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
-import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded'
-import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
-import RadioButtonUncheckedRoundedIcon from '@mui/icons-material/RadioButtonUncheckedRounded'
-import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
+import { CheckCircleRoundedIcon, ExpandLessRoundedIcon, ExpandMoreRoundedIcon, RadioButtonUncheckedRoundedIcon, ReplayRoundedIcon } from '@/ui/primitives/Icon'
 import {
   Badge,
   Box,
@@ -76,7 +72,7 @@ export function AssistChecklistCard() {
               aria-label={checklistOpen ? 'Recolher checklist assistida' : 'Expandir checklist assistida'}
               onClick={() => setChecklistOpen(!checklistOpen)}
             >
-              {checklistOpen ? <ExpandMoreRoundedIcon fontSize="small" /> : <ExpandLessRoundedIcon fontSize="small" />}
+              {checklistOpen ? <ExpandLessRoundedIcon size="sm" /> : <ExpandMoreRoundedIcon size="sm" />}
             </IconButton>
             <IconButton
               size="small"
@@ -85,7 +81,7 @@ export function AssistChecklistCard() {
                 void resetAssist()
               }}
             >
-              <ReplayRoundedIcon fontSize="small" />
+              <ReplayRoundedIcon size="sm" />
             </IconButton>
           </Stack>
         </Stack>
@@ -122,9 +118,9 @@ export function AssistChecklistCard() {
                   }}
                 >
                   {done ? (
-                    <CheckCircleRoundedIcon color="success" sx={{ fontSize: 18 }} />
+                    <CheckCircleRoundedIcon tone="success" size="md" />
                   ) : (
-                    <RadioButtonUncheckedRoundedIcon color="disabled" sx={{ fontSize: 18 }} />
+                    <RadioButtonUncheckedRoundedIcon tone="muted" size="md" />
                   )}
                   <Typography variant="body2" sx={{ flex: 1 }}>
                     {step.label}
@@ -133,7 +129,7 @@ export function AssistChecklistCard() {
               )
             })}
             {allDone ? (
-              <Chip color="success" label="Checklist concluída" size="small" icon={<CheckCircleRoundedIcon />} />
+              <Chip color="success" label="Checklist concluída" size="small" icon={<CheckCircleRoundedIcon size="sm" />} />
             ) : null}
           </Stack>
         ) : null}

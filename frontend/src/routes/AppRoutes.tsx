@@ -2,28 +2,52 @@ import { Route, Routes } from 'react-router-dom'
 import { lazy } from 'react'
 import { OwnerRoute } from './guards/OwnerRoute'
 
-const HomePage = lazy(() => import('../pages/HomePage'))
-const CatalogPage = lazy(() => import('../pages/CatalogPage'))
-const CartPage = lazy(() => import('../pages/CartPage'))
-const SignInPage = lazy(() => import('../pages/SignInPage'))
-const SignUpPage = lazy(() => import('../pages/SignUpPage'))
-const AccountProfilePage = lazy(() => import('../pages/AccountProfilePage'))
-const OrdersPage = lazy(() => import('../pages/OrdersPage'))
-const OrderDetailsPage = lazy(() => import('../pages/OrderDetailsPage'))
-const OwnerSignInPage = lazy(() => import('../pages/OwnerSignInPage'))
-const OwnerGatePage = lazy(() => import('../pages/OwnerGatePage'))
-const OwnerDashboardPage = lazy(() => import('../pages/OwnerDashboardPage'))
-const OwnerProductsPage = lazy(() => import('../pages/OwnerProductsPage'))
-const OwnerProductFormPage = lazy(() => import('../pages/OwnerProductFormPage'))
-const OwnerSettingsPage = lazy(() => import('../pages/OwnerSettingsPage'))
-const OwnerOrdersPage = lazy(() => import('../pages/OwnerOrdersPage'))
+export const routeImporters = {
+  home: () => import('../pages/HomePage'),
+  catalog: () => import('../pages/CatalogPage'),
+  productDetails: () => import('../pages/ProductDetailsPage'),
+  cart: () => import('../pages/CartPage'),
+  checkout: () => import('../pages/CheckoutPage'),
+  signIn: () => import('../pages/SignInPage'),
+  signUp: () => import('../pages/SignUpPage'),
+  accountProfile: () => import('../pages/AccountProfilePage'),
+  orders: () => import('../pages/OrdersPage'),
+  orderDetails: () => import('../pages/OrderDetailsPage'),
+  ownerSignIn: () => import('../pages/OwnerSignInPage'),
+  ownerGate: () => import('../pages/OwnerGatePage'),
+  ownerDashboard: () => import('../pages/OwnerDashboardPage'),
+  ownerProducts: () => import('../pages/OwnerProductsPage'),
+  ownerProductForm: () => import('../pages/OwnerProductFormPage'),
+  ownerSettings: () => import('../pages/OwnerSettingsPage'),
+  ownerOrders: () => import('../pages/OwnerOrdersPage'),
+} as const
+
+const HomePage = lazy(routeImporters.home)
+const CatalogPage = lazy(routeImporters.catalog)
+const ProductDetailsPage = lazy(routeImporters.productDetails)
+const CartPage = lazy(routeImporters.cart)
+const CheckoutPage = lazy(routeImporters.checkout)
+const SignInPage = lazy(routeImporters.signIn)
+const SignUpPage = lazy(routeImporters.signUp)
+const AccountProfilePage = lazy(routeImporters.accountProfile)
+const OrdersPage = lazy(routeImporters.orders)
+const OrderDetailsPage = lazy(routeImporters.orderDetails)
+const OwnerSignInPage = lazy(routeImporters.ownerSignIn)
+const OwnerGatePage = lazy(routeImporters.ownerGate)
+const OwnerDashboardPage = lazy(routeImporters.ownerDashboard)
+const OwnerProductsPage = lazy(routeImporters.ownerProducts)
+const OwnerProductFormPage = lazy(routeImporters.ownerProductForm)
+const OwnerSettingsPage = lazy(routeImporters.ownerSettings)
+const OwnerOrdersPage = lazy(routeImporters.ownerOrders)
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/catalog" element={<CatalogPage />} />
+      <Route path="/produto/:idSlug" element={<ProductDetailsPage />} />
       <Route path="/cart" element={<CartPage />} />
+      <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/auth" element={<SignInPage />} />
       <Route path="/auth/signup" element={<SignUpPage />} />
       <Route path="/account/profile" element={<AccountProfilePage />} />

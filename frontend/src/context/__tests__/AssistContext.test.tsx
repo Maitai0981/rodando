@@ -15,12 +15,18 @@ vi.mock('../AuthContext', () => ({
 }))
 
 function Harness() {
-  const { completeStep, isStepCompleted } = useAssist()
+  const { completeStep, isStepCompleted, isRouteFirstVisit } = useAssist()
   return (
     <>
       <button type="button" onClick={() => completeStep('open-catalog', 'home')}>
         complete-home-step
       </button>
+      <p data-testid="assist-first-visit-home">
+        {isRouteFirstVisit('home') ? 'first-visit' : 'visited'}
+      </p>
+      <p data-testid="assist-first-visit-catalog">
+        {isRouteFirstVisit('catalog') ? 'first-visit' : 'visited'}
+      </p>
       <p data-testid="assist-step-state">
         {isStepCompleted('open-catalog', 'home') ? 'done' : 'pending'}
       </p>
@@ -44,6 +50,7 @@ describe('AssistContext', () => {
     window.localStorage.removeItem('rodando.assist.local.v1')
     window.localStorage.removeItem('rodando.assist.ui.v1')
     window.localStorage.removeItem('rodando.assist.rollout.v1')
+    window.localStorage.removeItem('rodando.assist.first-visit.browser.v1')
   })
 
   it('persiste progresso no localStorage para visitante anonimo', async () => {
@@ -101,5 +108,19 @@ describe('AssistContext', () => {
       }),
     )
     expect(window.localStorage.getItem('rodando.assist.local.v1')).toBeNull()
+  })
+
+  it('marca rota como visitada no navegador e nao repete primeira visita', async () => {
+    const firstRender = renderWithAssist(<Harness />, '/catalog')
+    expect(screen.getByTestId('assist-first-visit-catalog')).toHaveTextContent('first-visit')
+
+    const firstVisitState = JSON.parse(window.localStorage.getItem('rodando.assist.first-visit.browser.v1') || '{}')
+    expect(firstVisitState.catalog).toBe(true)
+
+    firstRender.unmount()
+    renderWithAssist(<Harness />, '/catalog')
+    await waitFor(() => {
+      expect(screen.getByTestId('assist-first-visit-catalog')).toHaveTextContent('visited')
+    })
   })
 })

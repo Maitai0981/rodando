@@ -2,16 +2,13 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Alert, Box, Button, Link, TextField, Typography, InputAdornment, IconButton } from '@mui/material'
-import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import VisibilityIcon from '@mui/icons-material/Visibility'
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 import AuthSplitLayout from '../components/auth/AuthSplitLayout'
 import { useAuth } from '../context/AuthContext'
 import { useAssist } from '../context/AssistContext'
 import { ApiError } from '../lib/api'
 import { isStrongPassword, isValidEmail } from '../lib'
 import { AssistHintInline } from '../components/assist'
+import { EmailOutlinedIcon, LockOutlinedIcon, VisibilityIcon, VisibilityOffIcon } from '@/ui/primitives/Icon'
 
 interface FormErrors {
   email?: string
@@ -89,7 +86,7 @@ export default function OwnerSignInPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <EmailOutlinedIcon color="action" />
+                    <EmailOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
               }}
@@ -111,7 +108,7 @@ export default function OwnerSignInPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <LockOutlinedIcon color="action" />
+                    <LockOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
                 endAdornment: (
@@ -121,7 +118,7 @@ export default function OwnerSignInPage() {
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
                     >
-                      {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      {showPassword ? <VisibilityOffIcon tone="muted" size="md" /> : <VisibilityIcon tone="muted" size="md" />}
                     </IconButton>
                   </InputAdornment>
                 ),

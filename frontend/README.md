@@ -1,5 +1,15 @@
 # React + TypeScript + Vite
 
+## Performance scripts
+
+- `npm run perf:build`: executa build completo e gera `frontend/perf/frontend-build.json`.
+- `npm run perf:bundle`: analisa `dist/assets` e gera `frontend/perf/frontend-bundle.json` com totais e top chunks.
+
+## Build notes
+
+- O frontend não depende mais de `tailwind/postcss` nesta base.
+- O chunking do Vite está configurado para separar `react`, `mui`, `react-query` e `motion/lucide`.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

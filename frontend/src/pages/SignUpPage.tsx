@@ -1,3 +1,4 @@
+import { EmailOutlinedIcon, FlagOutlinedIcon, HomeOutlinedIcon, LocationCityOutlinedIcon, LockOutlinedIcon, PersonOutlinedIcon, PinDropOutlinedIcon, VisibilityIcon, VisibilityOffIcon } from '@/ui/primitives/Icon'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
@@ -12,15 +13,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
-import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import VisibilityIcon from '@mui/icons-material/Visibility'
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
-import PinDropOutlinedIcon from '@mui/icons-material/PinDropOutlined'
-import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
-import LocationCityOutlinedIcon from '@mui/icons-material/LocationCityOutlined'
-import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined'
 import AuthSplitLayout from '../components/auth/AuthSplitLayout'
 import { useAuth } from '../context/AuthContext'
 import { useAssist } from '../context/AssistContext'
@@ -204,7 +196,7 @@ export default function SignUpPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <PersonOutlinedIcon color="action" />
+                    <PersonOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
               }}
@@ -227,7 +219,7 @@ export default function SignUpPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <EmailOutlinedIcon color="action" />
+                    <EmailOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
               }}
@@ -250,7 +242,7 @@ export default function SignUpPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <LockOutlinedIcon color="action" />
+                    <LockOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
                 endAdornment: (
@@ -260,7 +252,7 @@ export default function SignUpPage() {
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
                     >
-                      {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      {showPassword ? <VisibilityOffIcon tone="muted" size="md" /> : <VisibilityIcon tone="muted" size="md" />}
                     </IconButton>
                   </InputAdornment>
                 ),
@@ -293,7 +285,7 @@ export default function SignUpPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <PinDropOutlinedIcon color="action" />
+                    <PinDropOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
                 endAdornment: cepLoading ? (
@@ -315,7 +307,7 @@ export default function SignUpPage() {
                 readOnly: true,
                 startAdornment: (
                   <InputAdornment position="start">
-                    <HomeOutlinedIcon color="action" />
+                    <HomeOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
               }}
@@ -331,7 +323,7 @@ export default function SignUpPage() {
                 readOnly: true,
                 startAdornment: (
                   <InputAdornment position="start">
-                    <LocationCityOutlinedIcon color="action" />
+                    <LocationCityOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
               }}
@@ -347,7 +339,7 @@ export default function SignUpPage() {
                 readOnly: true,
                 startAdornment: (
                   <InputAdornment position="start">
-                    <FlagOutlinedIcon color="action" />
+                    <FlagOutlinedIcon tone="muted" size="md" />
                   </InputAdornment>
                 ),
               }}

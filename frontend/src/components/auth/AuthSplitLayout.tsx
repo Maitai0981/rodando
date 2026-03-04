@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
-import { Box, Grid, IconButton, Paper, Stack, Typography } from '@mui/material'
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
+import { Box, Grid, IconButton, Paper, Stack, Typography, useMediaQuery } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
-import { motion, useReducedMotion } from 'motion/react'
+import { ArrowBackRoundedIcon } from '@/ui/primitives/Icon'
 
 type AuthSplitLayoutProps = {
   eyebrow: string
@@ -36,7 +35,7 @@ export default function AuthSplitLayout(props: AuthSplitLayoutProps) {
     informativePaneVariant = 'amber',
     informativeTextTone = 'dark',
   } = props
-  const reduceMotion = useReducedMotion()
+  const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const isAmberPane = informativePaneVariant === 'amber'
   const informativeBackgroundDesktop =
     heroBackground || (isAmberPane ? 'linear-gradient(180deg, #FFF6DA 0%, #FFF1CC 100%)' : '#F3F4F6')
@@ -53,10 +52,6 @@ export default function AuthSplitLayout(props: AuthSplitLayoutProps) {
     <Box sx={{ minHeight: '100vh', bgcolor: '#F7F5EE' }}>
       <Grid
         container
-        component={motion.div}
-        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-        animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         sx={{ minHeight: '100vh', bgcolor: '#F7F5EE' }}
       >
         <Grid
@@ -73,10 +68,12 @@ export default function AuthSplitLayout(props: AuthSplitLayoutProps) {
             borderRight: { md: `1px solid ${informativeBorderColor}` },
           }}
         >
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, x: -14 }}
-            animate={reduceMotion ? undefined : { opacity: 1, x: 0 }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
+          <Box
+            sx={{
+              opacity: 1,
+              transform: 'translateX(0)',
+              transition: reduceMotion ? 'none' : 'transform 320ms ease, opacity 320ms ease',
+            }}
           >
             <Stack spacing={{ xs: 1.5, md: 2.25 }} sx={{ maxWidth: 460 }}>
               <Typography variant="caption" sx={{ color: informativeSecondaryColor, letterSpacing: '0.12em' }}>
@@ -84,18 +81,15 @@ export default function AuthSplitLayout(props: AuthSplitLayoutProps) {
               </Typography>
               <Typography
                 component="h1"
-                variant="h2"
+                variant="h1"
                 sx={{
                   color: informativeTextColor,
-                  letterSpacing: '-0.03em',
                   maxWidth: 420,
-                  fontSize: { xs: 'clamp(1.85rem, 8.4vw, 2.45rem)', md: 'inherit' },
-                  lineHeight: { xs: 1.05, md: 1.1 },
                 }}
               >
                 {heroDescription}
               </Typography>
-              <Typography variant="body2" sx={{ color: informativeSecondaryColor, maxWidth: 420, fontSize: { xs: '0.95rem', md: '0.96rem' } }}>
+              <Typography variant="body1" sx={{ color: informativeSecondaryColor, maxWidth: 420 }}>
                 {description}
               </Typography>
               <Box
@@ -114,7 +108,7 @@ export default function AuthSplitLayout(props: AuthSplitLayoutProps) {
                 </Typography>
               </Box>
             </Stack>
-          </motion.div>
+          </Box>
         </Grid>
 
         <Grid
@@ -127,11 +121,14 @@ export default function AuthSplitLayout(props: AuthSplitLayoutProps) {
             background: '#F7F5EE',
           }}
         >
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, x: 14 }}
-            animate={reduceMotion ? undefined : { opacity: 1, x: 0 }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
-            style={{ width: '100%', maxWidth: 430 }}
+          <Box
+            sx={{
+              width: '100%',
+              maxWidth: 430,
+              opacity: 1,
+              transform: 'translateX(0)',
+              transition: reduceMotion ? 'none' : 'transform 320ms ease, opacity 320ms ease',
+            }}
           >
             <Paper
               elevation={0}
@@ -162,21 +159,21 @@ export default function AuthSplitLayout(props: AuthSplitLayoutProps) {
                     },
                   }}
                 >
-                  <ArrowBackRoundedIcon />
+                  <ArrowBackRoundedIcon size="md" />
                 </IconButton>
               ) : null}
               <Typography variant="caption" color="primary" sx={{ letterSpacing: '0.12em' }} gutterBottom>
                 {eyebrow}
               </Typography>
-              <Typography component="h2" variant="h4" gutterBottom sx={{ letterSpacing: '-0.03em' }}>
+              <Typography component="h2" variant="h3" gutterBottom>
                 {title}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
                 {description}
               </Typography>
               {form}
             </Paper>
-          </motion.div>
+          </Box>
         </Grid>
       </Grid>
     </Box>

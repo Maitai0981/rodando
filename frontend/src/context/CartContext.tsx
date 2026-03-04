@@ -1,4 +1,4 @@
-import { createContext, startTransition, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import { api, ApiError, type BagItem, type Product } from '../lib/api'
 import { useAuth } from './AuthContext'
@@ -103,33 +103,39 @@ export function CartProvider({ children }: PropsWithChildren) {
     void refresh()
   }, [refresh])
 
-  async function addProduct(product: Product, quantity = 1) {
+  const addProduct = useCallback(async (product: Product, quantity = 1) => {
     const nextQuantity = Math.max(1, Math.min(quantity, Number(product.stock || 0)))
     if (nextQuantity <= 0) return
 
     const result = await api.addBagItem({ productId: product.id, quantity: nextQuantity })
     startTransition(() => setItems(result.items))
-  }
+  }, [])
 
-  async function updateQty(productId: number, quantity: number) {
+  const updateQty = useCallback(async (productId: number, quantity: number) => {
     const result = await api.updateBagItem(productId, quantity)
     startTransition(() => setItems(result.items))
-  }
+  }, [])
 
-  async function removeItem(productId: number) {
+  const removeItem = useCallback(async (productId: number) => {
     await api.removeBagItem(productId)
     startTransition(() => setItems((prev) => prev.filter((item) => item.productId !== productId)))
-  }
+  }, [])
 
-  async function clear() {
+  const clear = useCallback(async () => {
     await api.clearBag()
     startTransition(() => setItems([]))
-  }
+  }, [])
 
-  const itemCount = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
-  const total = items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+  const itemCount = useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+    [items],
+  )
+  const total = useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0),
+    [items],
+  )
 
-  const value: CartContextValue = {
+  const value = useMemo<CartContextValue>(() => ({
     items,
     itemCount,
     total,
@@ -139,7 +145,7 @@ export function CartProvider({ children }: PropsWithChildren) {
     removeItem,
     clear,
     refresh,
-  }
+  }), [addProduct, clear, itemCount, items, loading, refresh, removeItem, total, updateQty])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }

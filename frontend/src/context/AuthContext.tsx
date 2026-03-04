@@ -1,4 +1,4 @@
-import { createContext, startTransition, useContext, useEffect, useState } from 'react'
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import { api, ApiError, type AuthUser } from '../lib/api'
 
@@ -31,23 +31,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [status, setStatus] = useState<AuthStatus>('loading')
 
-  useEffect(() => {
-    let active = true
-
-    void refresh().finally(() => {
-      if (!active) return
-    })
-
-    return () => {
-      active = false
-    }
-  }, [])
-
-  async function refreshSession(): Promise<AuthUser | null> {
-    return refresh()
-  }
-
-  async function refresh(): Promise<AuthUser | null> {
+  const refresh = useCallback(async (): Promise<AuthUser | null> => {
     try {
       const result = await api.me()
       if (!result.user) {
@@ -76,55 +60,71 @@ export function AuthProvider({ children }: PropsWithChildren) {
       })
       return null
     }
-  }
+  }, [])
 
-  async function signIn(payload: SignInPayload): Promise<AuthUser> {
+  useEffect(() => {
+    let active = true
+
+    void refresh().finally(() => {
+      if (!active) return
+    })
+
+    return () => {
+      active = false
+    }
+  }, [refresh])
+
+  const refreshSession = useCallback(async (): Promise<AuthUser | null> => {
+    return refresh()
+  }, [refresh])
+
+  const signIn = useCallback(async (payload: SignInPayload): Promise<AuthUser> => {
     const result = await api.signIn(payload)
     startTransition(() => {
       setUser(result.user)
       setStatus('authenticated')
     })
     return result.user
-  }
+  }, [])
 
-  async function signUp(payload: SignUpPayload): Promise<AuthUser> {
+  const signUp = useCallback(async (payload: SignUpPayload): Promise<AuthUser> => {
     const result = await api.signUp(payload)
     startTransition(() => {
       setUser(result.user)
       setStatus('authenticated')
     })
     return result.user
-  }
+  }, [])
 
-  async function signInOwner(payload: SignInPayload): Promise<AuthUser> {
+  const signInOwner = useCallback(async (payload: SignInPayload): Promise<AuthUser> => {
     const result = await api.ownerSignIn(payload)
     startTransition(() => {
       setUser(result.user)
       setStatus('authenticated')
     })
     return result.user
-  }
+  }, [])
 
-  async function logout(): Promise<void> {
+  const logout = useCallback(async (): Promise<void> => {
     await api.logout()
     startTransition(() => {
       setUser(null)
       setStatus('anonymous')
     })
-  }
+  }, [])
+
+  const value = useMemo<AuthContextValue>(() => ({
+    user,
+    status,
+    refreshSession,
+    signIn,
+    signInOwner,
+    signUp,
+    logout,
+  }), [logout, refreshSession, signIn, signInOwner, signUp, status, user])
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        status,
-        refreshSession,
-        signIn,
-        signInOwner,
-        signUp,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )

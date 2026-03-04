@@ -3,6 +3,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const crypto = require('node:crypto')
 const express = require('express')
+const compression = require('compression')
 const cookieParser = require('cookie-parser')
 const multer = require('multer')
 const {
@@ -11,6 +12,7 @@ const {
   ensureSeedOwner,
   initializeDatabase,
   nowIso,
+  pool,
   purgeDemoUsers,
   query,
   queryOne,
@@ -29,6 +31,16 @@ const {
   setSessionCookie,
   verifyPassword,
 } = require('./auth')
+const logger = require('./perf/logger')
+const { snapshot } = require('./perf/metrics')
+const {
+  attachRequestTelemetry,
+  cacheKeyFromRequest,
+  cacheJsonResponse,
+  tryServeCachedJson,
+  invalidatePublicCache,
+  PUBLIC_CACHE_CONTROL,
+} = require('./perf/http')
 
 const PORT = Number(process.env.PORT || 4000)
 const FREE_SHIPPING_TARGET = 199
@@ -49,6 +61,16 @@ const ALERT_WHATSAPP_WEBHOOK_URL = String(process.env.ALERT_WHATSAPP_WEBHOOK_URL
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads')
 const UPLOAD_MAX_BYTES = Number(process.env.UPLOAD_MAX_BYTES || 6 * 1024 * 1024)
 const IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'])
+const PUBLIC_CACHE_PREFIXES = ['products:', 'product-details:', 'offers:', 'comments:', 'catalog:']
+const PRODUCT_MUTATION_CACHE_PREFIXES = ['products:', 'product-details:', 'offers:', 'catalog:']
+const PUBLIC_COMMENT_AUTHOR_FILTER_SQL = `
+  NOT (
+    lower(u.email) = 'cliente_demo@rodando.local'
+    OR lower(u.email) = 'owner_e2e@rodando.local'
+    OR lower(u.email) LIKE 'auth_ui_%@rodando.local'
+    OR lower(u.email) LIKE 'customer_e2e_%@rodando.local'
+    OR lower(u.email) LIKE '%_e2e_%@rodando.local'
+  )`
 
 const allowedOrigins = new Set(
   String(process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4175,http://127.0.0.1:4175')
@@ -83,6 +105,8 @@ const ownerImageUpload = multer({
 
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
+app.use(compression({ threshold: 1024 }))
+app.use(attachRequestTelemetry)
 app.use('/uploads', express.static(UPLOADS_DIR, { etag: true, maxAge: '7d', index: false }))
 app.use(async (_req, _res, next) => {
   try {
@@ -94,8 +118,19 @@ app.use(async (_req, _res, next) => {
 })
 app.use(attachAuth)
 
-app.use((_req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store')
+app.use((req, res, next) => {
+  const isPublicReadRequest = req.method === 'GET' && (
+    req.path === '/api/health'
+    || req.path === '/api/metrics'
+    || req.path.startsWith('/api/products')
+    || req.path.startsWith('/api/offers')
+    || req.path.startsWith('/api/comments')
+    || req.path.startsWith('/api/catalog/')
+  )
+
+  if (!isPublicReadRequest) {
+    res.setHeader('Cache-Control', 'no-store')
+  }
   next()
 })
 
@@ -115,9 +150,40 @@ app.use((req, res, next) => {
   return next()
 })
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: nowIso() })
+app.get('/api/health', async (_req, res) => {
+  let database = { status: 'ok' }
+  try {
+    await queryOne('SELECT 1 AS ok')
+  } catch {
+    database = { status: 'degraded' }
+  }
+
+  res.setHeader('Cache-Control', 'no-store')
+  res.json({
+    status: database.status === 'ok' ? 'ok' : 'degraded',
+    timestamp: nowIso(),
+    database,
+    pool: {
+      total: Number(pool.totalCount || 0),
+      idle: Number(pool.idleCount || 0),
+      waiting: Number(pool.waitingCount || 0),
+    },
+  })
 })
+
+app.get('/api/metrics', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store')
+  return res.json({
+    status: 'ok',
+    generatedAt: nowIso(),
+    cachePolicyPublicRead: PUBLIC_CACHE_CONTROL,
+    ...snapshot(),
+  })
+})
+
+function invalidateStorefrontCache(prefixes = PUBLIC_CACHE_PREFIXES) {
+  return invalidatePublicCache(prefixes)
+}
 
 app.post('/api/test/reset-non-user', async (req, res) => {
   const isResetEnabled = String(process.env.E2E_ALLOW_RESET || '0') === '1'
@@ -1219,7 +1285,10 @@ app.post('/api/payments/webhooks/mercadopago', async (req, res) => {
   return res.status(200).json({ ok: true })
 })
 
-app.get('/api/offers', async (_req, res) => {
+app.get('/api/offers', async (req, res) => {
+  const cacheKey = cacheKeyFromRequest(req, 'offers')
+  if (tryServeCachedJson(req, res, cacheKey)) return
+
   const now = nowIso()
   const rows = await query(
     `${productOfferSelectSql()}
@@ -1231,7 +1300,9 @@ app.get('/api/offers', async (_req, res) => {
      LIMIT 24`,
     [now],
   )
-  res.json({ items: rows.rows.map(mapOfferRow) })
+  const payload = { items: rows.rows.map(mapOfferRow) }
+  cacheJsonResponse(res, cacheKey, payload)
+  res.json(payload)
 })
 
 app.get('/api/owner/offers', requireOwner, async (_req, res) => {
@@ -1277,6 +1348,7 @@ app.post('/api/owner/offers', requireOwner, async (req, res) => {
         endsAt: parsed.value.endsAt,
       },
     })
+    invalidateStorefrontCache(PUBLIC_CACHE_PREFIXES)
     return res.status(201).json({ item })
   } catch (error) {
     if (String(error?.message || '').toLowerCase().includes('duplicate')) {
@@ -1326,6 +1398,7 @@ app.put('/api/owner/offers/:id', requireOwner, async (req, res) => {
       before: current,
       after: item,
     })
+    invalidateStorefrontCache(PUBLIC_CACHE_PREFIXES)
     return res.json({ item })
   } catch (error) {
     if (String(error?.message || '').toLowerCase().includes('duplicate')) {
@@ -1349,6 +1422,7 @@ app.delete('/api/owner/offers/:id', requireOwner, async (req, res) => {
     before: current,
     after: {},
   })
+  invalidateStorefrontCache(PUBLIC_CACHE_PREFIXES)
   return res.status(204).send()
 })
 
@@ -1766,9 +1840,12 @@ app.get('/api/owner/analytics/orders', requireOwner, async (req, res) => {
 })
 
 app.get('/api/comments', async (req, res) => {
+  const cacheKey = cacheKeyFromRequest(req, 'comments')
+  if (tryServeCachedJson(req, res, cacheKey)) return
+
   const limit = parsePositiveInt(req.query.limit, 12, 1, 50)
   const productId = parseOptionalPositiveInt(req.query.productId)
-  const where = ['r.is_public = TRUE']
+  const where = ['r.is_public = TRUE', PUBLIC_COMMENT_AUTHOR_FILTER_SQL]
   const params = []
   if (productId !== null) {
     params.push(productId)
@@ -1807,8 +1884,10 @@ app.get('/api/comments', async (req, res) => {
     query(itemsSql, params),
     queryOne(
       `SELECT COUNT(*)::int AS "totalReviews", COALESCE(AVG(rating), 0)::numeric(10,2) AS "averageRating"
-       FROM reviews
-       WHERE is_public = TRUE`,
+       FROM reviews r
+       JOIN users u ON u.id = r.user_id
+       WHERE r.is_public = TRUE
+         AND ${PUBLIC_COMMENT_AUTHOR_FILTER_SQL}`,
     ),
   ])
 
@@ -1816,8 +1895,11 @@ app.get('/api/comments', async (req, res) => {
   if (productId !== null) {
     const row = await queryOne(
       `SELECT COUNT(*)::int AS "totalReviews", COALESCE(AVG(rating), 0)::numeric(10,2) AS "averageRating"
-       FROM reviews
-       WHERE is_public = TRUE AND product_id = $1`,
+       FROM reviews r
+       JOIN users u ON u.id = r.user_id
+       WHERE r.is_public = TRUE
+         AND r.product_id = $1
+         AND ${PUBLIC_COMMENT_AUTHOR_FILTER_SQL}`,
       [productId],
     )
     summaryByProduct = {
@@ -1826,7 +1908,7 @@ app.get('/api/comments', async (req, res) => {
     }
   }
 
-  res.json({
+  const payload = {
     items: itemsResult.rows.map((row) => ({
       id: Number(row.id),
       userId: Number(row.userId),
@@ -1844,7 +1926,9 @@ app.get('/api/comments', async (req, res) => {
       averageRating: Number(Number(summary?.averageRating || 0).toFixed(1)),
     },
     summaryByProduct,
-  })
+  }
+  cacheJsonResponse(res, cacheKey, payload)
+  res.json(payload)
 })
 
 app.post('/api/comments', requireAuth, async (req, res) => {
@@ -1907,7 +1991,7 @@ app.post('/api/comments', requireAuth, async (req, res) => {
     [Number(upserted.id)],
   )
 
-  res.status(201).json({
+  const payload = {
     item: {
       id: Number(item.id),
       userId: Number(item.userId),
@@ -1920,29 +2004,62 @@ app.post('/api/comments', requireAuth, async (req, res) => {
       productName: item.productName,
       productImageUrl: item.productImageUrl,
     },
-  })
+  }
+  invalidateStorefrontCache(['comments:', 'product-details:', 'products:', 'catalog:'])
+  res.status(201).json(payload)
 })
 
 app.get('/api/products', async (req, res) => {
+  const cacheKey = cacheKeyFromRequest(req, 'products')
+  if (tryServeCachedJson(req, res, cacheKey)) return
+
   const result = await listProductsFromQuery(req.query)
   if (result.error) return res.status(400).json({ error: result.error })
   await trackProductEvents(
     result.payload.items.map((item) => Number(item.id)).filter((id) => Number.isInteger(id) && id > 0),
     'view',
   )
+  cacheJsonResponse(res, cacheKey, result.payload)
   res.json(result.payload)
 })
 
-app.get('/api/catalog/highlights', async (_req, res) => {
+app.get('/api/products/:id', async (req, res) => {
+  const cacheKey = cacheKeyFromRequest(req, 'product-details')
+  if (tryServeCachedJson(req, res, cacheKey)) return
+
+  const id = Number(req.params.id)
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID invalido.' })
+  }
+
+  const details = await getPublicProductDetails(id)
+  if (!details) {
+    return res.status(404).json({ error: 'Produto nao encontrado.' })
+  }
+
+  await trackProductEvents([id], 'view')
+  cacheJsonResponse(res, cacheKey, details)
+  return res.json(details)
+})
+
+app.get('/api/catalog/highlights', async (req, res) => {
+  const cacheKey = cacheKeyFromRequest(req, 'catalog:highlights')
+  if (tryServeCachedJson(req, res, cacheKey)) return
+
   const result = await listProductsFromQuery({ sort: 'discount-desc', page: 1, pageSize: 8, onlyWithImage: true })
   if (result.error) return res.status(400).json({ error: result.error })
   await trackProductEvents(
     result.payload.items.map((item) => Number(item.id)).filter((id) => Number.isInteger(id) && id > 0),
     'view',
   )
-  res.json({ items: result.payload.items })
+  const payload = { items: result.payload.items }
+  cacheJsonResponse(res, cacheKey, payload)
+  res.json(payload)
 })
 app.get('/api/catalog/recommendations', async (req, res) => {
+  const cacheKey = cacheKeyFromRequest(req, 'catalog:recommendations')
+  if (tryServeCachedJson(req, res, cacheKey)) return
+
   const limit = parsePositiveInt(req.query.limit, 4, 1, 24)
   const excludedIds = parseIdList(req.query.exclude)
   const params = [nowIso()]
@@ -2033,7 +2150,9 @@ app.get('/api/catalog/recommendations', async (req, res) => {
 
   const rows = await query(sql, params)
   await trackProductEvents(rows.rows.map((row) => Number(row.id)).filter((id) => Number.isInteger(id) && id > 0), 'view')
-  res.json({ items: rows.rows.map(mapProductRow) })
+  const payload = { items: rows.rows.map(mapProductRow) }
+  cacheJsonResponse(res, cacheKey, payload)
+  res.json(payload)
 })
 
 app.get('/api/owner/dashboard', requireOwner, async (req, res) => {
@@ -2543,6 +2662,7 @@ app.post('/api/owner/products', requireOwner, async (req, res) => {
       return createdItem
     })
 
+    invalidateStorefrontCache(PRODUCT_MUTATION_CACHE_PREFIXES)
     return res.status(201).json({ item })
   } catch (error) {
     if (String(error?.message || '').toLowerCase().includes('duplicate')) {
@@ -2611,6 +2731,7 @@ app.put('/api/owner/products/:id', requireOwner, async (req, res) => {
       return updatedItem
     })
 
+    invalidateStorefrontCache(PRODUCT_MUTATION_CACHE_PREFIXES)
     return res.json({ item })
   } catch (error) {
     if (String(error?.message || '').toLowerCase().includes('duplicate')) {
@@ -2649,6 +2770,7 @@ app.delete('/api/owner/products/:id', requireOwner, async (req, res) => {
       })
 
       if (!item) return res.status(404).json({ error: 'Produto nao encontrado.' })
+      invalidateStorefrontCache(PRODUCT_MUTATION_CACHE_PREFIXES)
       return res.status(200).json({ item, archived: true })
     }
 
@@ -2676,6 +2798,7 @@ app.delete('/api/owner/products/:id', requireOwner, async (req, res) => {
     })
 
     if (!deleted) return res.status(404).json({ error: 'Produto nao encontrado.' })
+    invalidateStorefrontCache(PRODUCT_MUTATION_CACHE_PREFIXES)
     return res.status(204).send()
   } catch (error) {
     if (String(error?.code || '') === '23503') {
@@ -2689,14 +2812,22 @@ app.delete('/api/owner/products/:id', requireOwner, async (req, res) => {
   }
 })
 
-app.use((err, _req, res, _next) => {
-  console.error(err)
+app.use((err, req, res, _next) => {
+  logger.error('http_unhandled_error', {
+    requestId: req?.requestId || null,
+    method: req?.method || null,
+    path: req?.originalUrl || req?.path || null,
+    error: err,
+  })
   res.status(500).json({ error: 'Erro interno do servidor.' })
 })
 
 function startServer(port = PORT) {
   return app.listen(port, () => {
-    console.log(`Rodando backend API online em http://localhost:${port}`)
+    logger.info('server_started', {
+      port,
+      url: `http://localhost:${port}`,
+    })
   })
 }
 
@@ -4987,7 +5118,193 @@ async function saveOwnerAuditLog(ownerUserId, payload, tx = null) {
       [safeOwnerUserId, actionType, entityType, entityId, JSON.stringify(before), JSON.stringify(after)],
     )
   } catch (error) {
-    console.warn('Falha ao registrar log de auditoria owner:', error?.message || error)
+    logger.warn('owner_audit_log_failed', {
+      ownerUserId: safeOwnerUserId,
+      actionType,
+      entityType,
+      entityId,
+      error,
+    })
+  }
+}
+
+async function getPublicProductDetails(id) {
+  const now = nowIso()
+  const row = await queryOne(
+    `SELECT
+      p.id,
+      p.name,
+      p.sku,
+      m.name AS manufacturer,
+      c.name AS category,
+      p.bike_model AS "bikeModel",
+      pr.price,
+      st.quantity AS stock,
+      COALESCE(main_image.url, '') AS "imageUrl",
+      COALESCE(hover_image.url, '') AS "hoverImageUrl",
+      p.description,
+      p.seo_slug AS "seoSlug",
+      p.seo_meta_title AS "seoMetaTitle",
+      p.seo_meta_description AS "seoMetaDescription",
+      p.cost,
+      p.minimum_stock AS "minimumStock",
+      p.reorder_point AS "reorderPoint",
+      p.is_active AS "isActive",
+      p.created_at AS "createdAt",
+      p.updated_at AS "updatedAt",
+      active_offer.compare_at_price AS "compareAtPrice",
+      active_offer.badge AS "offerBadge",
+      active_offer.ends_at AS "offerEndsAt",
+      CASE
+        WHEN active_offer.compare_at_price IS NOT NULL AND active_offer.compare_at_price > pr.price
+          THEN ROUND(((active_offer.compare_at_price - pr.price) / active_offer.compare_at_price) * 100)
+        ELSE 0
+      END AS "discountPercent",
+      COALESCE(reviews.total_reviews, 0) AS "totalReviews",
+      COALESCE(reviews.average_rating, 0) AS "averageRating"
+    FROM products p
+    JOIN categories c ON c.id = p.category_id
+    JOIN manufacturers m ON m.id = p.manufacturer_id
+    JOIN product_stocks st ON st.product_id = p.id
+    JOIN LATERAL (
+      SELECT pp.price
+      FROM product_prices pp
+      WHERE pp.product_id = p.id AND pp.valid_to IS NULL
+      ORDER BY pp.valid_from DESC, pp.id DESC
+      LIMIT 1
+    ) pr ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT pi.url
+      FROM product_images pi
+      WHERE pi.product_id = p.id AND pi.kind = 'main'
+      ORDER BY pi.sort_order ASC, pi.id ASC
+      LIMIT 1
+    ) main_image ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT pi.url
+      FROM product_images pi
+      WHERE pi.product_id = p.id AND pi.kind = 'hover'
+      ORDER BY pi.sort_order ASC, pi.id ASC
+      LIMIT 1
+    ) hover_image ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT o.compare_at_price, o.badge, o.ends_at
+      FROM offers o
+      WHERE o.product_id = p.id
+        AND o.is_active = TRUE
+        AND (o.starts_at IS NULL OR o.starts_at <= $2)
+        AND (o.ends_at IS NULL OR o.ends_at >= $2)
+      LIMIT 1
+    ) active_offer ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(*)::int AS total_reviews,
+        COALESCE(AVG(r.rating), 0)::numeric(4,2) AS average_rating
+      FROM reviews r
+      WHERE r.product_id = p.id
+        AND r.is_public = TRUE
+    ) reviews ON TRUE
+    WHERE p.id = $1
+      AND p.is_active = TRUE
+    LIMIT 1`,
+    [id, now],
+  )
+
+  if (!row) return null
+
+  const [fitmentRows, imageRows] = await Promise.all([
+    query(
+      `SELECT
+        v.brand,
+        v.model,
+        v.year_from AS "yearFrom",
+        v.year_to AS "yearTo",
+        pvf.notes
+      FROM product_vehicle_fitment pvf
+      JOIN vehicles v ON v.id = pvf.vehicle_id
+      WHERE pvf.product_id = $1
+      ORDER BY v.brand ASC, v.model ASC, v.year_from ASC NULLS LAST, v.year_to ASC NULLS LAST`,
+      [id],
+    ),
+    query(
+      `SELECT kind, url, sort_order
+      FROM product_images
+      WHERE product_id = $1
+      ORDER BY
+        CASE kind WHEN 'main' THEN 0 WHEN 'hover' THEN 1 ELSE 2 END,
+        sort_order ASC,
+        id ASC`,
+      [id],
+    ),
+  ])
+
+  const allImages = imageRows.rows.map((item) => String(item.url || '').trim()).filter(Boolean)
+  const mainUrl = String(row.imageUrl || allImages[0] || '')
+  const hoverUrl = String(row.hoverImageUrl || '')
+  const extra = allImages.filter((image) => image !== mainUrl && image !== hoverUrl)
+  const stock = Number(row.stock || 0)
+  const discountPercent = Number(row.discountPercent || 0)
+
+  const fitments = fitmentRows.rows.map((fitment) => {
+    const brand = String(fitment.brand || '').trim()
+    const model = String(fitment.model || '').trim()
+    const yearFrom = fitment.yearFrom ? Number(fitment.yearFrom) : null
+    const yearTo = fitment.yearTo ? Number(fitment.yearTo) : null
+    const yearRange = yearFrom && yearTo
+      ? `${yearFrom}-${yearTo}`
+      : yearFrom
+        ? `${yearFrom}+`
+        : yearTo
+          ? `ate ${yearTo}`
+          : ''
+    const notes = String(fitment.notes || '').trim()
+    const labelParts = [`${brand} ${model}`.trim()]
+    if (yearRange) labelParts.push(yearRange)
+    if (notes) labelParts.push(notes)
+    const label = labelParts.filter(Boolean).join(' • ')
+    return { label, value: label || `${brand}-${model}`.toLowerCase() }
+  }).filter((fitment) => Boolean(fitment.label))
+
+  const urgencyLabel = stock <= 0
+    ? 'Sem estoque'
+    : stock <= 3
+      ? 'Ultimas unidades'
+      : null
+
+  const seoSlug = String(row.seoSlug || slugify(row.name) || '')
+  const metaTitle = String(row.seoMetaTitle || `${row.name} | Rodando Moto Center`)
+  const metaDescription = String(row.seoMetaDescription || row.description || '').trim().slice(0, 220)
+
+  return {
+    item: mapProductRow(row),
+    gallery: {
+      mainUrl,
+      hoverUrl,
+      extra,
+    },
+    pricing: {
+      price: Number(row.price || 0),
+      compareAtPrice: row.compareAtPrice !== null && row.compareAtPrice !== undefined ? Number(row.compareAtPrice) : null,
+      discountPercent: Number.isFinite(discountPercent) ? discountPercent : 0,
+    },
+    availability: {
+      stock,
+      isActive: Boolean(row.isActive),
+      urgencyLabel,
+    },
+    compatibility: {
+      bikeModel: String(row.bikeModel || ''),
+      fitments,
+    },
+    seo: {
+      slug: seoSlug,
+      metaTitle,
+      metaDescription,
+    },
+    socialProof: {
+      averageRating: Number(Number(row.averageRating || 0).toFixed(1)),
+      totalReviews: Number(row.totalReviews || 0),
+    },
   }
 }
 

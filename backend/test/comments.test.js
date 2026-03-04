@@ -77,3 +77,60 @@ test('comments: validacao, criacao e summary real', async () => {
   assert.ok(Number(after.body.summaryByProduct.totalReviews) >= 1)
   assert.ok(Number(after.body.summary.totalReviews) >= previousTotal + 1)
 })
+
+test('comments: oculta reviews de usuarios e2e no endpoint publico', async () => {
+  const { app } = createTestContext(false)
+  const ownerAgent = request.agent(app)
+  const customerAgent = request.agent(app)
+
+  const ownerSignin = await ownerAgent.post('/api/auth/owner/signin').send({
+    email: process.env.OWNER_SEED_EMAIL || 'owner_test@rodando.local',
+    password: process.env.OWNER_SEED_PASSWORD || '123456',
+  })
+  assert.equal(ownerSignin.status, 200)
+
+  const createProduct = await ownerAgent.post('/api/owner/products').send({
+    name: 'Produto Filtro E2E Review',
+    sku: `COM-E2E-${Date.now()}`,
+    manufacturer: 'QA',
+    category: 'Teste',
+    bikeModel: 'CG 160',
+    price: 79.9,
+    stock: 9,
+    imageUrl: 'https://images.unsplash.com/photo-1621947081720-86970823b77a?auto=format&fit=crop&w=1200&q=80',
+    description: 'Produto para validar filtro de reviews e2e.',
+    isActive: true,
+  })
+  assert.equal(createProduct.status, 201)
+  const productId = Number(createProduct.body.item.id)
+
+  const signup = await customerAgent.post('/api/auth/signup').send({
+    name: 'Cliente E2E Comentario',
+    email: `customer_e2e_${Date.now()}@rodando.local`,
+    password: '123456',
+    cep: '01001-000',
+    addressStreet: 'Praca da Se',
+    addressCity: 'Sao Paulo',
+    addressState: 'SP',
+  })
+  assert.equal(signup.status, 201)
+
+  await customerAgent.post('/api/bag/items').send({ productId, quantity: 1 })
+  const checkout = await customerAgent.post('/api/orders/checkout').send({})
+  assert.equal(checkout.status, 201)
+
+  const posted = await customerAgent.post('/api/comments').send({
+    productId,
+    rating: 5,
+    message: 'Comentario e2e para validar filtro publico em listagem.',
+  })
+  assert.equal(posted.status, 201)
+
+  const listed = await ownerAgent.get(`/api/comments?productId=${productId}&limit=20`)
+  assert.equal(listed.status, 200)
+  assert.equal(Number(listed.body.summaryByProduct.totalReviews || 0), 0)
+  assert.equal(
+    listed.body.items.some((item) => String(item.message).includes('Comentario e2e para validar filtro publico em listagem.')),
+    false,
+  )
+})

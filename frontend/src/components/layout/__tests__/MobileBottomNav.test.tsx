@@ -28,6 +28,10 @@ vi.mock('../../../context/CartContext', () => ({
   useCart: () => cartState,
 }))
 
+vi.mock('@mui/material/useMediaQuery', () => ({
+  default: () => true,
+}))
+
 function renderNav(initialRoute: string) {
   return render(
     <ThemeProvider theme={theme}>
@@ -53,6 +57,10 @@ describe('MobileBottomNav', () => {
     expect(screen.getByTestId('mobile-nav-catalog')).toHaveAttribute('href', '/catalog')
     expect(screen.getByTestId('mobile-nav-cart')).toHaveAttribute('href', '/cart')
     expect(screen.getByTestId('mobile-nav-account')).toHaveAttribute('href', '/auth')
+    expect(screen.getByTestId('mobile-nav-home').querySelector('[data-icon-name="HomeRoundedIcon"]')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-nav-catalog').querySelector('[data-icon-name="CategoryRoundedIcon"]')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-nav-cart').querySelector('[data-icon-name="ShoppingBagOutlinedIcon"]')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-nav-account').querySelector('[data-icon-name="PersonOutlineRoundedIcon"]')).toBeInTheDocument()
   })
 
   it('mostra quantidade na mochila e ativa rota de catalogo', () => {

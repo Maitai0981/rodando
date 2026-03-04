@@ -1,3 +1,4 @@
+import { AddRoundedIcon, DeleteOutlineRoundedIcon, EditRoundedIcon, LocalOfferRoundedIcon } from '@/ui/primitives/Icon'
 import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import {
@@ -23,10 +24,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import AddRoundedIcon from '@mui/icons-material/AddRounded'
-import EditRoundedIcon from '@mui/icons-material/EditRounded'
-import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
-import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import OwnerLayout from '../layouts/OwnerLayout'
 import { api, ApiError, type OwnerOfferItem, type Product } from '../lib/api'
 import { useAssist } from '../context/AssistContext'
@@ -226,7 +223,7 @@ export default function OwnerProductsPage() {
           to="/owner/products/new"
           variant="contained"
           color="primary"
-          startIcon={<AddRoundedIcon />}
+          startIcon={<AddRoundedIcon size="sm" />}
           onClick={() => completeStep('open-create', 'owner-products')}
         >
           Novo produto
@@ -381,16 +378,16 @@ export default function OwnerProductsPage() {
                           size="small"
                           component={RouterLink}
                           to={`/owner/products/${item.id}/edit`}
-                          startIcon={<EditRoundedIcon />}
+                          startIcon={<EditRoundedIcon size="sm" />}
                         >
                           Editar
                         </Button>
-                        <Button data-testid={`owner-delete-${item.id}`} size="small" color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => setDeleteTarget(item)}>
+                        <Button data-testid={`owner-delete-${item.id}`} size="small" color="error" startIcon={<DeleteOutlineRoundedIcon size="sm" />} onClick={() => setDeleteTarget(item)}>
                           Excluir
                         </Button>
                         {offer ? (
                           <>
-                            <Button data-testid={`owner-offer-edit-${item.id}`} size="small" color="primary" startIcon={<LocalOfferRoundedIcon />} onClick={() => void handleEditOffer(item, offer)}>
+                            <Button data-testid={`owner-offer-edit-${item.id}`} size="small" color="primary" startIcon={<LocalOfferRoundedIcon size="sm" />} onClick={() => void handleEditOffer(item, offer)}>
                               Oferta
                             </Button>
                             <Button data-testid={`owner-offer-remove-${item.id}`} size="small" color="warning" onClick={() => void handleDeleteOffer(offer)}>
@@ -398,7 +395,7 @@ export default function OwnerProductsPage() {
                             </Button>
                           </>
                         ) : (
-                          <Button data-testid={`owner-offer-create-${item.id}`} size="small" color="success" startIcon={<LocalOfferRoundedIcon />} onClick={() => void handleCreateOffer(item)}>
+                          <Button data-testid={`owner-offer-create-${item.id}`} size="small" color="success" startIcon={<LocalOfferRoundedIcon size="sm" />} onClick={() => void handleCreateOffer(item)}>
                             Criar oferta
                           </Button>
                         )}

@@ -1,0 +1,61 @@
+{
+  "generatedAt": "2026-03-04T19:29:08.947Z",
+  "totals": {
+    "jsBytes": 779023,
+    "cssBytes": 4245,
+    "assetBytes": 783268,
+    "fileCount": 33
+  },
+  "topChunks": [
+    {
+      "file": "assets/vendor-mui-BUadRBb8.js",
+      "sizeBytes": 503793,
+      "ext": ".js"
+    },
+    {
+      "file": "assets/index-tZdAZ0OZ.js",
+      "sizeBytes": 58572,
+      "ext": ".js"
+    },
+    {
+      "file": "assets/vendor-query-BC3i5Dmo.js",
+      "sizeBytes": 39003,
+      "ext": ".js"
+    },
+    {
+      "file": "assets/OwnerDashboardPage-kzt3S8Q9.js",
+      "sizeBytes": 19607,
+      "ext": ".js"
+    },
+    {
+      "file": "assets/CatalogPage-BtIFkEl3.js",
+      "sizeBytes": 17610,
+      "ext": ".js"
+    },
+    {
+      "file": "assets/HomePage-BtUJTvhx.js",
+      "sizeBytes": 16308,
+      "ext": ".js"
+    },
+    {
+      "file": "assets/vendor-motion-icons-RtMcBckP.js",
+      "sizeBytes": 15534,
+      "ext": ".js"
+    },
+    {
+      "file": "assets/OwnerProductFormPage-CHI7x_Ku.js",
+      "sizeBytes": 11842,
+      "ext": ".js"
+    },
+    {
+      "file": "assets/OwnerProductsPage-Wh1Re5y4.js",
+      "sizeBytes": 9967,
+      "ext": ".js"
+    },
+    {
+      "file": "assets/ProductDetailsPage-CTlAgPEk.js",
+      "sizeBytes": 9736,
+      "ext": ".js"
+    }
+  ]
+}

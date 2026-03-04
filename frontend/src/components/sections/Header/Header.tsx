@@ -1,9 +1,5 @@
-import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
-import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded'
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
-import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined'
+import { MenuRoundedIcon, NavAccountIcon, NavBagIcon, NavCatalogIcon, NavHomeIcon } from '@/ui/primitives/Icon'
 import AppBar from '@mui/material/AppBar'
-import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
@@ -25,7 +21,6 @@ import {
   UiChip,
   UiContainer,
   UiDrawer,
-  UiInput,
 } from '../../ui'
 
 const NAV_LINKS = [
@@ -42,18 +37,24 @@ const CATEGORY_LINKS = [
   'Acessórios',
 ]
 
-const SEARCH_SUGGESTIONS = [
-  'Câmara 300-17',
-  'Pneu 90/90-19',
-  'Kit corrente',
-  'Pastilha de freio',
-  'Relação 428',
-  'Capacete fechado',
-]
-
 function isActive(pathname: string, href: string) {
   if (href === '/') return pathname === '/'
   return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+function isCatalogRoute(pathname: string) {
+  return pathname === '/catalog' || pathname.startsWith('/catalog/') || pathname.startsWith('/produto/')
+}
+
+function isCartRoute(pathname: string) {
+  return pathname === '/cart' || pathname.startsWith('/cart/') || pathname === '/checkout'
+}
+
+function isAccountRoute(pathname: string) {
+  return pathname.startsWith('/auth')
+    || pathname.startsWith('/account')
+    || pathname.startsWith('/orders')
+    || pathname.startsWith('/owner')
 }
 
 export function Header() {
@@ -64,7 +65,6 @@ export function Header() {
   const { completeStep } = useAssist()
 
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [searchValue, setSearchValue] = useState<string | null>(null)
   const [searchInputValue, setSearchInputValue] = useState('')
 
   async function handleLogout() {
@@ -74,7 +74,7 @@ export function Header() {
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const query = (searchInputValue || searchValue || '').trim()
+    const query = (searchInputValue || '').trim()
     navigate(`/catalog${query ? `?q=${encodeURIComponent(query)}` : ''}`)
     if (location.pathname === '/') {
       completeStep('search-used', 'home')
@@ -87,6 +87,32 @@ export function Header() {
   const accountHref = status === 'authenticated'
     ? (user?.role === 'owner' ? '/owner/dashboard' : '/account/profile')
     : '/auth'
+  const mobileMenuLinks = [
+    {
+      label: 'Início',
+      href: '/',
+      icon: <NavHomeIcon size="md" tone={location.pathname === '/' ? 'accent' : 'muted'} />,
+      active: location.pathname === '/',
+    },
+    {
+      label: 'Catálogo',
+      href: '/catalog',
+      icon: <NavCatalogIcon size="md" tone={isCatalogRoute(location.pathname) ? 'accent' : 'muted'} />,
+      active: isCatalogRoute(location.pathname),
+    },
+    {
+      label: itemCount > 0 ? `Mochila (${itemCount})` : 'Mochila',
+      href: '/cart',
+      icon: <NavBagIcon size="md" tone={isCartRoute(location.pathname) ? 'accent' : 'muted'} />,
+      active: isCartRoute(location.pathname),
+    },
+    {
+      label: accountLabel,
+      href: accountHref,
+      icon: <NavAccountIcon size="md" tone={isAccountRoute(location.pathname) ? 'accent' : 'muted'} />,
+      active: isAccountRoute(location.pathname),
+    },
+  ]
 
   return (
     <>
@@ -113,7 +139,7 @@ export function Header() {
               onClick={() => setDrawerOpen(true)}
               sx={{ display: { xs: 'inline-flex', md: 'none' }, color: { xs: 'text.primary', md: 'inherit' } }}
             >
-              <MenuRoundedIcon />
+              <MenuRoundedIcon size="lg" />
             </IconButton>
 
             <Stack
@@ -151,30 +177,40 @@ export function Header() {
               </Box>
             </Stack>
 
-            <Box component="form" onSubmit={handleSearchSubmit} sx={{ flexGrow: 1, display: { xs: 'none', md: 'block' } }}>
-              <Autocomplete
-                data-testid="header-search-autocomplete"
-                freeSolo
-                options={SEARCH_SUGGESTIONS}
-                value={searchValue}
-                inputValue={searchInputValue}
-                onChange={(_, value) => setSearchValue(value)}
-                onInputChange={(_, value) => setSearchInputValue(value)}
-                renderInput={(params) => (
-                  <UiInput
-                    {...params}
-                    size="small"
-                    placeholder="Buscar por produto, categoria ou marca"
-                    inputProps={{
-                      ...params.inputProps,
-                      'data-testid': 'header-search-input',
-                    }}
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: <SearchRoundedIcon color="action" sx={{ mr: 1 }} />,
-                    }}
-                  />
-                )}
+            <Box
+              component="form"
+              onSubmit={handleSearchSubmit}
+              data-testid="header-search-autocomplete"
+              sx={{ flexGrow: 1, display: { xs: 'none', md: 'block' } }}
+            >
+              <Box
+                component="input"
+                type="search"
+                placeholder="Buscar por produto, categoria ou marca"
+                value={searchInputValue}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => setSearchInputValue(event.target.value)}
+                data-testid="header-search-input"
+                sx={{
+                  width: '100%',
+                  minHeight: 40,
+                  px: 1.6,
+                  borderRadius: 2.2,
+                  border: '1px solid',
+                  borderColor: '#D8D3C2',
+                  bgcolor: '#FFFFFF',
+                  color: 'text.primary',
+                  font: 'inherit',
+                  lineHeight: 1.4,
+                  '&::placeholder': {
+                    color: 'text.secondary',
+                    opacity: 1,
+                  },
+                  '&:focus': {
+                    outline: '2px solid',
+                    outlineColor: 'secondary.main',
+                    borderColor: 'secondary.main',
+                  },
+                }}
               />
             </Box>
 
@@ -209,7 +245,7 @@ export function Header() {
             <Stack direction="row" spacing={0.5} alignItems="center">
               <IconButton data-testid="header-cart-button" aria-label="Abrir carrinho" component={RouterLink} to="/cart">
                 <UiBadge badgeContent={itemCount} color="secondary" max={99}>
-                  <ShoppingBagOutlinedIcon />
+                  <NavBagIcon size="md" />
                 </UiBadge>
               </IconButton>
               <Button
@@ -217,7 +253,7 @@ export function Header() {
                 component={RouterLink}
                 to={accountHref}
                 variant="outlined"
-                startIcon={<PersonOutlineRoundedIcon />}
+                startIcon={<NavAccountIcon size="sm" />}
                 sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
               >
                 {accountLabel}
@@ -240,24 +276,33 @@ export function Header() {
 
           <Box sx={{ display: { xs: 'block', md: 'none' }, pb: 1.5 }}>
             <Box component="form" onSubmit={handleSearchSubmit}>
-              <UiInput
-                inputProps={{ 'data-testid': 'header-search-input-mobile' }}
-                size="small"
+              <Box
+                component="input"
+                type="search"
+                data-testid="header-search-input-mobile"
                 placeholder="Buscar produto ou categoria"
                 value={searchInputValue}
                 onChange={(event: ChangeEvent<HTMLInputElement>) => setSearchInputValue(event.target.value)}
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.2,
-                    bgcolor: '#FFFFFF',
-                    color: 'text.primary',
+                  width: '100%',
+                  minHeight: 40,
+                  px: 1.6,
+                  borderRadius: 2.2,
+                  border: '1px solid',
+                  borderColor: '#D8D3C2',
+                  bgcolor: '#FFFFFF',
+                  color: 'text.primary',
+                  font: 'inherit',
+                  lineHeight: 1.4,
+                  '&::placeholder': {
+                    color: 'text.secondary',
+                    opacity: 1,
                   },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#D8D3C2',
+                  '&:focus': {
+                    outline: '2px solid',
+                    outlineColor: 'secondary.main',
+                    borderColor: 'secondary.main',
                   },
-                }}
-                InputProps={{
-                  startAdornment: <SearchRoundedIcon color="action" sx={{ mr: 1 }} />,
                 }}
               />
             </Box>
@@ -277,11 +322,12 @@ export function Header() {
         footer={<Button fullWidth variant="contained" component={RouterLink} to="/catalog">Ver catálogo</Button>}
       >
         <List sx={{ p: 0 }}>
-          {NAV_LINKS.map((link) => (
+          {mobileMenuLinks.map((link) => (
             <ListItem disablePadding key={`mobile-${link.href}`}>
               <ListItemButton
                 component={RouterLink}
                 to={link.href}
+                selected={link.active}
                 onClick={() => {
                   if (link.href === '/catalog') {
                     completeStep('open-catalog', 'home')
@@ -289,7 +335,12 @@ export function Header() {
                   setDrawerOpen(false)
                 }}
               >
-                <Typography variant="body2">{link.label}</Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  {link.icon}
+                  <Typography variant="body2" sx={{ fontWeight: link.active ? 700 : 600 }}>
+                    {link.label}
+                  </Typography>
+                </Stack>
               </ListItemButton>
             </ListItem>
           ))}
