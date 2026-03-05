@@ -239,7 +239,7 @@ export default function HomePage() {
             overflow: 'hidden',
             minHeight: {
               xs: 'auto',
-              md: 'clamp(380px, 52vh, 520px)',
+              md: 'clamp(340px, 46vh, 460px)',
             },
             p: { xs: 1.2, sm: 1.8, md: 2.2 },
             display: 'flex',
@@ -290,7 +290,7 @@ export default function HomePage() {
             sx={{
               position: 'relative',
               zIndex: 1,
-              pt: { xs: 0.15, sm: 0.35, md: 0.55 },
+              pt: 0,
             }}
           >
             <Paper
