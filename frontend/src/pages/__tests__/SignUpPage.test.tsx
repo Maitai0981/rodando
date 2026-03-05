@@ -32,6 +32,14 @@ describe('SignUpPage', () => {
     expect(mockSignUp).not.toHaveBeenCalled()
   })
 
+  it('define autocomplete correto para nome, email e senha', async () => {
+    renderWithProviders(<SignUpPage />)
+
+    expect(screen.getByTestId('signup-name-input')).toHaveAttribute('autocomplete', 'name')
+    expect(screen.getByTestId('signup-email-input')).toHaveAttribute('autocomplete', 'email')
+    expect(screen.getByTestId('signup-password-input')).toHaveAttribute('autocomplete', 'new-password')
+  })
+
   it('consulta CEP e envia payload com endereco no signUp', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(

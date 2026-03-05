@@ -1,17 +1,20 @@
-import { useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
-import Drawer from '@mui/material/Drawer'
+import Grow from '@mui/material/Grow'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
+import Modal from '@mui/material/Modal'
 import Stack from '@mui/material/Stack'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useAssist } from '../../context/AssistContext'
@@ -54,6 +57,9 @@ function isAccountRoute(pathname: string) {
 }
 
 export function StoreHeader() {
+  const theme = useTheme()
+  const isMobileViewport = useMediaQuery(theme.breakpoints.down('md'))
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const navigate = useNavigate()
   const location = useLocation()
   const { itemCount } = useCart()
@@ -62,6 +68,7 @@ export function StoreHeader() {
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [searchInputValue, setSearchInputValue] = useState('')
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null)
 
   function handlePrefetch(pathname: string) {
     prefetchRouteChunk(pathname)
@@ -70,6 +77,19 @@ export function StoreHeader() {
   async function handleLogout() {
     await logout()
     navigate('/', { replace: true })
+  }
+
+  function handleOpenMobileMenu() {
+    setDrawerOpen(true)
+  }
+
+  function handleCloseMobileMenu(restoreFocus = false) {
+    setDrawerOpen(false)
+    if (restoreFocus && typeof window !== 'undefined') {
+      window.setTimeout(() => {
+        menuTriggerRef.current?.focus()
+      }, 0)
+    }
   }
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
@@ -88,32 +108,46 @@ export function StoreHeader() {
     ? (user?.role === 'owner' ? '/owner/dashboard' : '/account/profile')
     : '/auth'
 
-  const mobileMenuLinks = [
+  const mobileMenuLinks = useMemo(() => [
     {
       label: 'Inicio',
       href: '/',
+      prefetchPath: '/',
       icon: <NavHomeIcon size="md" tone={location.pathname === '/' ? 'accent' : 'muted'} />,
       active: location.pathname === '/',
     },
     {
       label: 'Catalogo',
       href: '/catalog',
+      prefetchPath: '/catalog',
       icon: <NavCatalogIcon size="md" tone={isCatalogRoute(location.pathname) ? 'accent' : 'muted'} />,
       active: isCatalogRoute(location.pathname),
     },
     {
       label: itemCount > 0 ? `Mochila (${itemCount})` : 'Mochila',
       href: '/cart',
+      prefetchPath: '/cart',
       icon: <NavBagIcon size="md" tone={isCartRoute(location.pathname) ? 'accent' : 'muted'} />,
       active: isCartRoute(location.pathname),
     },
     {
       label: accountLabel,
       href: accountHref,
+      prefetchPath: accountHref,
       icon: <NavAccountIcon size="md" tone={isAccountRoute(location.pathname) ? 'accent' : 'muted'} />,
       active: isAccountRoute(location.pathname),
     },
-  ]
+  ], [accountHref, accountLabel, itemCount, location.pathname])
+
+  const mobileAuxLinks = useMemo(
+    () => [
+      { label: 'Promocoes', href: '/catalog?promo=true&sort=discount-desc', prefetchPath: '/catalog' },
+      { label: 'Pedidos', href: '/orders', prefetchPath: '/orders' },
+    ],
+    [],
+  )
+
+  const isMobileMenuOpen = drawerOpen && isMobileViewport
 
   return (
     <>
@@ -132,9 +166,14 @@ export function StoreHeader() {
         <Container>
           <Toolbar disableGutters sx={{ minHeight: { xs: 62, md: 78 }, gap: { xs: 1, md: 2 }, pb: { xs: 1, md: 0 } }}>
             <IconButton
+              ref={menuTriggerRef}
               aria-label="Abrir menu"
+              aria-haspopup="dialog"
+              aria-controls="mobile-header-menu"
+              aria-expanded={isMobileMenuOpen}
               edge="start"
-              onClick={() => setDrawerOpen(true)}
+              onClick={handleOpenMobileMenu}
+              className="ds-pressable"
               sx={{ display: { xs: 'inline-flex', md: 'none' } }}
             >
               <MenuRoundedIcon size="lg" />
@@ -201,6 +240,7 @@ export function StoreHeader() {
                 <Button
                   data-testid={link.testId}
                   key={link.href}
+                  className="ds-pressable"
                   component={RouterLink}
                   to={link.href}
                   onMouseEnter={() => handlePrefetch(link.href)}
@@ -224,6 +264,7 @@ export function StoreHeader() {
               <IconButton
                 data-testid="header-cart-button"
                 aria-label="Abrir carrinho"
+                className="ds-pressable"
                 component={RouterLink}
                 to="/cart"
                 onMouseEnter={() => handlePrefetch('/cart')}
@@ -236,6 +277,7 @@ export function StoreHeader() {
               </IconButton>
               <Button
                 data-testid="header-account-button"
+                className="ds-pressable"
                 component={RouterLink}
                 to={accountHref}
                 variant="outlined"
@@ -250,6 +292,7 @@ export function StoreHeader() {
               {status === 'authenticated' ? (
                 <Button
                   data-testid="header-logout-button"
+                  className="ds-pressable"
                   variant="text"
                   color="inherit"
                   onClick={() => {
@@ -288,99 +331,199 @@ export function StoreHeader() {
         </Container>
       </AppBar>
 
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        ModalProps={{ keepMounted: true }}
-        PaperProps={{
-          sx: {
-            width: 'min(88vw, 360px)',
-            maxWidth: 360,
-            p: 0,
-            borderRight: '1px solid',
-            borderColor: 'divider',
-            boxShadow: '0 14px 34px rgba(15,23,42,0.18)',
-            overflow: 'hidden',
-          }
+      <Modal
+        open={isMobileMenuOpen}
+        onClose={() => handleCloseMobileMenu(true)}
+        keepMounted
+        closeAfterTransition
+        slotProps={{
+          backdrop: {
+            sx: {
+              bgcolor: 'rgba(12, 21, 39, 0.34)',
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+              transition: prefersReducedMotion ? 'none' : 'opacity var(--ds-motion-fast)',
+            },
+          },
         }}
       >
-        <Stack sx={{ height: '100%', pt: 'max(env(safe-area-inset-top, 0px), 0px)' }}>
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{ px: 2, py: 1.5 }}
+        <Grow
+          in={isMobileMenuOpen}
+          timeout={prefersReducedMotion ? 0 : { enter: 280, exit: 220 }}
+          style={{ transformOrigin: 'top center' }}
+        >
+          <Box
+            id="mobile-header-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-header-menu-title"
+            className="ds-menu-panel"
+            sx={{
+              display: { xs: 'flex', md: 'none' },
+              position: 'fixed',
+              inset: 0,
+              bgcolor: '#FFFFFF',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.2)',
+            }}
           >
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, letterSpacing: '-0.01em' }}>
-              Menu
-            </Typography>
-            <IconButton aria-label="Fechar menu" onClick={() => setDrawerOpen(false)}>
-              <CloseRoundedIcon size="md" />
-            </IconButton>
-          </Stack>
-          <Divider />
-          <List sx={{ p: 1.2, display: 'grid', gap: 0.6 }}>
-            {mobileMenuLinks.map((link) => (
-              <ListItem disablePadding key={`mobile-${link.href}`}>
-                <ListItemButton
-                  component={RouterLink}
-                  to={link.href}
-                  selected={link.active}
-                  onMouseEnter={() => handlePrefetch(link.href)}
-                  onFocus={() => handlePrefetch(link.href)}
-                  onTouchStart={() => handlePrefetch(link.href)}
-                  onClick={() => {
-                    if (link.href === '/catalog') completeStep('open-catalog', 'home')
-                    setDrawerOpen(false)
-                  }}
-                  sx={{
-                    minHeight: 48,
-                    borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: link.active ? 'rgba(22,163,74,0.34)' : 'transparent',
-                    bgcolor: link.active ? 'rgba(22,163,74,0.12)' : 'transparent',
-                    '&:hover': {
-                      bgcolor: link.active ? 'rgba(22,163,74,0.16)' : 'rgba(15,23,42,0.04)',
-                    },
-                    '&.Mui-selected': {
-                      bgcolor: 'rgba(22,163,74,0.12)',
-                    },
-                  }}
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ px: 2, py: 1.5, pt: 'max(calc(env(safe-area-inset-top, 0px) + 12px), 12px)' }}
+            >
+              <Stack spacing={0.2}>
+                <Typography
+                  id="mobile-header-menu-title"
+                  variant="subtitle1"
+                  sx={{ fontWeight: 700, letterSpacing: '-0.01em' }}
                 >
-                  <Stack direction="row" alignItems="center" spacing={1.25} sx={{ width: '100%' }}>
-                    <Box sx={{ display: 'grid', placeItems: 'center', color: link.active ? 'primary.main' : 'text.secondary' }}>
-                      {link.icon}
-                    </Box>
-                    <Typography variant="body2" sx={{ fontWeight: link.active ? 700 : 600 }}>
-                      {link.label}
-                    </Typography>
-                  </Stack>
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-          <Divider sx={{ mt: 0.6 }} />
-          <Stack sx={{ mt: 'auto', p: 2, pb: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }} spacing={1}>
-            <Button fullWidth variant="contained" component={RouterLink} to="/catalog" onClick={() => setDrawerOpen(false)}>
-              Ver catalogo
-            </Button>
-            {status === 'authenticated' ? (
+                  Menu
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Acesso rápido às principais áreas
+                </Typography>
+              </Stack>
+              <IconButton
+                aria-label="Fechar menu"
+                className="ds-pressable"
+                onClick={() => handleCloseMobileMenu(true)}
+              >
+                <CloseRoundedIcon size="md" />
+              </IconButton>
+            </Stack>
+
+            <Divider />
+
+            <Box sx={{ flex: 1, overflowY: 'auto', px: 1.4, py: 1.4 }}>
+              <Stack spacing={1.6}>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ textTransform: 'uppercase', letterSpacing: '0.09em', color: 'text.secondary', px: 0.8 }}
+                  >
+                    Navegação
+                  </Typography>
+                  <List sx={{ p: 0.2, mt: 0.8, display: 'grid', gap: 0.7 }}>
+                    {mobileMenuLinks.map((link, index) => (
+                      <ListItem disablePadding key={`mobile-${link.href}`}>
+                        <ListItemButton
+                          component={RouterLink}
+                          className="ds-pressable ds-menu-item"
+                          style={{ ['--ds-menu-item-delay' as string]: prefersReducedMotion ? '0ms' : `${index * 30}ms` }}
+                          to={link.href}
+                          selected={link.active}
+                          onMouseEnter={() => handlePrefetch(link.prefetchPath)}
+                          onFocus={() => handlePrefetch(link.prefetchPath)}
+                          onTouchStart={() => handlePrefetch(link.prefetchPath)}
+                          onClick={() => {
+                            if (link.href === '/catalog') completeStep('open-catalog', 'home')
+                            handleCloseMobileMenu(false)
+                          }}
+                          data-testid={`mobile-menu-link-${index}`}
+                          sx={{
+                            minHeight: 56,
+                            borderRadius: 2.4,
+                            border: '1px solid',
+                            borderColor: link.active ? 'rgba(22,163,74,0.34)' : 'rgba(15,23,42,0.08)',
+                            bgcolor: link.active ? 'rgba(22,163,74,0.12)' : 'transparent',
+                            '&:hover': {
+                              bgcolor: link.active ? 'rgba(22,163,74,0.16)' : 'rgba(15,23,42,0.04)',
+                            },
+                            '&.Mui-selected': {
+                              bgcolor: 'rgba(22,163,74,0.12)',
+                            },
+                          }}
+                        >
+                          <Stack direction="row" alignItems="center" spacing={1.25} sx={{ width: '100%' }}>
+                            <Box sx={{ display: 'grid', placeItems: 'center', color: link.active ? 'primary.main' : 'text.secondary' }}>
+                              {link.icon}
+                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: link.active ? 700 : 600 }}>
+                              {link.label}
+                            </Typography>
+                          </Stack>
+                        </ListItemButton>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ textTransform: 'uppercase', letterSpacing: '0.09em', color: 'text.secondary', px: 0.8 }}
+                  >
+                    Atalhos
+                  </Typography>
+                  <List sx={{ p: 0.2, mt: 0.8, display: 'grid', gap: 0.7 }}>
+                    {mobileAuxLinks.map((link, index) => (
+                      <ListItem disablePadding key={`mobile-aux-${link.href}`}>
+                        <ListItemButton
+                          component={RouterLink}
+                          className="ds-pressable ds-menu-item"
+                          style={{ ['--ds-menu-item-delay' as string]: prefersReducedMotion ? '0ms' : `${(index + mobileMenuLinks.length) * 30}ms` }}
+                          to={link.href}
+                          onMouseEnter={() => handlePrefetch(link.prefetchPath)}
+                          onFocus={() => handlePrefetch(link.prefetchPath)}
+                          onTouchStart={() => handlePrefetch(link.prefetchPath)}
+                          onClick={() => handleCloseMobileMenu(false)}
+                          sx={{
+                            minHeight: 52,
+                            borderRadius: 2.4,
+                            border: '1px solid rgba(15,23,42,0.08)',
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {link.label}
+                          </Typography>
+                        </ListItemButton>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              </Stack>
+            </Box>
+
+            <Divider />
+            <Stack
+              spacing={1}
+              sx={{
+                p: 2,
+                pb: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+                bgcolor: 'rgba(247, 245, 238, 0.78)',
+              }}
+            >
               <Button
                 fullWidth
-                variant="outlined"
-                color="inherit"
-                onClick={() => {
-                  void handleLogout()
-                  setDrawerOpen(false)
-                }}
+                variant="contained"
+                component={RouterLink}
+                className="ds-pressable"
+                to="/catalog"
+                onClick={() => handleCloseMobileMenu(false)}
               >
-                Sair da conta
+                Ver catalogo
               </Button>
-            ) : null}
-          </Stack>
-        </Stack>
-      </Drawer>
+              {status === 'authenticated' ? (
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="inherit"
+                  className="ds-pressable"
+                  onClick={() => {
+                    void handleLogout()
+                    handleCloseMobileMenu(false)
+                  }}
+                >
+                  Sair da conta
+                </Button>
+              ) : null}
+            </Stack>
+          </Box>
+        </Grow>
+      </Modal>
     </>
   )
 }

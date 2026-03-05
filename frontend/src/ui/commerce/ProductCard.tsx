@@ -13,7 +13,7 @@ export function ProductCard({ product, onAddToCart, onOpenDetails, loading = fal
   const urgency = Number(product.stock || 0) <= 3 ? 'Ultimas unidades' : null
 
   return (
-    <Card variant="surface" interactive sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Card className="store-product-card" variant="surface" interactive sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Stack spacing={1.1} sx={{ height: '100%' }}>
         <Box
           sx={{
@@ -30,7 +30,12 @@ export function ProductCard({ product, onAddToCart, onOpenDetails, loading = fal
             src={product.imageUrl}
             alt={product.name}
             sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            sx={{ transition: 'transform 180ms ease' }}
+            sx={{
+              transition: 'transform 180ms ease',
+              '.store-product-card:hover &': {
+                transform: 'scale(1.03)',
+              },
+            }}
           />
         </Box>
 

@@ -87,6 +87,9 @@ export const dsTokens = {
     fast: '160ms cubic-bezier(0.2, 0, 0, 1)',
     base: '240ms cubic-bezier(0.22, 1, 0.36, 1)',
     slow: '340ms cubic-bezier(0.22, 1, 0.36, 1)',
+    menuEnter: '280ms cubic-bezier(0.22, 1, 0.36, 1)',
+    menuExit: '220ms cubic-bezier(0.4, 0, 0.2, 1)',
+    press: '120ms cubic-bezier(0.2, 0, 0, 1)',
   },
   layout: {
     contentMaxWidth: 1320,

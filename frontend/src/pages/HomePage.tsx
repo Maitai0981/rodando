@@ -150,7 +150,7 @@ function ProductCard({ product }: { product: Product }) {
           ) : null}
         </Stack>
 
-        <Button component={RouterLink} to={buildProductUrl(product)} variant="contained" color="primary">
+        <Button className="ds-pressable" component={RouterLink} to={buildProductUrl(product)} variant="contained" color="primary">
           Comprar / Orcar
         </Button>
       </Stack>
@@ -319,8 +319,7 @@ export default function HomePage() {
                       Operacao local, consultoria tecnica e atendimento comercial rapido para uma compra segura, direta e sem erro de aplicacao.
                     </Typography>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
-                      <Button
-                        data-testid="home-catalog-cta"
+                      <Button className="ds-pressable" data-testid="home-catalog-cta"
                         component={RouterLink}
                         to="/catalog"
                         onClick={() => completeStep('open-catalog', 'home')}
@@ -330,8 +329,7 @@ export default function HomePage() {
                       >
                         Ver catalogo
                       </Button>
-                      <Button
-                        data-testid="home-whatsapp-cta"
+                      <Button className="ds-pressable" data-testid="home-whatsapp-cta"
                         component="a"
                         href={officialLinks.whatsapp}
                         target="_blank"
@@ -406,6 +404,7 @@ export default function HomePage() {
             <Box
               component="button"
               type="button"
+              className="ds-pressable"
               onClick={handleScrollToNextSection}
               data-testid="home-next-section-trigger"
               aria-label="Ir para a proxima secao da Home"
@@ -424,6 +423,10 @@ export default function HomePage() {
                 '&:hover': {
                   transform: 'translateY(1px)',
                   boxShadow: '0 10px 22px rgba(12, 21, 39, 0.16)',
+                },
+                '&:active': {
+                  transform: 'scale(0.97)',
+                  boxShadow: '0 8px 18px rgba(12, 21, 39, 0.16)',
                 },
                 '&:focus-visible': {
                   outline: '2px solid',
@@ -490,10 +493,10 @@ export default function HomePage() {
               />
             </Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-              <Button component={RouterLink} to="/catalog?promo=true&sort=discount-desc" variant="outlined" color="secondary">
+              <Button className="ds-pressable" component={RouterLink} to="/catalog?promo=true&sort=discount-desc" variant="outlined" color="secondary">
                 Ver promocoes
               </Button>
-              <Button component={RouterLink} to="/catalog" variant="text" color="primary">
+              <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="text" color="primary">
                 Catalogo completo
               </Button>
             </Stack>
@@ -526,7 +529,7 @@ export default function HomePage() {
                         <Typography variant="body2" color="text.secondary">
                           Nenhum destaque publico no momento. Confira o catalogo completo ou as promocoes ativas.
                         </Typography>
-                        <Button component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
+                        <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
                           Ver catalogo
                         </Button>
                       </Stack>
@@ -559,7 +562,7 @@ export default function HomePage() {
                 <Typography variant="body2" color="text.secondary">
                   Sem categorias publicas ativas ainda.
                 </Typography>
-                <Button component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
+                <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
                   Ver catálogo geral
                 </Button>
               </Stack>
@@ -619,7 +622,7 @@ export default function HomePage() {
                         <Typography variant="body2" color="text.secondary">
                           Ainda nao existem avaliacoes publicadas por usuarios reais.
                         </Typography>
-                        <Button component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
+                        <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
                           Avaliar no catálogo
                         </Button>
                       </Stack>
@@ -656,10 +659,10 @@ export default function HomePage() {
 
           {comments.length > 0 ? (
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 2 }}>
-              <Button component={RouterLink} to="/catalog" variant="contained" color="primary">
+              <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="contained" color="primary">
                 Avaliar no catálogo
               </Button>
-              <Button component={RouterLink} to="/catalog?promo=true&sort=discount-desc" variant="outlined" color="secondary">
+              <Button className="ds-pressable" component={RouterLink} to="/catalog?promo=true&sort=discount-desc" variant="outlined" color="secondary">
                 Ver promocoes ativas
               </Button>
             </Stack>
@@ -676,10 +679,10 @@ export default function HomePage() {
                   subtitle="Atendimento de segunda a sexta, retirada local e suporte rapido para orcamento e validacao de aplicacao."
                 />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1.4 }}>
-                  <Button component="a" href={officialLinks.whatsapp} target="_blank" rel="noreferrer" variant="contained" color="primary" startIcon={<WhatsAppIcon size="sm" />}>
+                  <Button className="ds-pressable" component="a" href={officialLinks.whatsapp} target="_blank" rel="noreferrer" variant="contained" color="primary" startIcon={<WhatsAppIcon size="sm" />}>
                     Falar com vendedor
                   </Button>
-                  <Button component="a" href={officialLinks.maps} target="_blank" rel="noreferrer" variant="outlined" color="secondary">
+                  <Button className="ds-pressable" component="a" href={officialLinks.maps} target="_blank" rel="noreferrer" variant="outlined" color="secondary">
                     Abrir no mapa
                   </Button>
                 </Stack>
@@ -748,3 +751,4 @@ export default function HomePage() {
     </AppShell>
   )
 }
+

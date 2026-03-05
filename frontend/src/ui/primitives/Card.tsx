@@ -29,6 +29,9 @@ export function Card({ variant = 'surface', interactive = false, sx, ...props }:
                 boxShadow: '0 12px 28px rgba(20,34,53,0.14)',
                 borderColor: 'rgba(28,156,75,0.35)',
               },
+              '&:active': {
+                transform: 'scale(0.992)',
+              },
             }
           : null),
         ...(sx as object),

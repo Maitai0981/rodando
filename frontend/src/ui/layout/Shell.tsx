@@ -20,7 +20,7 @@ export function Shell({
 }>) {
   const location = useLocation()
   const isMobileViewport = useMediaQuery('(max-width:1024px)')
-  const showMobileNav = isMobileViewport && shouldShowMobileBottomNav(location.pathname)
+  const showFloatingAccessBar = isMobileViewport && shouldShowMobileBottomNav(location.pathname)
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -39,7 +39,7 @@ export function Shell({
       >
         {contained ? <Container>{children}</Container> : children}
       </Box>
-      {showMobileNav ? (
+      {showFloatingAccessBar ? (
         <Box
           aria-hidden
           sx={{
@@ -52,7 +52,7 @@ export function Shell({
           }}
         />
       ) : null}
-      <MobileBottomNav />
+      <MobileBottomNav visible={showFloatingAccessBar} />
       <StoreFooter />
     </Box>
   )

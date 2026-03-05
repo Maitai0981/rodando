@@ -1,1 +1,1 @@
-export { MobileBottomNav } from './MobileBottomNav'
+export { FloatingAccessBarMobile, MobileBottomNav } from './MobileBottomNav'

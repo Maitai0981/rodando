@@ -283,6 +283,47 @@ test('desktop: bottom nav mobile nao aparece em paginas publicas', async ({ page
   await expect(page.getByTestId('mobile-bottom-nav')).toBeHidden()
 })
 
+test('mobile header: menu full-screen abre, fecha e navega sem regressao', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+
+  await page.getByLabel('Abrir menu').click()
+  const menuDialog = page.getByRole('dialog', { name: 'Menu' })
+  await expect(menuDialog).toBeVisible()
+
+  const panelRect = await menuDialog.evaluate((el) => {
+    const rect = (el as HTMLElement).getBoundingClientRect()
+    return { width: Math.round(rect.width), height: Math.round(rect.height) }
+  })
+  const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  expect(panelRect.width).toBeGreaterThanOrEqual(viewport.width - 2)
+  expect(panelRect.height).toBeGreaterThanOrEqual(viewport.height - 2)
+
+  await menuDialog.getByRole('link', { name: 'Catalogo' }).first().click()
+  await expect(page).toHaveURL(/\/catalog/)
+  await expect(menuDialog).toHaveCount(0)
+
+  await page.getByLabel('Abrir menu').click()
+  await expect(menuDialog).toBeVisible()
+  await page.getByLabel('Fechar menu').click()
+  await expect(menuDialog).toHaveCount(0)
+})
+
+test('mobile header: reduced-motion desativa animacoes pesadas do menu', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+
+  await page.getByLabel('Abrir menu').click()
+  const menuDialog = page.getByRole('dialog', { name: 'Menu' })
+  await expect(menuDialog).toBeVisible()
+
+  const firstMenuItemAnimation = await page.getByTestId('mobile-menu-link-0').evaluate((el) =>
+    getComputedStyle(el as HTMLElement).animationName
+  )
+  expect(firstMenuItemAnimation === 'none' || firstMenuItemAnimation === '').toBeTruthy()
+})
+
 test('mobile: home, catalogo e mochila sem corte no topo e sem overflow horizontal', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
 

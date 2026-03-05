@@ -71,7 +71,10 @@ export default function OwnerSignInPage() {
           {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
-              inputProps={{ 'data-testid': 'owner-signin-email-input' }}
+              inputProps={{
+                'data-testid': 'owner-signin-email-input',
+                autoComplete: 'username',
+              }}
               fullWidth
               label="Email owner"
               margin="normal"
@@ -93,7 +96,10 @@ export default function OwnerSignInPage() {
               required
             />
             <TextField
-              inputProps={{ 'data-testid': 'owner-signin-password-input' }}
+              inputProps={{
+                'data-testid': 'owner-signin-password-input',
+                autoComplete: 'current-password',
+              }}
               fullWidth
               label="Senha"
               type={showPassword ? 'text' : 'password'}

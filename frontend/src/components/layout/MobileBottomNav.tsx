@@ -1,13 +1,12 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { NavAccountIcon, NavBagIcon, NavCatalogIcon, NavHomeIcon } from '@/ui/primitives/Icon'
-import { shouldShowMobileBottomNav } from '../../layouts/mobileNavVisibility'
 import { prefetchRouteChunk } from '../../routes/prefetch'
 
 type NavItem = {
@@ -23,19 +22,21 @@ function isRoute(pathname: string, target: string) {
   return pathname === target || pathname.startsWith(`${target}/`)
 }
 
-export function MobileBottomNav() {
+type FloatingAccessBarMobileProps = {
+  visible?: boolean
+}
+
+export function FloatingAccessBarMobile({ visible = true }: FloatingAccessBarMobileProps) {
   const theme = useTheme()
-  const isMobileViewport = useMediaQuery('(max-width:1024px)')
   const location = useLocation()
   const { status, user } = useAuth()
   const { itemCount } = useCart()
-  const isVisibleOnRoute = shouldShowMobileBottomNav(location.pathname)
 
   function handlePrefetch(pathname: string) {
     prefetchRouteChunk(pathname)
   }
 
-  if (!isMobileViewport || !isVisibleOnRoute) {
+  if (!visible) {
     return null
   }
 
@@ -74,7 +75,7 @@ export function MobileBottomNav() {
     },
   ]
 
-  return (
+  const navContent = (
     <Box
       data-testid="mobile-bottom-nav"
       sx={{
@@ -108,6 +109,7 @@ export function MobileBottomNav() {
               <Box
                 key={item.to}
                 component={RouterLink}
+                className="ds-pressable"
                 to={item.to}
                 data-testid={item.testId}
                 aria-current={active ? 'page' : undefined}
@@ -130,8 +132,11 @@ export function MobileBottomNav() {
                   '&:hover': {
                     backgroundColor: active ? '#1C9C4B' : 'rgba(20,34,53,0.06)',
                   },
+                  '&:active': {
+                    transform: 'scale(0.98)',
+                  },
                 }}
-                >
+              >
                 {item.renderIcon(active)}
                 <Typography
                   component="span"
@@ -152,4 +157,12 @@ export function MobileBottomNav() {
       </Box>
     </Box>
   )
+
+  if (typeof document === 'undefined') {
+    return navContent
+  }
+
+  return createPortal(navContent, document.body)
 }
+
+export const MobileBottomNav = FloatingAccessBarMobile

@@ -35,6 +35,7 @@ export function Button({
   rightIcon,
   disabled,
   children,
+  className,
   sx,
   ...props
 }: ButtonProps) {
@@ -54,6 +55,7 @@ export function Button({
     <MuiButton
       {...mapped}
       {...(props as MuiButtonProps)}
+      className={className ? `ds-pressable ${className}` : 'ds-pressable'}
       size={mapSize(size)}
       fullWidth={fullWidth}
       disabled={disabled || loading}

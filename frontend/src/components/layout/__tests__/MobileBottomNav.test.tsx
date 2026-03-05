@@ -28,15 +28,11 @@ vi.mock('../../../context/CartContext', () => ({
   useCart: () => cartState,
 }))
 
-vi.mock('@mui/material/useMediaQuery', () => ({
-  default: () => true,
-}))
-
-function renderNav(initialRoute: string) {
+function renderNav(initialRoute: string, visible = true) {
   return render(
     <ThemeProvider theme={theme}>
       <MemoryRouter initialEntries={[initialRoute]}>
-        <MobileBottomNav />
+        <MobileBottomNav visible={visible} />
       </MemoryRouter>
     </ThemeProvider>
   )
@@ -78,6 +74,12 @@ describe('MobileBottomNav', () => {
     renderNav('/cart')
 
     expect(screen.getByTestId('mobile-nav-account')).toHaveAttribute('href', '/owner/dashboard')
+  })
+
+  it('nao renderiza quando visible for false', () => {
+    renderNav('/catalog', false)
+
+    expect(screen.queryByTestId('mobile-bottom-nav')).not.toBeInTheDocument()
   })
 })
 

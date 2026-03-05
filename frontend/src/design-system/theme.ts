@@ -149,7 +149,7 @@ export const dsTheme = createTheme(
               transform: 'translateY(-1px)',
             },
             '&:active': {
-              transform: 'translateY(0)',
+              transform: 'translateY(0) scale(0.985)',
             },
           },
           containedPrimary: {
@@ -206,6 +206,26 @@ export const dsTheme = createTheme(
         styleOverrides: {
           root: {
             strokeWidth: dsTokens.icon.strokeWidth,
+          },
+        },
+      },
+      MuiIconButton: {
+        styleOverrides: {
+          root: {
+            transition: `transform ${dsTokens.motion.press}, background-color ${dsTokens.motion.fast}, color ${dsTokens.motion.fast}`,
+            '&:active': {
+              transform: 'scale(0.96)',
+            },
+          },
+        },
+      },
+      MuiListItemButton: {
+        styleOverrides: {
+          root: {
+            transition: `transform ${dsTokens.motion.press}, background-color ${dsTokens.motion.fast}, border-color ${dsTokens.motion.fast}`,
+            '&:active': {
+              transform: 'scale(0.985)',
+            },
           },
         },
       },

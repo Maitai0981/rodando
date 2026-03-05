@@ -25,4 +25,11 @@ describe('SignInPage', () => {
     expect(backButton).toHaveAttribute('href', '/')
     expect(screen.getByTestId('auth-informative-pane')).toHaveAttribute('data-pane-variant', 'amber')
   })
+
+  it('define autocomplete correto para email e senha', async () => {
+    renderWithProviders(<SignInPage />)
+
+    expect(screen.getByTestId('signin-email-input')).toHaveAttribute('autocomplete', 'username')
+    expect(screen.getByTestId('signin-password-input')).toHaveAttribute('autocomplete', 'current-password')
+  })
 })

@@ -89,7 +89,10 @@ export default function SignInPage() {
           ) : null}
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
-              inputProps={{ 'data-testid': 'signin-email-input' }}
+              inputProps={{
+                'data-testid': 'signin-email-input',
+                autoComplete: 'username',
+              }}
               fullWidth
               label="Email"
               margin="normal"
@@ -111,7 +114,10 @@ export default function SignInPage() {
               required
             />
             <TextField
-              inputProps={{ 'data-testid': 'signin-password-input' }}
+              inputProps={{
+                'data-testid': 'signin-password-input',
+                autoComplete: 'current-password',
+              }}
               fullWidth
               label="Senha"
               type={showPassword ? 'text' : 'password'}

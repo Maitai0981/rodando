@@ -182,7 +182,10 @@ export default function SignUpPage() {
           {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
-              inputProps={{ 'data-testid': 'signup-name-input' }}
+              inputProps={{
+                'data-testid': 'signup-name-input',
+                autoComplete: 'name',
+              }}
               fullWidth
               label="Nome"
               margin="normal"
@@ -204,7 +207,10 @@ export default function SignUpPage() {
             />
 
             <TextField
-              inputProps={{ 'data-testid': 'signup-email-input' }}
+              inputProps={{
+                'data-testid': 'signup-email-input',
+                autoComplete: 'email',
+              }}
               fullWidth
               label="Email"
               margin="normal"
@@ -227,7 +233,10 @@ export default function SignUpPage() {
             />
 
             <TextField
-              inputProps={{ 'data-testid': 'signup-password-input' }}
+              inputProps={{
+                'data-testid': 'signup-password-input',
+                autoComplete: 'new-password',
+              }}
               fullWidth
               label="Senha"
               type={showPassword ? 'text' : 'password'}
