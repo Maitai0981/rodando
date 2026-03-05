@@ -370,6 +370,51 @@ CREATE TABLE IF NOT EXISTS owner_notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  route TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  response_status INTEGER,
+  response_body JSONB,
+  order_id BIGINT REFERENCES orders(id) ON DELETE SET NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, route, idempotency_key)
+);
+
+CREATE TABLE IF NOT EXISTS payment_webhook_events (
+  id BIGSERIAL PRIMARY KEY,
+  event_id TEXT NOT NULL UNIQUE,
+  payment_external_id TEXT NOT NULL,
+  order_id BIGINT REFERENCES orders(id) ON DELETE SET NULL,
+  normalized_status TEXT NOT NULL DEFAULT 'pending',
+  payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  processing_status TEXT NOT NULL DEFAULT 'processing'
+    CHECK (processing_status IN ('processing', 'processed', 'error')),
+  process_attempts INTEGER NOT NULL DEFAULT 0 CHECK (process_attempts >= 0),
+  processed_at TIMESTAMPTZ,
+  last_error TEXT,
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS outbox_jobs (
+  id BIGSERIAL PRIMARY KEY,
+  job_type TEXT NOT NULL,
+  payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'processing', 'completed', 'error', 'dead_letter')),
+  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+  last_error TEXT,
+  next_attempt_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS order_items (
   order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
@@ -487,6 +532,12 @@ CREATE INDEX IF NOT EXISTS idx_payment_transactions_order ON payment_transaction
 CREATE INDEX IF NOT EXISTS idx_orders_status_date ON orders (status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_delivery_city ON orders (delivery_city, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_owner_notifications_order ON owner_notifications (order_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_lookup ON idempotency_keys (user_id, route, idempotency_key, expires_at DESC);
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_expires ON idempotency_keys (expires_at);
+CREATE INDEX IF NOT EXISTS idx_payment_webhook_events_external ON payment_webhook_events (payment_external_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payment_webhook_events_status ON payment_webhook_events (processing_status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_outbox_jobs_due ON outbox_jobs (status, next_attempt_at, created_at);
+CREATE INDEX IF NOT EXISTS idx_outbox_jobs_type ON outbox_jobs (job_type, created_at DESC);
 
 INSERT INTO roles (code, name)
 VALUES

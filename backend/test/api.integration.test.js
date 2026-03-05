@@ -7,6 +7,7 @@ const test = require('node:test')
 const request = require('supertest')
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rodando-api-test-'))
+process.env.APP_ENV = 'test'
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1:5432/rodando_test'
 process.env.DB_RESET = '1'
 process.env.SEED_BASE_CATALOG = '0'

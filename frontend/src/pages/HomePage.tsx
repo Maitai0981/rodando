@@ -239,9 +239,9 @@ export default function HomePage() {
             overflow: 'hidden',
             minHeight: {
               xs: 'auto',
-              md: 'clamp(460px, 60vh, 620px)',
+              md: 'clamp(380px, 52vh, 520px)',
             },
-            p: { xs: 1.2, sm: 1.8, md: 2.4 },
+            p: { xs: 1.2, sm: 1.8, md: 2.2 },
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'flex-start',
@@ -399,7 +399,7 @@ export default function HomePage() {
           <Stack
             alignItems="center"
             spacing={0.35}
-            sx={{ position: 'relative', zIndex: 1, color: 'text.secondary', mt: { xs: 0.2, md: 'auto' }, pt: { md: 0.4 } }}
+            sx={{ position: 'relative', zIndex: 1, color: 'text.secondary', mt: { xs: 0.4, md: 1.2 }, pt: { md: 0.2 } }}
           >
             <Box
               component="button"

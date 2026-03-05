@@ -103,3 +103,11 @@ O backend de E2E roda em banco isolado e com defaults:
 - `28P01`: usuário/senha inválidos no PostgreSQL.
 - `ECONNREFUSED`: PostgreSQL não está rodando ou não está ouvindo em `127.0.0.1:5432`.
 - `3D000` (`database does not exist`): crie o banco ou use usuário com permissão para criação automática.
+- `npm ci` com `package-lock` fora de sync (`Missing: yaml@... from lock file`):
+  - use Node `20.11.1` (`.nvmrc`) e rode `npm --prefix frontend install` para regenerar o lock.
+  - valide com `npm --prefix frontend ci --ignore-scripts`.
+- `EPERM` no `esbuild.exe` (Windows):
+  - encerre `vite/node` em execução.
+  - remova `frontend/node_modules`.
+  - execute novamente `npm --prefix frontend ci`.
+  - se persistir, revise bloqueio de antivírus no diretório `frontend/node_modules`.

@@ -4,6 +4,7 @@ const {
   query,
   queryOne,
 } = require('./db')
+const { getCookiePolicy } = require('./config/env')
 
 const SESSION_COOKIE = 'rodando_session'
 const GUEST_COOKIE = 'rodando_guest'
@@ -167,29 +168,32 @@ async function getUserFromSessionToken(token) {
 }
 
 function setSessionCookie(res, token, expiresAt) {
+  const cookiePolicy = getCookiePolicy()
   res.cookie(SESSION_COOKIE, token, {
     httpOnly: true,
-    sameSite: 'lax',
-    secure: false,
+    sameSite: cookiePolicy.sameSite,
+    secure: cookiePolicy.secure,
     expires: expiresAt,
     path: '/',
   })
 }
 
 function clearSessionCookie(res) {
+  const cookiePolicy = getCookiePolicy()
   res.clearCookie(SESSION_COOKIE, {
     httpOnly: true,
-    sameSite: 'lax',
-    secure: false,
+    sameSite: cookiePolicy.sameSite,
+    secure: cookiePolicy.secure,
     path: '/',
   })
 }
 
 function setGuestCookie(res, token, expiresAt) {
+  const cookiePolicy = getCookiePolicy()
   res.cookie(GUEST_COOKIE, token, {
     httpOnly: true,
-    sameSite: 'lax',
-    secure: false,
+    sameSite: cookiePolicy.sameSite,
+    secure: cookiePolicy.secure,
     expires: expiresAt,
     path: '/',
   })

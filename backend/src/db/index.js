@@ -4,12 +4,27 @@ const crypto = require('node:crypto')
 const { Pool } = require('pg')
 const { recordQuery } = require('../perf/metrics')
 const logger = require('../perf/logger')
+const {
+  APP_ENV,
+  parseBooleanEnv,
+  assertNoDestructiveFlagsInProduction,
+  assertDestructiveAllowed,
+} = require('../config/env')
 
 const DEFAULT_DATABASE_URL = 'postgres://postgres:postgres@127.0.0.1:5432/rodando'
 const connectionString = process.env.DATABASE_URL || DEFAULT_DATABASE_URL
-const shouldSeedBaseCatalog = String(process.env.SEED_BASE_CATALOG || '0') === '1'
-const shouldSeedDemoData = String(process.env.SEED_DEMO_DATA || '0') === '1'
-const shouldResetSchema = String(process.env.DB_RESET || '0') === '1'
+const shouldSeedBaseCatalog = parseBooleanEnv(process.env.SEED_BASE_CATALOG, false)
+const shouldSeedDemoData = parseBooleanEnv(process.env.SEED_DEMO_DATA, false)
+const shouldResetSchema = parseBooleanEnv(process.env.DB_RESET, false)
+
+assertNoDestructiveFlagsInProduction()
+
+logger.info('db_env_config', {
+  appEnv: APP_ENV,
+  shouldResetSchema,
+  shouldSeedBaseCatalog,
+  shouldSeedDemoData,
+})
 
 const schemaPath = path.join(__dirname, 'schema.sql')
 const schemaSql = fs.readFileSync(schemaPath, 'utf8')
@@ -27,6 +42,9 @@ const pool = new Pool({
 let initPromise = null
 const NON_USER_RESET_TABLES = [
   'sessions',
+  'idempotency_keys',
+  'payment_webhook_events',
+  'outbox_jobs',
   'product_images',
   'product_prices',
   'product_stocks',
@@ -449,6 +467,7 @@ async function reseedBaseCatalog() {
 }
 
 async function resetNonUserData({ reseedBase = true } = {}) {
+  assertDestructiveAllowed('reset non-user data')
   const tableListSql = NON_USER_RESET_TABLES.map(escapeIdent).join(', ')
   await query(`TRUNCATE TABLE ${tableListSql} RESTART IDENTITY CASCADE`)
   if (reseedBase) {
@@ -473,6 +492,7 @@ function isDemoUserEmail(email) {
 }
 
 async function purgeTestComments() {
+  assertDestructiveAllowed('purge test comments')
   return withTransaction(async (tx) => {
     const rows = await tx.query(
       `SELECT DISTINCT u.id, u.email
@@ -494,6 +514,7 @@ async function purgeTestComments() {
 }
 
 async function purgeDemoUsers() {
+  assertDestructiveAllowed('purge demo users')
   return withTransaction(async (tx) => {
     const rows = await tx.query('SELECT id, email FROM users')
     let removed = 0
@@ -532,6 +553,7 @@ async function collectOperationalCounts() {
 }
 
 async function cleanRealData() {
+  assertDestructiveAllowed('clean real data')
   await resetNonUserData({ reseedBase: false })
   const purged = await purgeDemoUsers()
   const counts = await collectOperationalCounts()

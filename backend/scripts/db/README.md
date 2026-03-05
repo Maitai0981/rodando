@@ -10,3 +10,16 @@ Database maintenance scripts for the backend.
 - `purge-demo-users.js`: removes known demo/e2e users.
 - `clean-real-data.js`: full cleanup for real-data mode (preserves real users/roles, removes demo users, keeps operational tables empty).
 - `migrate-sqlite-to-postgres.js`: imports legacy SQLite data.
+
+## Safety defaults
+
+- Runtime recomendado: Node `20.x`.
+- Defina `APP_ENV` explicitamente (`local|test|e2e|staging|production`).
+- Em `staging/production`, `DB_RESET`, `SEED_*` e `E2E_ALLOW_RESET` são bloqueados.
+- Para qualquer limpeza destrutiva em ambiente real, é obrigatório `ALLOW_DESTRUCTIVE=1`.
+
+## Reliability tables managed by schema
+
+- `idempotency_keys`: deduplicação de checkout/mutações críticas.
+- `payment_webhook_events`: dedupe + trilha de processamento de webhooks.
+- `outbox_jobs`: fila interna de retries com dead-letter lógico.

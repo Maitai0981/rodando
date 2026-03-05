@@ -41,6 +41,10 @@ const {
   invalidatePublicCache,
   PUBLIC_CACHE_CONTROL,
 } = require('./perf/http')
+const {
+  APP_ENV,
+  validateEnvironment,
+} = require('./config/env')
 
 const PORT = Number(process.env.PORT || 4000)
 const FREE_SHIPPING_TARGET = 199
@@ -63,6 +67,12 @@ const UPLOAD_MAX_BYTES = Number(process.env.UPLOAD_MAX_BYTES || 6 * 1024 * 1024)
 const IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'])
 const PUBLIC_CACHE_PREFIXES = ['products:', 'product-details:', 'offers:', 'comments:', 'catalog:']
 const PRODUCT_MUTATION_CACHE_PREFIXES = ['products:', 'product-details:', 'offers:', 'catalog:']
+const IDEMPOTENCY_ROUTE_CHECKOUT = '/api/orders/checkout'
+const IDEMPOTENCY_TTL_HOURS = 24
+const OUTBOX_MAX_ATTEMPTS = 5
+const OUTBOX_RETRY_BASE_MS = 15_000
+const OUTBOX_RETRY_MAX_MS = 15 * 60 * 1000
+const OUTBOX_POLL_INTERVAL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS || 5000)
 const PUBLIC_COMMENT_AUTHOR_FILTER_SQL = `
   NOT (
     lower(u.email) = 'cliente_demo@rodando.local'
@@ -81,7 +91,25 @@ const allowedOrigins = new Set(
 
 const app = express()
 const dbReady = initializeDatabase()
+const envValidation = validateEnvironment()
+let outboxPoller = null
+let outboxTickInFlight = null
+const outboxRuntime = {
+  enabled: true,
+  running: false,
+  lastRunAt: null,
+  lastSuccessAt: null,
+  lastError: null,
+  processedJobs: 0,
+  failedJobs: 0,
+}
 fs.mkdirSync(UPLOADS_DIR, { recursive: true })
+
+if (!envValidation.ok) {
+  const message = `Falha de validacao de ambiente (${APP_ENV}): ${envValidation.issues.join(' | ')}`
+  logger.error('env_validation_failed', { appEnv: APP_ENV, issues: envValidation.issues })
+  throw new Error(message)
+}
 
 const ownerImageUpload = multer({
   storage: multer.diskStorage({
@@ -171,12 +199,104 @@ app.get('/api/health', async (_req, res) => {
   })
 })
 
-app.get('/api/metrics', (_req, res) => {
+app.get('/api/ready', async (_req, res) => {
+  const checks = {
+    environment: {
+      status: envValidation.ok ? 'ok' : 'error',
+      appEnv: APP_ENV,
+      issues: envValidation.issues,
+    },
+    database: { status: 'ok' },
+    outbox: {
+      status: outboxRuntime.lastError ? 'degraded' : 'ok',
+      pollIntervalMs: OUTBOX_POLL_INTERVAL_MS,
+      running: outboxRuntime.running,
+      lastRunAt: outboxRuntime.lastRunAt,
+      lastSuccessAt: outboxRuntime.lastSuccessAt,
+      lastError: outboxRuntime.lastError,
+    },
+  }
+
+  try {
+    await queryOne('SELECT 1 AS ok')
+  } catch (error) {
+    checks.database = { status: 'error', reason: 'database_unavailable' }
+  }
+
+  try {
+    const row = await queryOne(
+      `SELECT
+        COUNT(*) FILTER (WHERE status IN ('pending', 'error'))::int AS "pending",
+        COUNT(*) FILTER (WHERE status = 'dead_letter')::int AS "deadLetter"
+       FROM outbox_jobs`,
+    )
+    checks.outbox.queue = {
+      pending: Number(row?.pending || 0),
+      deadLetter: Number(row?.deadLetter || 0),
+    }
+  } catch (_error) {
+    checks.outbox = {
+      ...checks.outbox,
+      status: 'degraded',
+      reason: 'outbox_unavailable',
+    }
+  }
+
+  const hasHardFailure = checks.environment.status !== 'ok' || checks.database.status !== 'ok'
+  res.setHeader('Cache-Control', 'no-store')
+  res.status(hasHardFailure ? 503 : 200).json({
+    status: hasHardFailure ? 'not_ready' : 'ready',
+    timestamp: nowIso(),
+    checks,
+  })
+})
+
+app.get('/api/metrics', async (_req, res) => {
+  let outbox = {
+    enabled: outboxRuntime.enabled,
+    running: outboxRuntime.running,
+    pollIntervalMs: OUTBOX_POLL_INTERVAL_MS,
+    processedJobs: outboxRuntime.processedJobs,
+    failedJobs: outboxRuntime.failedJobs,
+    lastRunAt: outboxRuntime.lastRunAt,
+    lastSuccessAt: outboxRuntime.lastSuccessAt,
+    lastError: outboxRuntime.lastError,
+    queue: {
+      pending: 0,
+      processing: 0,
+      deadLetter: 0,
+    },
+  }
+
+  try {
+    const row = await queryOne(
+      `SELECT
+        COUNT(*) FILTER (WHERE status IN ('pending', 'error'))::int AS "pending",
+        COUNT(*) FILTER (WHERE status = 'processing')::int AS "processing",
+        COUNT(*) FILTER (WHERE status = 'dead_letter')::int AS "deadLetter"
+       FROM outbox_jobs`,
+    )
+    outbox = {
+      ...outbox,
+      queue: {
+        pending: Number(row?.pending || 0),
+        processing: Number(row?.processing || 0),
+        deadLetter: Number(row?.deadLetter || 0),
+      },
+    }
+  } catch (_error) {
+    outbox = {
+      ...outbox,
+      lastError: outbox.lastError || 'outbox_unavailable',
+    }
+  }
+
   res.setHeader('Cache-Control', 'no-store')
   return res.json({
     status: 'ok',
     generatedAt: nowIso(),
     cachePolicyPublicRead: PUBLIC_CACHE_CONTROL,
+    outbox,
     ...snapshot(),
   })
 })
@@ -779,8 +899,325 @@ app.post('/api/orders/quote', requireAuth, async (req, res) => {
   })
 })
 
+function stableStringify(value) {
+  if (value === null || value === undefined) return 'null'
+  if (typeof value !== 'object') return JSON.stringify(value)
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`
+  }
+  const keys = Object.keys(value).sort()
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`
+}
+
+function sanitizeIdempotencyKey(value) {
+  const normalized = String(value || '').trim()
+  if (!normalized) return ''
+  if (normalized.length < 8 || normalized.length > 160) return ''
+  if (!/^[a-zA-Z0-9:_-]+$/.test(normalized)) return ''
+  return normalized
+}
+
+function hashCheckoutPayload(body) {
+  const normalized = {
+    deliveryMethod: parseDeliveryMethod(body?.deliveryMethod) || 'pickup',
+    recipientName: String(body?.recipientName || '').trim(),
+    recipientDocument: normalizeDocument(body?.recipientDocument || ''),
+    recipientPhone: normalizePhone(body?.recipientPhone || ''),
+    addressId: parseOptionalPositiveInt(body?.addressId),
+  }
+  return crypto.createHash('sha256').update(stableStringify(normalized)).digest('hex')
+}
+
+async function resolveIdempotencyContext({ userId, route, idempotencyKey, requestHash }) {
+  const key = sanitizeIdempotencyKey(idempotencyKey)
+  if (!key) return { enabled: false }
+
+  const existing = await queryOne(
+    `SELECT id, request_hash AS "requestHash", response_status AS "responseStatus", response_body AS "responseBody", order_id AS "orderId"
+     FROM idempotency_keys
+     WHERE user_id = $1 AND route = $2 AND idempotency_key = $3 AND expires_at > NOW()
+     LIMIT 1`,
+    [Number(userId), route, key],
+  )
+  if (existing) {
+    if (existing.requestHash !== requestHash) {
+      return { enabled: true, key, conflict: true }
+    }
+    if (existing.responseStatus && existing.responseBody) {
+      return {
+        enabled: true,
+        key,
+        replay: true,
+        responseStatus: Number(existing.responseStatus),
+        responseBody: existing.responseBody,
+      }
+    }
+    return { enabled: true, key, inProgress: true }
+  }
+
+  const inserted = await queryOne(
+    `INSERT INTO idempotency_keys (user_id, route, idempotency_key, request_hash, expires_at, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, NOW() + ($5 || ' hours')::interval, NOW(), NOW())
+     ON CONFLICT (user_id, route, idempotency_key)
+     DO NOTHING
+     RETURNING id`,
+    [Number(userId), route, key, requestHash, String(IDEMPOTENCY_TTL_HOURS)],
+  )
+
+  if (inserted?.id) {
+    return { enabled: true, key, id: Number(inserted.id) }
+  }
+
+  const afterConflict = await queryOne(
+    `SELECT request_hash AS "requestHash", response_status AS "responseStatus", response_body AS "responseBody"
+     FROM idempotency_keys
+     WHERE user_id = $1 AND route = $2 AND idempotency_key = $3 AND expires_at > NOW()
+     LIMIT 1`,
+    [Number(userId), route, key],
+  )
+  if (afterConflict?.requestHash && afterConflict.requestHash !== requestHash) {
+    return { enabled: true, key, conflict: true }
+  }
+  if (afterConflict?.responseStatus && afterConflict?.responseBody) {
+    return {
+      enabled: true,
+      key,
+      replay: true,
+      responseStatus: Number(afterConflict.responseStatus),
+      responseBody: afterConflict.responseBody,
+    }
+  }
+
+  return { enabled: true, key, inProgress: true }
+}
+
+async function saveIdempotencyResult(context, { responseStatus, responseBody, orderId = null }) {
+  if (!context?.enabled || !context.key) return
+  await query(
+    `UPDATE idempotency_keys
+     SET response_status = $4,
+         response_body = $5::jsonb,
+         order_id = $6,
+         updated_at = NOW()
+     WHERE user_id = $1 AND route = $2 AND idempotency_key = $3`,
+    [
+      Number(context.userId),
+      String(context.route),
+      String(context.key),
+      Number(responseStatus),
+      JSON.stringify(responseBody || {}),
+      orderId ? Number(orderId) : null,
+    ],
+  )
+}
+
+function resolveWebhookEventId(data, paymentExternalId, status) {
+  const explicit = String(
+    data?.id
+      || data?.eventId
+      || data?.event_id
+      || data?.resource
+      || '',
+  ).trim()
+  if (explicit) return explicit
+  const fallbackPayload = stableStringify(data || {})
+  return `fallback:${paymentExternalId}:${status}:${crypto.createHash('sha256').update(fallbackPayload).digest('hex')}`
+}
+
+async function claimWebhookEvent({ eventId, paymentExternalId, status, payloadJson }) {
+  return queryOne(
+    `INSERT INTO payment_webhook_events (
+       event_id, payment_external_id, normalized_status, payload_json, processing_status,
+       process_attempts, last_seen_at, created_at, updated_at
+     )
+     VALUES ($1, $2, $3, $4::jsonb, 'processing', 1, NOW(), NOW(), NOW())
+     ON CONFLICT (event_id)
+     DO UPDATE SET
+       process_attempts = payment_webhook_events.process_attempts + 1,
+       last_seen_at = NOW(),
+       normalized_status = EXCLUDED.normalized_status,
+       payload_json = EXCLUDED.payload_json,
+       updated_at = NOW()
+     RETURNING
+       id,
+       processing_status AS "processingStatus",
+       processed_at AS "processedAt"`,
+    [
+      String(eventId),
+      String(paymentExternalId),
+      String(status),
+      JSON.stringify(payloadJson || {}),
+    ],
+  )
+}
+
+async function markWebhookEventProcessed(eventId, orderId = null) {
+  await query(
+    `UPDATE payment_webhook_events
+     SET processing_status = 'processed',
+         processed_at = NOW(),
+         order_id = COALESCE($2, order_id),
+         last_error = NULL,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [Number(eventId), Number.isInteger(Number(orderId)) && Number(orderId) > 0 ? Number(orderId) : null],
+  )
+}
+
+async function markWebhookEventErrored(eventId, reason) {
+  await query(
+    `UPDATE payment_webhook_events
+     SET processing_status = 'error',
+         last_error = $2,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [Number(eventId), String(reason || 'Falha no processamento do webhook')],
+  )
+}
+
+async function enqueueOutboxJob(jobType, payload, nextAttemptAt = null, tx = null) {
+  const executor = tx || { one: queryOne }
+  return executor.one(
+    `INSERT INTO outbox_jobs (job_type, payload_json, status, attempts, next_attempt_at, created_at, updated_at)
+     VALUES ($1, $2::jsonb, 'pending', 0, COALESCE($3::timestamptz, NOW()), NOW(), NOW())
+     RETURNING id`,
+    [String(jobType), JSON.stringify(payload || {}), nextAttemptAt],
+  )
+}
+
+async function processOutboxJob(job) {
+  const payload = job.payload_json || {}
+  if (job.job_type === 'owner_sale_notification') {
+    await processOwnerSaleNotifications(payload.order)
+    return
+  }
+  throw new Error(`Job type nao suportado: ${job.job_type}`)
+}
+
+async function pollOutboxJobs(limit = 20) {
+  const stats = { fetched: 0, processed: 0, failed: 0 }
+  const dueJobs = await query(
+    `SELECT *
+     FROM outbox_jobs
+     WHERE status IN ('pending', 'error')
+       AND COALESCE(next_attempt_at, NOW()) <= NOW()
+     ORDER BY created_at ASC
+     LIMIT $1`,
+    [Number(limit)],
+  )
+  stats.fetched = Number(dueJobs.rows.length || 0)
+
+  for (const job of dueJobs.rows) {
+    try {
+      await query('UPDATE outbox_jobs SET status = $1, updated_at = NOW() WHERE id = $2', ['processing', Number(job.id)])
+      await processOutboxJob(job)
+      await query(
+        `UPDATE outbox_jobs
+         SET status = 'completed', updated_at = NOW()
+         WHERE id = $1`,
+        [Number(job.id)],
+      )
+      stats.processed += 1
+    } catch (error) {
+      const attempts = Number(job.attempts || 0) + 1
+      const maxedOut = attempts >= OUTBOX_MAX_ATTEMPTS
+      const backoffMs = Math.min(OUTBOX_RETRY_MAX_MS, OUTBOX_RETRY_BASE_MS * (2 ** Math.max(0, attempts - 1)))
+      await query(
+        `UPDATE outbox_jobs
+         SET status = $2,
+             attempts = $3,
+             last_error = $4,
+             next_attempt_at = CASE WHEN $5 THEN NULL ELSE NOW() + ($6 || ' milliseconds')::interval END,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [
+          Number(job.id),
+          maxedOut ? 'dead_letter' : 'error',
+          attempts,
+          String(error?.message || error || 'Falha desconhecida'),
+          maxedOut,
+          String(backoffMs),
+        ],
+      )
+      stats.failed += 1
+    }
+  }
+
+  return stats
+}
+
+async function runOutboxTick() {
+  if (outboxTickInFlight) return outboxTickInFlight
+  outboxRuntime.running = true
+  outboxRuntime.lastRunAt = nowIso()
+
+  outboxTickInFlight = (async () => {
+    try {
+      await dbReady
+      const stats = await pollOutboxJobs(20)
+      outboxRuntime.processedJobs += Number(stats.processed || 0)
+      outboxRuntime.failedJobs += Number(stats.failed || 0)
+      outboxRuntime.lastSuccessAt = nowIso()
+      outboxRuntime.lastError = null
+      return stats
+    } catch (error) {
+      outboxRuntime.lastError = String(error?.message || error || 'Falha no worker de outbox')
+      logger.error('outbox_worker_error', { error })
+      return { fetched: 0, processed: 0, failed: 1 }
+    } finally {
+      outboxRuntime.running = false
+      outboxTickInFlight = null
+    }
+  })()
+
+  return outboxTickInFlight
+}
+
+function startOutboxWorker() {
+  if (outboxPoller) return
+  outboxRuntime.enabled = true
+  void runOutboxTick()
+  outboxPoller = setInterval(() => {
+    void runOutboxTick()
+  }, OUTBOX_POLL_INTERVAL_MS)
+  if (typeof outboxPoller.unref === 'function') {
+    outboxPoller.unref()
+  }
+}
+
+function stopOutboxWorker() {
+  if (!outboxPoller) return
+  clearInterval(outboxPoller)
+  outboxPoller = null
+  outboxRuntime.enabled = false
+  outboxRuntime.running = false
+}
+
 app.post('/api/orders/checkout', requireAuth, async (req, res) => {
   const userId = Number(req.auth.user.id)
+  const rawIdempotencyKey = String(req.headers['idempotency-key'] || '').trim()
+  if (rawIdempotencyKey && !sanitizeIdempotencyKey(rawIdempotencyKey)) {
+    return res.status(400).json({ error: 'Header Idempotency-Key invalido.' })
+  }
+  const idempotencyContext = await resolveIdempotencyContext({
+    userId,
+    route: IDEMPOTENCY_ROUTE_CHECKOUT,
+    idempotencyKey: rawIdempotencyKey,
+    requestHash: hashCheckoutPayload(req.body || {}),
+  })
+  if (idempotencyContext.conflict) {
+    return res.status(409).json({ error: 'Idempotency-Key reutilizada com payload diferente.' })
+  }
+  if (idempotencyContext.replay) {
+    res.setHeader('Idempotent-Replay', 'true')
+    return res.status(Number(idempotencyContext.responseStatus || 200)).json(idempotencyContext.responseBody || {})
+  }
+  if (idempotencyContext.inProgress) {
+    return res.status(409).json({ error: 'Requisicao ja esta em processamento para esta Idempotency-Key.' })
+  }
+  idempotencyContext.userId = userId
+  idempotencyContext.route = IDEMPOTENCY_ROUTE_CHECKOUT
+
   const deliveryMethod = parseDeliveryMethod(req.body?.deliveryMethod) || 'pickup'
   const recipientName = String(req.body?.recipientName || req.auth.user?.name || '').trim()
   const recipientDocument = normalizeDocument(req.body?.recipientDocument || req.auth.user?.document || '')
@@ -948,7 +1385,7 @@ app.post('/api/orders/checkout', requireAuth, async (req, res) => {
       [Number(orderPayload.id), String(payment.externalId || ''), Number(orderPayload.total), JSON.stringify(payment.raw || {})],
     )
 
-    return res.status(201).json({
+    const responsePayload = {
       order: {
         id: orderPayload.id,
         status: orderPayload.status,
@@ -962,14 +1399,29 @@ app.post('/api/orders/checkout', requireAuth, async (req, res) => {
         updatedAt: orderPayload.updatedAt,
       },
       payment,
+    }
+    await saveIdempotencyResult(idempotencyContext, {
+      responseStatus: 201,
+      responseBody: responsePayload,
+      orderId: Number(orderPayload.id),
     })
+    return res.status(201).json(responsePayload)
   } catch (error) {
     const message = String(error?.message || 'Falha ao finalizar pedido.')
     const statusCode = Number(error?.statusCode || 500)
+    const safeStatusCode = statusCode >= 400 && statusCode < 500 ? statusCode : 500
+    const responseBody = statusCode >= 400 && statusCode < 500
+      ? { error: message }
+      : { error: 'Falha ao finalizar pedido.' }
+    await saveIdempotencyResult(idempotencyContext, {
+      responseStatus: safeStatusCode,
+      responseBody,
+      orderId: null,
+    })
     if (statusCode >= 400 && statusCode < 500) {
-      return res.status(statusCode).json({ error: message })
+      return res.status(statusCode).json(responseBody)
     }
-    return res.status(500).json({ error: 'Falha ao finalizar pedido.' })
+    return res.status(500).json(responseBody)
   }
 })
 
@@ -1181,6 +1633,19 @@ app.post('/api/payments/webhooks/mercadopago', async (req, res) => {
   const paymentExternalId = String(data?.paymentExternalId || data?.data?.id || '').trim()
   const status = normalizePaymentStatus(String(data?.status || data?.action || '').trim())
   if (!paymentExternalId) return res.status(400).json({ error: 'Payload sem identificador de pagamento.' })
+  const webhookEventId = resolveWebhookEventId(data, paymentExternalId, status)
+  const webhookEvent = await claimWebhookEvent({
+    eventId: webhookEventId,
+    paymentExternalId,
+    status,
+    payloadJson: data,
+  })
+  if (!webhookEvent?.id) {
+    return res.status(500).json({ error: 'Falha ao registrar evento de webhook.' })
+  }
+  if (webhookEvent.processingStatus === 'processed' && webhookEvent.processedAt) {
+    return res.status(200).json({ ok: true, deduplicated: true })
+  }
 
   const tx = await queryOne(
     `SELECT order_id AS "orderId"
@@ -1190,99 +1655,116 @@ app.post('/api/payments/webhooks/mercadopago', async (req, res) => {
      LIMIT 1`,
     [paymentExternalId],
   )
-  if (!tx?.orderId) return res.status(404).json({ error: 'Pagamento nao encontrado.' })
-
-  let notificationPayload = null
-  await withTransaction(async (trx) => {
-    await trx.query(
-      `UPDATE payment_transactions
-       SET status = $1, payload_json = $2::jsonb, updated_at = NOW()
-       WHERE external_id = $3`,
-      [status, JSON.stringify(data), paymentExternalId],
-    )
-    await trx.query(
-      `UPDATE orders
-       SET payment_status = $1,
-           status = CASE WHEN $1 = 'paid' THEN 'paid' WHEN $1 IN ('rejected', 'cancelled') THEN 'cancelled' ELSE status END,
-           updated_at = NOW()
-       WHERE id = $2`,
-      [status, Number(tx.orderId)],
-    )
-    const title = status === 'paid' ? 'Pagamento aprovado' : status === 'cancelled' ? 'Pagamento cancelado' : 'Pagamento atualizado'
-    await trx.query(
-      `INSERT INTO order_events (order_id, status, title, description, source, created_at)
-       VALUES ($1, $2, $3, $4, 'webhook', NOW())`,
-      [Number(tx.orderId), status, title, `Status recebido do gateway: ${status}.`],
-    )
-    if (status === 'paid') {
-      await trx.query(
-        `UPDATE fiscal_documents
-         SET status = 'ready', updated_at = NOW()
-         WHERE order_id = $1`,
-        [Number(tx.orderId)],
-      )
-      const order = await trx.one(
-        `SELECT
-          o.id,
-          o.total,
-          o.subtotal,
-          o.shipping,
-          o.eta_days AS "etaDays",
-          o.distance_km AS "distanceKm",
-          o.delivery_method AS "deliveryMethod",
-          o.recipient_name AS "recipientName",
-          o.recipient_document AS "recipientDocument",
-          o.recipient_phone AS "recipientPhone",
-          o.delivery_street AS "deliveryStreet",
-          o.delivery_number AS "deliveryNumber",
-          o.delivery_complement AS "deliveryComplement",
-          o.delivery_district AS "deliveryDistrict",
-          o.delivery_city AS "deliveryCity",
-          o.delivery_state AS "deliveryState",
-          o.delivery_cep AS "deliveryCep",
-          u.id AS "customerId",
-          u.email AS "customerEmail"
-         FROM orders o
-         JOIN users u ON u.id = o.user_id
-         WHERE o.id = $1
-         LIMIT 1`,
-        [Number(tx.orderId)],
-      )
-      if (order) {
-        notificationPayload = {
-          id: Number(order.id),
-          total: Number(order.total || 0),
-          subtotal: Number(order.subtotal || 0),
-          shipping: Number(order.shipping || 0),
-          etaDays: order.etaDays === null || order.etaDays === undefined ? null : Number(order.etaDays),
-          distanceKm: order.distanceKm === null || order.distanceKm === undefined ? null : Number(order.distanceKm),
-          deliveryMethod: order.deliveryMethod || 'pickup',
-          customer: {
-            id: Number(order.customerId),
-            email: order.customerEmail || null,
-            name: order.recipientName || 'Cliente',
-            document: order.recipientDocument || null,
-            phone: order.recipientPhone || null,
-          },
-          address: {
-            street: order.deliveryStreet || null,
-            number: order.deliveryNumber || null,
-            complement: order.deliveryComplement || null,
-            district: order.deliveryDistrict || null,
-            city: order.deliveryCity || null,
-            state: order.deliveryState || null,
-            cep: order.deliveryCep || null,
-          },
-        }
-      }
-    }
-  })
-
-  if (status === 'paid' && notificationPayload) {
-    await processOwnerSaleNotifications(notificationPayload).catch(() => {})
+  if (!tx?.orderId) {
+    await markWebhookEventErrored(Number(webhookEvent.id), 'Pagamento nao encontrado.')
+    return res.status(404).json({ error: 'Pagamento nao encontrado.' })
   }
 
-  return res.status(200).json({ ok: true })
+  try {
+    await withTransaction(async (trx) => {
+      await trx.query(
+        `UPDATE payment_transactions
+         SET status = $1, payload_json = $2::jsonb, updated_at = NOW()
+         WHERE external_id = $3`,
+        [status, JSON.stringify(data), paymentExternalId],
+      )
+      await trx.query(
+        `UPDATE orders
+         SET payment_status = $1,
+             status = CASE WHEN $1 = 'paid' THEN 'paid' WHEN $1 IN ('rejected', 'cancelled') THEN 'cancelled' ELSE status END,
+             updated_at = NOW()
+         WHERE id = $2`,
+        [status, Number(tx.orderId)],
+      )
+      const title = status === 'paid' ? 'Pagamento aprovado' : status === 'cancelled' ? 'Pagamento cancelado' : 'Pagamento atualizado'
+      await trx.query(
+        `INSERT INTO order_events (order_id, status, title, description, source, created_at)
+         VALUES ($1, $2, $3, $4, 'webhook', NOW())`,
+        [Number(tx.orderId), status, title, `Status recebido do gateway: ${status}.`],
+      )
+
+      if (status === 'paid') {
+        await trx.query(
+          `UPDATE fiscal_documents
+           SET status = 'ready', updated_at = NOW()
+           WHERE order_id = $1`,
+          [Number(tx.orderId)],
+        )
+        const order = await trx.one(
+          `SELECT
+            o.id,
+            o.total,
+            o.subtotal,
+            o.shipping,
+            o.eta_days AS "etaDays",
+            o.distance_km AS "distanceKm",
+            o.delivery_method AS "deliveryMethod",
+            o.recipient_name AS "recipientName",
+            o.recipient_document AS "recipientDocument",
+            o.recipient_phone AS "recipientPhone",
+            o.delivery_street AS "deliveryStreet",
+            o.delivery_number AS "deliveryNumber",
+            o.delivery_complement AS "deliveryComplement",
+            o.delivery_district AS "deliveryDistrict",
+            o.delivery_city AS "deliveryCity",
+            o.delivery_state AS "deliveryState",
+            o.delivery_cep AS "deliveryCep",
+            u.id AS "customerId",
+            u.email AS "customerEmail"
+           FROM orders o
+           JOIN users u ON u.id = o.user_id
+           WHERE o.id = $1
+           LIMIT 1`,
+          [Number(tx.orderId)],
+        )
+
+        if (order) {
+          const notificationPayload = {
+            id: Number(order.id),
+            total: Number(order.total || 0),
+            subtotal: Number(order.subtotal || 0),
+            shipping: Number(order.shipping || 0),
+            etaDays: order.etaDays === null || order.etaDays === undefined ? null : Number(order.etaDays),
+            distanceKm: order.distanceKm === null || order.distanceKm === undefined ? null : Number(order.distanceKm),
+            deliveryMethod: order.deliveryMethod || 'pickup',
+            customer: {
+              id: Number(order.customerId),
+              email: order.customerEmail || null,
+              name: order.recipientName || 'Cliente',
+              document: order.recipientDocument || null,
+              phone: order.recipientPhone || null,
+            },
+            address: {
+              street: order.deliveryStreet || null,
+              number: order.deliveryNumber || null,
+              complement: order.deliveryComplement || null,
+              district: order.deliveryDistrict || null,
+              city: order.deliveryCity || null,
+              state: order.deliveryState || null,
+              cep: order.deliveryCep || null,
+            },
+          }
+          await enqueueOutboxJob(
+            'owner_sale_notification',
+            {
+              order: notificationPayload,
+              source: 'payment_webhook',
+              paymentExternalId,
+              eventId: webhookEventId,
+            },
+            null,
+            trx,
+          )
+        }
+      }
+    })
+
+    await markWebhookEventProcessed(Number(webhookEvent.id), Number(tx.orderId))
+    return res.status(200).json({ ok: true })
+  } catch (error) {
+    await markWebhookEventErrored(Number(webhookEvent.id), error?.message || 'Falha ao processar webhook.')
+    return res.status(500).json({ error: 'Falha ao processar webhook de pagamento.' })
+  }
 })
 
 app.get('/api/offers', async (req, res) => {
@@ -2823,12 +3305,17 @@ app.use((err, req, res, _next) => {
 })
 
 function startServer(port = PORT) {
-  return app.listen(port, () => {
+  startOutboxWorker()
+  const server = app.listen(port, () => {
     logger.info('server_started', {
       port,
       url: `http://localhost:${port}`,
     })
   })
+  server.on('close', () => {
+    stopOutboxWorker()
+  })
+  return server
 }
 
 function resolveBagActor(req) {

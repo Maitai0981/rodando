@@ -24,6 +24,14 @@ This backend is organized by responsibility to keep data, scripts, and runtime c
 - `npm run db:migrate:legacy -- <sqlite-file-path>`
 - `npm run perf:api` (benchmark curto de endpoints públicos e geração de `backend/perf/backend-api.json`)
 
+## Runtime
+
+- Node.js oficial do projeto: `20.x` (`.nvmrc` e `engines` definidos).
+- Variável obrigatória de ambiente: `APP_ENV` (`local|test|e2e|staging|production`).
+- Em `staging/production`, `DATABASE_URL` é obrigatório.
+- Em `staging/production`, flags destrutivas (`DB_RESET`, `SEED_*`, `E2E_ALLOW_RESET`) são bloqueadas no boot.
+- Operações destrutivas em ambiente real exigem `ALLOW_DESTRUCTIVE=1`.
+
 ## Performance/Observability
 
 - Compressão HTTP ativa (`compression`) para respostas text/json.
@@ -35,6 +43,15 @@ This backend is organized by responsibility to keep data, scripts, and runtime c
 - Invalidação de cache ocorre após mutações de produtos/ofertas/comentários.
 - Métricas em `GET /api/metrics` (requests, latência p95/p99 por rota, cache hit/miss, métricas de query).
 - Healthcheck em `GET /api/health` com status de DB/pool.
+- Readiness em `GET /api/ready` com checks de ambiente, DB e worker de outbox.
+
+## Confiabilidade (Checkout/Pagamento)
+
+- `POST /api/orders/checkout` aceita header opcional `Idempotency-Key`.
+- Requisição repetida com mesma chave+payload retorna o mesmo resultado (`Idempotent-Replay: true`) sem duplicar pedido.
+- Requisição repetida com mesma chave e payload diferente retorna `409`.
+- Webhook do Mercado Pago é deduplicado por `event_id` em `payment_webhook_events`.
+- Notificações de venda usam outbox (`outbox_jobs`) com retry exponencial e dead-letter lógico.
 
 ## Notes
 

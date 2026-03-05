@@ -4,6 +4,7 @@ const path = require('node:path')
 
 function createTestContext(seedDemo = false) {
   fs.mkdtempSync(path.join(os.tmpdir(), 'rodando-domain-test-'))
+  process.env.APP_ENV = 'test'
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1:5432/rodando_test'
   process.env.DB_RESET = '1'
   process.env.SEED_DEMO_DATA = seedDemo ? '1' : '0'
