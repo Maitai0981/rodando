@@ -116,9 +116,9 @@ export default function CartPage() {
           </Card>
         </MotionReveal>
 
-        <MotionReveal variant="reveal-up" delayMs={80}>
-          <Grid container spacing={2.2} alignItems="flex-start">
+        <Grid container spacing={2.2} alignItems="flex-start">
           <Grid size={{ xs: 12, lg: 7.5 }}>
+            <MotionReveal variant="reveal-left" delayMs={80}>
             <Card className="ds-hover-lift">
               {loading ? (
                 <Typography variant="body2" color="text.secondary">Carregando mochila...</Typography>
@@ -186,9 +186,10 @@ export default function CartPage() {
                 </Stack>
               )}
             </Card>
+            </MotionReveal>
 
             {recommendations.length > 0 ? (
-              <MotionReveal variant="reveal-up" delayMs={120}>
+              <MotionReveal variant="reveal-pop" delayMs={120}>
                 <Box sx={{ mt: 2 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.1 }}>
                   <Typography variant="h6">Recomendados para sua compra</Typography>
@@ -207,7 +208,8 @@ export default function CartPage() {
           </Grid>
 
           <Grid size={{ xs: 12, lg: 4.5 }}>
-            <Card className="ds-hover-lift" sx={{ position: { lg: 'sticky' }, top: { lg: 106 } }}>
+            <MotionReveal variant="reveal-right" delayMs={120}>
+              <Card className="ds-hover-lift" sx={{ position: { lg: 'sticky' }, top: { lg: 106 } }}>
               <Typography component="h4" variant="h6" sx={{ mb: 1.2 }}>Resumo</Typography>
 
               <Stack spacing={1}>
@@ -229,7 +231,7 @@ export default function CartPage() {
               </Stack>
 
               <Button
-                className="ds-pressable"
+                className="ds-pressable ds-action-glint"
                 data-testid="cart-checkout-button"
                 fullWidth
                 variant="primary"
@@ -242,10 +244,10 @@ export default function CartPage() {
               >
                 {items.length === 0 ? 'Mochila vazia' : 'Ir para checkout'}
               </Button>
-            </Card>
+              </Card>
+            </MotionReveal>
           </Grid>
           </Grid>
-        </MotionReveal>
       </Stack>
 
       <ActionGuardDialog

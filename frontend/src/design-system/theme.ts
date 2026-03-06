@@ -75,13 +75,13 @@ export const dsTheme = createTheme(
         lineHeight: dsTokens.typography.lineHeight.compact,
       },
       subtitle1: {
-        fontSize: '1rem',
+        fontSize: '1.04rem',
         lineHeight: dsTokens.typography.lineHeight.compact,
         letterSpacing: dsTokens.typography.tracking.body,
         fontWeight: dsTokens.typography.weight.medium,
       },
       subtitle2: {
-        fontSize: '0.92rem',
+        fontSize: '0.96rem',
         lineHeight: dsTokens.typography.lineHeight.compact,
         letterSpacing: dsTokens.typography.tracking.body,
         fontWeight: dsTokens.typography.weight.medium,
@@ -92,7 +92,7 @@ export const dsTheme = createTheme(
         letterSpacing: dsTokens.typography.tracking.body,
       },
       body2: {
-        fontSize: '0.98rem',
+        fontSize: '1.02rem',
         lineHeight: dsTokens.typography.lineHeight.body,
         letterSpacing: dsTokens.typography.tracking.body,
       },

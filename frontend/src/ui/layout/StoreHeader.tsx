@@ -189,17 +189,22 @@ export function StoreHeader() {
                   borderColor: 'divider',
                   display: 'grid',
                   placeItems: 'center',
-                  color: 'primary.main',
+                  color: '#fff',
                   fontWeight: 700,
+                  background: 'linear-gradient(160deg, rgba(51,74,98,0.94) 0%, rgba(31,49,70,0.96) 72%, rgba(138,115,94,0.85) 100%)',
+                  boxShadow: '0 8px 18px rgba(20,34,53,0.16)',
                 }}
               >
                 R
               </Box>
               <Box>
-                <Typography variant="subtitle1" sx={{ lineHeight: 1, fontWeight: 800 }}>RODANDO</Typography>
+                <Typography variant="subtitle1" sx={{ lineHeight: 1, fontWeight: 900, letterSpacing: '0.01em', color: 'primary.dark' }}>
+                  RODANDO
+                </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
                   Moto Center
                 </Typography>
+
               </Box>
             </Stack>
 
@@ -240,7 +245,7 @@ export function StoreHeader() {
                 <Button
                   data-testid={link.testId}
                   key={link.href}
-                  className="ds-pressable"
+                  className="ds-pressable ds-link-slide"
                   component={RouterLink}
                   to={link.href}
                   onMouseEnter={() => handlePrefetch(link.href)}
@@ -277,7 +282,7 @@ export function StoreHeader() {
               </IconButton>
               <Button
                 data-testid="header-account-button"
-                className="ds-pressable"
+                className="ds-pressable ds-action-glint"
                 component={RouterLink}
                 to={accountHref}
                 variant="outlined"
@@ -292,7 +297,7 @@ export function StoreHeader() {
               {status === 'authenticated' ? (
                 <Button
                   data-testid="header-logout-button"
-                  className="ds-pressable"
+                  className="ds-pressable ds-link-slide"
                   variant="text"
                   color="inherit"
                   onClick={() => {
@@ -411,7 +416,7 @@ export function StoreHeader() {
                       <ListItem disablePadding key={`mobile-${link.href}`}>
                         <ListItemButton
                           component={RouterLink}
-                          className="ds-pressable ds-menu-item"
+                          className="ds-pressable ds-menu-item ds-action-glint"
                           style={{ ['--ds-menu-item-delay' as string]: prefersReducedMotion ? '0ms' : `${index * 30}ms` }}
                           to={link.href}
                           selected={link.active}
@@ -463,7 +468,7 @@ export function StoreHeader() {
                       <ListItem disablePadding key={`mobile-aux-${link.href}`}>
                         <ListItemButton
                           component={RouterLink}
-                          className="ds-pressable ds-menu-item"
+                          className="ds-pressable ds-menu-item ds-action-glint"
                           style={{ ['--ds-menu-item-delay' as string]: prefersReducedMotion ? '0ms' : `${(index + mobileMenuLinks.length) * 30}ms` }}
                           to={link.href}
                           onMouseEnter={() => handlePrefetch(link.prefetchPath)}

@@ -3,7 +3,7 @@ import type { BoxProps } from '@mui/material/Box'
 import { useInViewMotion } from '../../hooks/useInViewMotion'
 import { cx } from '../utils/cx'
 
-type MotionVariant = 'reveal-up' | 'reveal-fade'
+type MotionVariant = 'reveal-up' | 'reveal-fade' | 'reveal-left' | 'reveal-right' | 'reveal-pop'
 
 export interface MotionRevealProps extends BoxProps {
   variant?: MotionVariant
@@ -23,11 +23,18 @@ export function MotionReveal({
   ...rest
 }: MotionRevealProps) {
   const { ref, isActive } = useInViewMotion({ threshold, once })
+  const variantClassMap: Record<MotionVariant, string> = {
+    'reveal-up': 'ds-motion-up',
+    'reveal-fade': 'ds-motion-fade',
+    'reveal-left': 'ds-motion-left',
+    'reveal-right': 'ds-motion-right',
+    'reveal-pop': 'ds-motion-pop',
+  }
 
   return (
     <Box
       ref={ref}
-      className={cx('ds-motion-target', variant === 'reveal-fade' ? 'ds-motion-fade' : 'ds-motion-up', isActive && 'ds-motion-in', className)}
+      className={cx('ds-motion-target', variantClassMap[variant], isActive && 'ds-motion-in', className)}
       style={{
         ...style,
         ['--ds-motion-delay' as string]: `${delayMs}ms`,
@@ -38,4 +45,3 @@ export function MotionReveal({
     </Box>
   )
 }
-

@@ -109,7 +109,7 @@ export function FloatingAccessBarMobile({ visible = true }: FloatingAccessBarMob
               <Box
                 key={item.to}
                 component={RouterLink}
-                className="ds-pressable"
+                className="ds-pressable ds-action-glint"
                 to={item.to}
                 data-testid={item.testId}
                 aria-current={active ? 'page' : undefined}

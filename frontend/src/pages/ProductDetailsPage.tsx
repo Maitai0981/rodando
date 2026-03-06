@@ -125,42 +125,44 @@ export default function ProductDetailsPage() {
             </Grid>
           </Grid>
         ) : item && details ? (
-          <MotionReveal variant="reveal-up" delayMs={80}>
-            <Grid container spacing={2.2}>
+          <Grid container spacing={2.2}>
             <Grid size={{ xs: 12, md: 7 }}>
-              <Card
-                variant="feature"
-                className="ds-hover-lift"
-                sx={{
-                  p: 1,
-                  position: 'relative',
-                  overflow: 'hidden',
-                  borderColor: 'rgba(138,115,94,0.34)',
-                }}
-              >
-                <Box
-                  aria-hidden
+              <MotionReveal variant="reveal-left" delayMs={70}>
+                <Card
+                  variant="feature"
+                  className="ds-hover-lift"
                   sx={{
-                    position: 'absolute',
-                    inset: 0,
-                    opacity: 0.18,
-                    pointerEvents: 'none',
+                    p: 1,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderColor: 'rgba(138,115,94,0.34)',
                   }}
                 >
-                  <Box component="img" src={productMediaBackdropUrl} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </Box>
-                <Box sx={{ position: 'relative', zIndex: 1 }}>
-                  <ProductGallery
-                    mainUrl={details.gallery.mainUrl || item.imageUrl}
-                    hoverUrl={details.gallery.hoverUrl || item.hoverImageUrl}
-                    extra={details.gallery.extra}
-                    alt={item.name}
-                  />
-                </Box>
-              </Card>
+                  <Box
+                    aria-hidden
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      opacity: 0.18,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <Box component="img" src={productMediaBackdropUrl} alt="" className="ds-image-pan" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </Box>
+                  <Box sx={{ position: 'relative', zIndex: 1 }}>
+                    <ProductGallery
+                      mainUrl={details.gallery.mainUrl || item.imageUrl}
+                      hoverUrl={details.gallery.hoverUrl || item.hoverImageUrl}
+                      extra={details.gallery.extra}
+                      alt={item.name}
+                    />
+                  </Box>
+                </Card>
+              </MotionReveal>
             </Grid>
             <Grid size={{ xs: 12, md: 5 }}>
-              <Stack spacing={1.4}>
+              <MotionReveal variant="reveal-right" delayMs={100}>
+                <Stack spacing={1.4}>
                 <Stack direction="row" spacing={0.7} useFlexGap flexWrap="wrap">
                   <Badge label={item.category} tone="neutral" />
                   {details.pricing.discountPercent > 0 ? (
@@ -214,10 +216,10 @@ export default function ProductDetailsPage() {
                     <Typography variant="caption" color="text.secondary">SKU: {item.sku}</Typography>
                   </Stack>
                 </Card>
-              </Stack>
+                </Stack>
+              </MotionReveal>
             </Grid>
-            </Grid>
-          </MotionReveal>
+          </Grid>
         ) : null}
 
         {relatedQuery.data && relatedQuery.data.length > 0 ? (

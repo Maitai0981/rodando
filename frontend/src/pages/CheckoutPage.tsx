@@ -133,7 +133,7 @@ export default function CheckoutPage() {
         </MotionReveal>
 
         {items.length === 0 ? (
-          <MotionReveal variant="reveal-up" delayMs={80}>
+          <MotionReveal variant="reveal-pop" delayMs={80}>
             <Card className="ds-hover-lift">
             <Stack spacing={1.2}>
               <Typography variant="h6">Sua mochila esta vazia</Typography>
@@ -145,10 +145,10 @@ export default function CheckoutPage() {
             </Card>
           </MotionReveal>
         ) : (
-          <MotionReveal variant="reveal-up" delayMs={80}>
-            <Grid container spacing={2.2}>
+          <Grid container spacing={2.2}>
             <Grid size={{ xs: 12, md: 7 }}>
-              <Card className="ds-hover-lift">
+              <MotionReveal variant="reveal-left" delayMs={80}>
+                <Card className="ds-hover-lift">
                 <Stack spacing={1.2}>
                   <Typography variant="h6">Dados de entrega</Typography>
                   <Select
@@ -208,11 +208,13 @@ export default function CheckoutPage() {
 
                   {error ? <Alert tone="error">{error}</Alert> : null}
                 </Stack>
-              </Card>
+                </Card>
+              </MotionReveal>
             </Grid>
 
             <Grid size={{ xs: 12, md: 5 }}>
-              <Card className="ds-hover-lift">
+              <MotionReveal variant="reveal-right" delayMs={120}>
+                <Card className="ds-hover-lift">
                 <Stack spacing={1.1}>
                   <Typography variant="h6">Resumo do pedido</Typography>
                   <Stack direction="row" justifyContent="space-between">
@@ -238,7 +240,7 @@ export default function CheckoutPage() {
                     <Typography variant="h4" sx={{ color: 'info.main' }}>{formatCurrency(finalTotal)}</Typography>
                   </Stack>
                   <Button
-                    className="ds-pressable"
+                    className="ds-pressable ds-action-glint"
                     data-testid="checkout-submit-button"
                     variant="primary"
                     fullWidth
@@ -252,10 +254,10 @@ export default function CheckoutPage() {
                     Voltar para mochila
                   </Button>
                 </Stack>
-              </Card>
+                </Card>
+              </MotionReveal>
             </Grid>
-            </Grid>
-          </MotionReveal>
+          </Grid>
         )}
 
         <Toast

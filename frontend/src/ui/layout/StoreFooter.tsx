@@ -13,6 +13,7 @@ const DEFAULT_LINKS: FooterProps['quickLinks'] = [
   { label: 'Carrinho', href: '/cart' },
   { label: 'Pedidos', href: '/orders' },
 ]
+const BRAND_SLOGAN = 'Rodando te ajudando a continuar rodando'
 
 export function StoreFooter({ quickLinks = DEFAULT_LINKS }: Partial<FooterProps>) {
   return (
@@ -32,6 +33,9 @@ export function StoreFooter({ quickLinks = DEFAULT_LINKS }: Partial<FooterProps>
             <Stack spacing={0.8} sx={{ maxWidth: 420 }}>
               <Typography variant="overline" color="secondary.main">Rodando Moto Center</Typography>
               <Typography variant="h5">Pecas para sua moto, com suporte tecnico local.</Typography>
+              <Typography variant="caption" className="brand-slogan">
+                {BRAND_SLOGAN}
+              </Typography>
               <Typography variant="body2" color="text.secondary">
                 Av. Brasil, 8708 - Cascavel/PR • Segunda a sexta, 08h as 18h.
               </Typography>

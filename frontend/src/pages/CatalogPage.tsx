@@ -79,7 +79,7 @@ function ProductCard({
 
   return (
     <Paper
-      className="store-surface ds-hover-lift"
+      className="store-surface ds-hover-lift ds-action-glint"
       elevation={0}
       sx={{
         p: { xs: 1.6, md: 2 },
@@ -129,6 +129,7 @@ function ProductCard({
         <ResponsiveImage
           src={item.imageUrl}
           alt={item.name}
+          className="ds-image-pan"
           sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 33vw"
           sx={{
             transition: 'transform 250ms ease, opacity 220ms ease',
@@ -195,7 +196,7 @@ function ProductCard({
       <Stack direction="row" spacing={0.8}>
         <AddToCartButton product={item} />
         <Button
-          className="ds-pressable"
+          className="ds-pressable ds-link-slide"
           variant="outlined"
           color="primary"
           onMouseEnter={() => onPrefetchDetails(item)}
@@ -204,7 +205,7 @@ function ProductCard({
         >
           Ver detalhes
         </Button>
-        <Button className="ds-pressable" variant="outlined" color="primary" onClick={() => onRequestReview(item)}>
+        <Button className="ds-pressable ds-link-slide" variant="outlined" color="primary" onClick={() => onRequestReview(item)}>
           Avaliar
         </Button>
       </Stack>
@@ -217,7 +218,7 @@ function AddToCartButton({ product }: { product: Product }) {
   const { completeStep } = useAssist()
   return (
     <Button
-      className="ds-pressable"
+      className="ds-pressable ds-action-glint"
       data-testid={`catalog-add-${product.id}`}
       variant="contained"
       color="primary"
@@ -385,10 +386,10 @@ function FiltersPanel(props: {
       </Box>
 
       <Stack direction="row" spacing={1}>
-        <Button data-testid="catalog-apply-filters" variant="contained" color="primary" onClick={onApply} fullWidth>
+        <Button className="ds-pressable ds-action-glint" data-testid="catalog-apply-filters" variant="contained" color="primary" onClick={onApply} fullWidth>
           Aplicar filtros
         </Button>
-        <Button data-testid="catalog-clear-filters" variant="outlined" color="primary" onClick={onClear} fullWidth>
+        <Button className="ds-pressable ds-link-slide" data-testid="catalog-clear-filters" variant="outlined" color="primary" onClick={onClear} fullWidth>
           Limpar
         </Button>
       </Stack>
@@ -629,7 +630,7 @@ export default function CatalogPage() {
 
         <Grid container spacing={{ xs: 1.6, md: 2.2 }} alignItems="flex-start">
           <Grid size={{ xs: 12, lg: 3 }}>
-            <MotionReveal variant="reveal-up" delayMs={60} sx={{ display: { xs: 'none', lg: 'block' } }}>
+            <MotionReveal variant="reveal-left" delayMs={60} sx={{ display: { xs: 'none', lg: 'block' } }}>
               <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'rgba(251,249,244,0.92)', position: { lg: 'sticky' }, top: { lg: 110 } }}>
               <FiltersPanel
                 search={draftSearch}
@@ -655,7 +656,7 @@ export default function CatalogPage() {
             </MotionReveal>
 
             <Button
-              className="ds-pressable"
+              className="ds-pressable ds-action-glint"
               variant="outlined"
               color="primary"
               fullWidth
@@ -678,7 +679,7 @@ export default function CatalogPage() {
           </Grid>
 
           <Grid size={{ xs: 12, lg: 9 }}>
-            <MotionReveal variant="reveal-up" delayMs={80}>
+            <MotionReveal variant="reveal-right" delayMs={80}>
               <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: { xs: 1.2, md: 2 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'rgba(251,249,244,0.9)', mb: { xs: 1.6, md: 2 } }}>
               <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.2}>
                 <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
@@ -717,7 +718,8 @@ export default function CatalogPage() {
                 ))}
               </Grid>
             ) : items.length === 0 ? (
-              <Paper elevation={0} sx={{ p: { xs: 2.6, md: 4 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
+              <MotionReveal variant="reveal-pop" delayMs={120}>
+                <Paper elevation={0} sx={{ p: { xs: 2.6, md: 4 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
                 <Typography component="h4" variant="h6" sx={{ color: 'text.primary', mb: 0.8 }}>
                   Nenhum produto encontrado
                 </Typography>
@@ -727,7 +729,8 @@ export default function CatalogPage() {
                 <Button variant="outlined" color="primary" onClick={clearFilters}>
                   Limpar filtros
                 </Button>
-              </Paper>
+                </Paper>
+              </MotionReveal>
             ) : (
               <Grid container spacing={2}>
                 {items.map((item) => (

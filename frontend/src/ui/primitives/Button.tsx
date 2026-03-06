@@ -40,6 +40,8 @@ export function Button({
   ...props
 }: ButtonProps) {
   const mapped = mapVariant(variant)
+  const shouldGlint = variant === 'primary' || variant === 'accent' || variant === 'gold'
+  const composedClassName = ['ds-pressable', shouldGlint ? 'ds-action-glint' : '', className].filter(Boolean).join(' ')
   const iconStyle = variant === 'icon'
     ? {
         minWidth: 40,
@@ -55,7 +57,7 @@ export function Button({
     <MuiButton
       {...mapped}
       {...(props as MuiButtonProps)}
-      className={className ? `ds-pressable ${className}` : 'ds-pressable'}
+      className={composedClassName}
       size={mapSize(size)}
       fullWidth={fullWidth}
       disabled={disabled || loading}

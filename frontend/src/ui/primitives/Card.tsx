@@ -11,10 +11,13 @@ export function Card({ variant = 'surface', interactive = false, sx, ...props }:
     surface: '#FFFFFF',
   }
 
+  const composedClassName = [interactive ? 'ds-hover-lift' : '', props.className].filter(Boolean).join(' ')
+
   return (
     <Paper
       elevation={0}
       {...props}
+      className={composedClassName}
       sx={{
         p: 2,
         borderRadius: 3,

@@ -29,6 +29,7 @@ const officialLinks = {
     'https://www.google.com/maps/place/Rodando+Moto+Center/@-24.9539372,-53.4823137,17z/data=!3m1!4b1!4m6!3m5!1s0x94f3d6abd0f76d39:0x4c1de863cd816ba6!8m2!3d-24.9539372!4d-53.4823137!16s%2Fg%2F1thnpyhg?entry=ttu&g_ep=EgoyMDI2MDIyMi4wIKXMDSoASAFQAw%3D%3D',
   whatsapp: 'https://wa.me/5545999346779',
 }
+const BRAND_SLOGAN = 'Rodando te ajudando a continuar rodando'
 
 const storeLocationPhotoUrl =
   'https://lh3.googleusercontent.com/p/AF1QipOIJtyawLBJXkAdD3-zjal0bL54xaGKNWe2KFkU=w1200-h900-k-no'
@@ -118,6 +119,7 @@ function ProductCard({ product }: { product: Product }) {
           <ResponsiveImage
             src={product.imageUrl}
             alt={product.name}
+            className="ds-image-pan"
             sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 25vw"
             sx={{
               transition: 'transform 260ms ease, opacity 220ms ease',
@@ -176,7 +178,7 @@ function ProductCard({ product }: { product: Product }) {
           </Typography>
         </Stack>
 
-        <Button className="ds-pressable" component={RouterLink} to={buildProductUrl(product)} variant="contained" color="primary">
+        <Button className="ds-pressable ds-action-glint" component={RouterLink} to={buildProductUrl(product)} variant="contained" color="primary">
           Adicionar ao carrinho
         </Button>
       </Stack>
@@ -323,13 +325,24 @@ export default function HomePage() {
                   <Typography component="h1" variant="h2" sx={{ maxWidth: 700, color: '#F8FAFC', textShadow: '0 8px 20px rgba(0,0,0,0.35)' }}>
                     Loja de pecas para moto com compra segura e suporte tecnico.
                   </Typography>
-                  <Typography variant="body1" sx={{ color: 'rgba(241,245,249,0.92)', maxWidth: 680 }}>
-                    Operacao local, consultoria tecnica e atendimento comercial rapido para uma compra segura, direta e sem erro de aplicacao.
-                  </Typography>
+                <Typography variant="body1" sx={{ color: 'rgba(241,245,249,0.92)', maxWidth: 680 }}>
+                  Operacao local, consultoria tecnica e atendimento comercial rapido para uma compra segura, direta e sem erro de aplicacao.
+                </Typography>
+                <Typography
+                  variant="subtitle2"
+                  className="brand-slogan"
+                  sx={{
+                    color: 'rgba(255,225,166,0.98)',
+                    fontWeight: 700,
+                    letterSpacing: '0.012em',
+                  }}
+                >
+                  {BRAND_SLOGAN}
+                </Typography>
 
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
                     <Button
-                      className="ds-pressable ds-cta-pulse"
+                      className="ds-pressable ds-action-glint ds-cta-pulse"
                       data-testid="home-catalog-cta"
                       component={RouterLink}
                       to="/catalog"
@@ -341,7 +354,7 @@ export default function HomePage() {
                       Ver catalogo
                     </Button>
                     <Button
-                      className="ds-pressable"
+                      className="ds-pressable ds-action-glint"
                       data-testid="home-whatsapp-cta"
                       component="a"
                       href={officialLinks.whatsapp}
@@ -430,7 +443,7 @@ export default function HomePage() {
             <Box
               component="button"
               type="button"
-              className="ds-pressable"
+              className="ds-pressable ds-attention-float"
               onClick={handleScrollToNextSection}
               data-testid="home-next-section-trigger"
               aria-label="Ir para a proxima secao da Home"
@@ -594,7 +607,7 @@ export default function HomePage() {
             </Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center" sx={{ alignSelf: { md: 'center' } }}>
               <Button
-                className="ds-pressable"
+                className="ds-pressable ds-action-glint"
                 component={RouterLink}
                 to="/catalog?promo=true&sort=discount-desc"
                 variant="outlined"
@@ -604,7 +617,7 @@ export default function HomePage() {
                 Ver promocoes
               </Button>
               <Button
-                className="ds-pressable"
+                className="ds-pressable ds-link-slide"
                 component={RouterLink}
                 to="/catalog"
                 variant="text"
@@ -643,7 +656,7 @@ export default function HomePage() {
                         <Typography variant="body2" color="text.secondary">
                           Nenhum destaque publico no momento. Confira o catalogo completo ou as promocoes ativas.
                         </Typography>
-                        <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
+                        <Button className="ds-pressable ds-action-glint" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
                           Ver catalogo
                         </Button>
                       </Stack>
@@ -697,7 +710,7 @@ export default function HomePage() {
                 <Typography variant="body2" color="text.secondary">
                   Sem categorias publicas ativas ainda.
                 </Typography>
-                <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
+                <Button className="ds-pressable ds-action-glint" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
                   Ver catálogo geral
                 </Button>
               </Stack>
@@ -712,7 +725,7 @@ export default function HomePage() {
                       component={RouterLink}
                       to={`/catalog?category=${encodeURIComponent(category.name)}`}
                       elevation={0}
-                      className="store-surface ds-pressable"
+                      className="store-surface ds-pressable ds-action-glint"
                       sx={{
                         p: 1.4,
                         textDecoration: 'none',
@@ -801,7 +814,7 @@ export default function HomePage() {
                         <Typography variant="body2" color="text.secondary">
                           Ainda nao existem avaliacoes publicadas por usuarios reais.
                         </Typography>
-                        <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
+                        <Button className="ds-pressable ds-action-glint" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
                           Avaliar no catálogo
                         </Button>
                       </Stack>
@@ -838,10 +851,10 @@ export default function HomePage() {
 
           {comments.length > 0 ? (
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 2 }}>
-              <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="contained" color="primary">
+              <Button className="ds-pressable ds-action-glint" component={RouterLink} to="/catalog" variant="contained" color="primary">
                 Avaliar no catálogo
               </Button>
-              <Button className="ds-pressable" component={RouterLink} to="/catalog?promo=true&sort=discount-desc" variant="outlined" color="secondary">
+              <Button className="ds-pressable ds-action-glint" component={RouterLink} to="/catalog?promo=true&sort=discount-desc" variant="outlined" color="secondary">
                 Ver promocoes ativas
               </Button>
             </Stack>
@@ -879,10 +892,10 @@ export default function HomePage() {
                   subtitle="Atendimento de segunda a sexta, retirada local e suporte rapido para orcamento e validacao de aplicacao."
                 />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1.4 }}>
-                  <Button className="ds-pressable" component="a" href={officialLinks.whatsapp} target="_blank" rel="noreferrer" variant="contained" color="primary" startIcon={<WhatsAppIcon size="sm" />}>
+                  <Button className="ds-pressable ds-action-glint" component="a" href={officialLinks.whatsapp} target="_blank" rel="noreferrer" variant="contained" color="primary" startIcon={<WhatsAppIcon size="sm" />}>
                     Falar com vendedor
                   </Button>
-                  <Button className="ds-pressable" component="a" href={officialLinks.maps} target="_blank" rel="noreferrer" variant="outlined" color="secondary">
+                  <Button className="ds-pressable ds-action-glint" component="a" href={officialLinks.maps} target="_blank" rel="noreferrer" variant="outlined" color="secondary">
                     Abrir no mapa
                   </Button>
                 </Stack>
@@ -942,11 +955,8 @@ export default function HomePage() {
                     <ResponsiveImage
                       src={storeLocationPhotoUrl}
                       alt="Foto da loja física Rodando Moto Center"
+                      className="ds-image-pan"
                       sizes="(max-width: 900px) 100vw, 40vw"
-                      sx={{
-                        transition: 'transform 220ms ease',
-                        '&:hover': { transform: 'scale(1.02)' },
-                      }}
                     />
                   </Box>
                   <Paper elevation={0} className="store-surface" sx={{ p: { xs: 1.4, md: 1.8 }, bgcolor: 'grey.50' }}>
