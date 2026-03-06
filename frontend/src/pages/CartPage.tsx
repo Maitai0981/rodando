@@ -12,8 +12,11 @@ import { useAuth } from '../context/AuthContext'
 import { formatCurrency } from '../lib'
 import { api, type Product } from '../lib/api'
 import { ActionGuardDialog } from '../components/assist'
-import { Button, Card, ResponsiveImage } from '../ui'
+import { Button, Card, MotionReveal, ResponsiveImage } from '../ui'
 import { prefetchRouteChunk } from '../routes/prefetch'
+
+const cartHeaderBackdropUrl =
+  'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1400&q=80'
 
 function RecommendationCard({ product }: { product: Product }) {
   const { addProduct } = useCart()
@@ -71,44 +74,59 @@ export default function CartPage() {
   return (
     <AppShell contained={false}>
       <Stack spacing={{ xs: 2, md: 3 }}>
-        <Card variant="feature">
-          <Grid container spacing={2} alignItems="center">
-            <Grid size={{ xs: 12, md: 8 }}>
-              <Typography variant="overline" color="secondary.main">Mochila</Typography>
-              <Typography variant="h3">Itens selecionados</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {status === 'authenticated' ? 'Sincronizada com sua conta.' : 'Local neste navegador. Entre para sincronizar.'}
-              </Typography>
+        <MotionReveal variant="reveal-fade">
+          <Card variant="feature" sx={{ position: 'relative', overflow: 'hidden' }}>
+            <Box
+              aria-hidden
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                opacity: 0.16,
+                pointerEvents: 'none',
+              }}
+            >
+              <Box component="img" src={cartHeaderBackdropUrl} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </Box>
+            <Grid container spacing={2} alignItems="center" sx={{ position: 'relative', zIndex: 1 }}>
+              <Grid size={{ xs: 12, md: 8 }}>
+                <Typography variant="overline" color="secondary.main">Mochila</Typography>
+                <Typography variant="h3">Itens selecionados</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {status === 'authenticated' ? 'Sincronizada com sua conta.' : 'Local neste navegador. Entre para sincronizar.'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Stack direction={{ xs: 'column', sm: 'row', md: 'column' }} spacing={1}>
+                  <Button className="ds-pressable" data-testid="cart-continue-shopping" component={RouterLink} to="/catalog" variant="outline" fullWidth>
+                    Continuar comprando
+                  </Button>
+                  <Button
+                    className="ds-pressable"
+                    data-testid="cart-clear"
+                    variant="ghost"
+                    fullWidth
+                    disabled={items.length === 0}
+                    onClick={() => setConfirmClearOpen(true)}
+                  >
+                    Limpar
+                  </Button>
+                </Stack>
+              </Grid>
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Stack direction={{ xs: 'column', sm: 'row', md: 'column' }} spacing={1}>
-                <Button data-testid="cart-continue-shopping" component={RouterLink} to="/catalog" variant="outline" fullWidth>
-                  Continuar comprando
-                </Button>
-                <Button
-                  data-testid="cart-clear"
-                  variant="ghost"
-                  fullWidth
-                  disabled={items.length === 0}
-                  onClick={() => setConfirmClearOpen(true)}
-                >
-                  Limpar
-                </Button>
-              </Stack>
-            </Grid>
-          </Grid>
-        </Card>
+          </Card>
+        </MotionReveal>
 
-        <Grid container spacing={2.2} alignItems="flex-start">
+        <MotionReveal variant="reveal-up" delayMs={80}>
+          <Grid container spacing={2.2} alignItems="flex-start">
           <Grid size={{ xs: 12, lg: 7.5 }}>
-            <Card>
+            <Card className="ds-hover-lift">
               {loading ? (
                 <Typography variant="body2" color="text.secondary">Carregando mochila...</Typography>
               ) : items.length === 0 ? (
                 <Stack spacing={1.2}>
                   <Typography component="h4" variant="h5">Sua mochila esta vazia</Typography>
                   <Typography variant="body2" color="text.secondary">Adicione produtos para iniciar o checkout.</Typography>
-                  <Button data-testid="cart-empty-catalog-cta" component={RouterLink} to="/catalog" variant="primary" sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                  <Button className="ds-pressable" data-testid="cart-empty-catalog-cta" component={RouterLink} to="/catalog" variant="primary" sx={{ width: { xs: '100%', sm: 'auto' } }}>
                     Ir para o catalogo
                   </Button>
                 </Stack>
@@ -170,7 +188,8 @@ export default function CartPage() {
             </Card>
 
             {recommendations.length > 0 ? (
-              <Box sx={{ mt: 2 }}>
+              <MotionReveal variant="reveal-up" delayMs={120}>
+                <Box sx={{ mt: 2 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.1 }}>
                   <Typography variant="h6">Recomendados para sua compra</Typography>
                   <Typography variant="caption" color="text.secondary">Baseado no catalogo real</Typography>
@@ -182,12 +201,13 @@ export default function CartPage() {
                     </Grid>
                   ))}
                 </Grid>
-              </Box>
+                </Box>
+              </MotionReveal>
             ) : null}
           </Grid>
 
           <Grid size={{ xs: 12, lg: 4.5 }}>
-            <Card sx={{ position: { lg: 'sticky' }, top: { lg: 106 } }}>
+            <Card className="ds-hover-lift" sx={{ position: { lg: 'sticky' }, top: { lg: 106 } }}>
               <Typography component="h4" variant="h6" sx={{ mb: 1.2 }}>Resumo</Typography>
 
               <Stack spacing={1}>
@@ -209,6 +229,7 @@ export default function CartPage() {
               </Stack>
 
               <Button
+                className="ds-pressable"
                 data-testid="cart-checkout-button"
                 fullWidth
                 variant="primary"
@@ -223,7 +244,8 @@ export default function CartPage() {
               </Button>
             </Card>
           </Grid>
-        </Grid>
+          </Grid>
+        </MotionReveal>
       </Stack>
 
       <ActionGuardDialog

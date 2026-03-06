@@ -14,7 +14,7 @@ export const dsTheme = createTheme(
       secondary: {
         main: dsTokens.color.gold,
         dark: dsTokens.color.goldStrong,
-        contrastText: '#142235',
+        contrastText: '#1B1E29',
       },
       success: { main: dsTokens.color.success },
       warning: { main: dsTokens.color.warning },
@@ -62,26 +62,26 @@ export const dsTheme = createTheme(
       },
       h5: {
         fontFamily: dsTokens.typography.family.display,
-        fontSize: '1.125rem',
+        fontSize: '1.2rem',
         fontWeight: dsTokens.typography.weight.semibold,
         letterSpacing: dsTokens.typography.tracking.body,
         lineHeight: dsTokens.typography.lineHeight.title,
       },
       h6: {
         fontFamily: dsTokens.typography.family.display,
-        fontSize: '1rem',
+        fontSize: '1.06rem',
         fontWeight: dsTokens.typography.weight.semibold,
         letterSpacing: dsTokens.typography.tracking.body,
         lineHeight: dsTokens.typography.lineHeight.compact,
       },
       subtitle1: {
-        fontSize: '0.95rem',
+        fontSize: '1rem',
         lineHeight: dsTokens.typography.lineHeight.compact,
         letterSpacing: dsTokens.typography.tracking.body,
         fontWeight: dsTokens.typography.weight.medium,
       },
       subtitle2: {
-        fontSize: '0.875rem',
+        fontSize: '0.92rem',
         lineHeight: dsTokens.typography.lineHeight.compact,
         letterSpacing: dsTokens.typography.tracking.body,
         fontWeight: dsTokens.typography.weight.medium,
@@ -92,7 +92,7 @@ export const dsTheme = createTheme(
         letterSpacing: dsTokens.typography.tracking.body,
       },
       body2: {
-        fontSize: '0.9375rem',
+        fontSize: '0.98rem',
         lineHeight: dsTokens.typography.lineHeight.body,
         letterSpacing: dsTokens.typography.tracking.body,
       },
@@ -134,6 +134,13 @@ export const dsTheme = createTheme(
           },
         },
       },
+      MuiTypography: {
+        styleOverrides: {
+          root: {
+            textWrap: 'pretty',
+          },
+        },
+      },
       MuiButton: {
         defaultProps: {
           disableElevation: true,
@@ -154,7 +161,7 @@ export const dsTheme = createTheme(
           },
           containedPrimary: {
             backgroundImage: `linear-gradient(180deg, ${dsTokens.color.accent} 0%, ${dsTokens.color.accentStrong} 100%)`,
-            boxShadow: '0 10px 24px rgba(28, 156, 75, 0.25)',
+            boxShadow: '0 10px 24px rgba(51, 74, 98, 0.28)',
           },
           outlinedSecondary: {
             borderColor: dsTokens.color.gold,
@@ -175,6 +182,7 @@ export const dsTheme = createTheme(
           root: {
             borderRadius: dsTokens.radius.lg,
             border: `1px solid ${dsTokens.color.border}`,
+            transition: `transform ${dsTokens.motion.fast}, box-shadow ${dsTokens.motion.fast}, border-color ${dsTokens.motion.fast}`,
           },
         },
       },

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -10,7 +11,10 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { api, ApiError, type CheckoutDeliveryMethod } from '../lib/api'
 import { formatCurrency } from '../lib'
-import { Alert, Button, Card, Input, Select, Toast } from '../ui'
+import { Alert, Button, Card, Input, MotionReveal, Select, Toast } from '../ui'
+
+const checkoutHeaderBackdropUrl =
+  'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1400&q=80'
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
@@ -105,30 +109,46 @@ export default function CheckoutPage() {
   return (
     <AppShell contained={false}>
       <Stack spacing={{ xs: 2, md: 3 }}>
-        <Card variant="feature">
-          <Stack spacing={0.6}>
-            <Typography variant="overline" color="secondary.main">Checkout</Typography>
-            <Typography variant="h3">Finalizacao de compra</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Fluxo rapido de 1 etapa para confirmar entrega, destinatario e pagamento.
-            </Typography>
-          </Stack>
-        </Card>
+        <MotionReveal variant="reveal-fade">
+          <Card variant="feature" className="ds-hover-lift" sx={{ position: 'relative', overflow: 'hidden' }}>
+            <Box
+              aria-hidden
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                opacity: 0.14,
+                pointerEvents: 'none',
+              }}
+            >
+              <Box component="img" src={checkoutHeaderBackdropUrl} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </Box>
+            <Stack spacing={0.6} sx={{ position: 'relative', zIndex: 1 }}>
+              <Typography variant="overline" color="secondary.main">Checkout</Typography>
+              <Typography variant="h3">Finalizacao de compra</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Fluxo rapido de 1 etapa para confirmar entrega, destinatario e pagamento.
+              </Typography>
+            </Stack>
+          </Card>
+        </MotionReveal>
 
         {items.length === 0 ? (
-          <Card>
+          <MotionReveal variant="reveal-up" delayMs={80}>
+            <Card className="ds-hover-lift">
             <Stack spacing={1.2}>
               <Typography variant="h6">Sua mochila esta vazia</Typography>
               <Typography variant="body2" color="text.secondary">Adicione produtos no catalogo para seguir ao checkout.</Typography>
-              <Button component={RouterLink} to="/catalog" variant="primary" sx={{ width: { xs: '100%', sm: 'auto' } }}>
+              <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="primary" sx={{ width: { xs: '100%', sm: 'auto' } }}>
                 Voltar ao catalogo
               </Button>
             </Stack>
-          </Card>
+            </Card>
+          </MotionReveal>
         ) : (
-          <Grid container spacing={2.2}>
+          <MotionReveal variant="reveal-up" delayMs={80}>
+            <Grid container spacing={2.2}>
             <Grid size={{ xs: 12, md: 7 }}>
-              <Card>
+              <Card className="ds-hover-lift">
                 <Stack spacing={1.2}>
                   <Typography variant="h6">Dados de entrega</Typography>
                   <Select
@@ -192,7 +212,7 @@ export default function CheckoutPage() {
             </Grid>
 
             <Grid size={{ xs: 12, md: 5 }}>
-              <Card>
+              <Card className="ds-hover-lift">
                 <Stack spacing={1.1}>
                   <Typography variant="h6">Resumo do pedido</Typography>
                   <Stack direction="row" justifyContent="space-between">
@@ -218,6 +238,7 @@ export default function CheckoutPage() {
                     <Typography variant="h4" sx={{ color: 'info.main' }}>{formatCurrency(finalTotal)}</Typography>
                   </Stack>
                   <Button
+                    className="ds-pressable"
                     data-testid="checkout-submit-button"
                     variant="primary"
                     fullWidth
@@ -227,13 +248,14 @@ export default function CheckoutPage() {
                   >
                     Finalizar pedido
                   </Button>
-                  <Button component={RouterLink} to="/cart" variant="outline" fullWidth>
+                  <Button className="ds-pressable" component={RouterLink} to="/cart" variant="outline" fullWidth>
                     Voltar para mochila
                   </Button>
                 </Stack>
               </Card>
             </Grid>
-          </Grid>
+            </Grid>
+          </MotionReveal>
         )}
 
         <Toast

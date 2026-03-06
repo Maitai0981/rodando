@@ -45,6 +45,26 @@ This backend is organized by responsibility to keep data, scripts, and runtime c
 - Healthcheck em `GET /api/health` com status de DB/pool.
 - Readiness em `GET /api/ready` com checks de ambiente, DB e worker de outbox.
 
+### Painel Ops (owner-only)
+
+- Página operacional servida pelo backend em `GET /ops`.
+- Acesso restrito a sessão autenticada com role `owner`.
+- Recursos principais:
+  - monitor de requisições (buffer em memória das últimas 5.000),
+  - explorer de tabelas (`public`) com preview paginado,
+  - console SQL para diagnóstico/operação.
+- Endpoints do painel:
+  - `GET /api/owner/ops/requests`
+  - `GET /api/owner/ops/db/tables`
+  - `GET /api/owner/ops/db/table/:table`
+  - `POST /api/owner/ops/db/sql/challenge`
+  - `POST /api/owner/ops/db/sql`
+- Segurança:
+  - payloads do monitor são mascarados para campos sensíveis,
+  - em `staging/production`, SQL exige confirmação dupla via challenge de curta duração.
+- Auditoria:
+  - execuções SQL registradas em `owner_audit_logs` com `action_type = ops_sql_execute`.
+
 ## Confiabilidade (Checkout/Pagamento)
 
 - `POST /api/orders/checkout` aceita header opcional `Idempotency-Key`.

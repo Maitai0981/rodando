@@ -16,7 +16,16 @@ const DEFAULT_LINKS: FooterProps['quickLinks'] = [
 
 export function StoreFooter({ quickLinks = DEFAULT_LINKS }: Partial<FooterProps>) {
   return (
-    <Box component="footer" sx={{ borderTop: '1px solid', borderColor: 'divider', mt: { xs: 5, md: 7 }, bgcolor: 'rgba(255,255,255,0.8)' }}>
+    <Box
+      component="footer"
+      sx={{
+        borderTop: '1px solid',
+        borderColor: 'divider',
+        mt: { xs: 5, md: 7 },
+        bgcolor: 'rgba(251,249,244,0.92)',
+        background: 'linear-gradient(180deg, rgba(251,249,244,0.94) 0%, rgba(243,239,230,0.92) 100%)',
+      }}
+    >
       <Container>
         <Stack spacing={2} sx={{ py: { xs: 2.8, md: 5.2 }, pb: { xs: 'calc(6.2rem + env(safe-area-inset-bottom, 0px))', md: 5.2 } }}>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between">

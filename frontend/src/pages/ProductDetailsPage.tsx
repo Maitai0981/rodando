@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -9,7 +10,10 @@ import { AppShell } from '../layouts/AppShell'
 import { api, ApiError, buildProductUrl, parseProductRouteId } from '../lib/api'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
-import { AddToCartBar, Alert, Badge, Breadcrumb, Card, ProductGallery, ProductCard, QuantityStepper, Skeleton, VariantSelector } from '../ui'
+import { AddToCartBar, Alert, Badge, Breadcrumb, Card, MotionReveal, ProductGallery, ProductCard, QuantityStepper, Skeleton, VariantSelector } from '../ui'
+
+const productMediaBackdropUrl =
+  'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?auto=format&fit=crop&w=1400&q=80'
 
 export default function ProductDetailsPage() {
   const { idSlug = '' } = useParams()
@@ -82,15 +86,17 @@ export default function ProductDetailsPage() {
   return (
     <AppShell contained={false}>
       <Stack spacing={{ xs: 2, md: 3 }}>
-        <Card variant="feature">
-          <Stack spacing={1}>
-            <Breadcrumb>
-              <Typography component={RouterLink} to="/" variant="body2" color="text.secondary">Inicio</Typography>
-              <Typography component={RouterLink} to="/catalog" variant="body2" color="text.secondary">Catalogo</Typography>
-              <Typography variant="body2" color="text.primary">Produto</Typography>
-            </Breadcrumb>
-          </Stack>
-        </Card>
+        <MotionReveal variant="reveal-fade">
+          <Card variant="feature">
+            <Stack spacing={1}>
+              <Breadcrumb>
+                <Typography component={RouterLink} to="/" variant="body2" color="text.secondary">Inicio</Typography>
+                <Typography component={RouterLink} to="/catalog" variant="body2" color="text.secondary">Catalogo</Typography>
+                <Typography variant="body2" color="text.primary">Produto</Typography>
+              </Breadcrumb>
+            </Stack>
+          </Card>
+        </MotionReveal>
 
         {!Number.isInteger(parsed.id) || Number(parsed.id) <= 0 ? (
           <Alert tone="error" title="Produto invalido">
@@ -119,14 +125,39 @@ export default function ProductDetailsPage() {
             </Grid>
           </Grid>
         ) : item && details ? (
-          <Grid container spacing={2.2}>
+          <MotionReveal variant="reveal-up" delayMs={80}>
+            <Grid container spacing={2.2}>
             <Grid size={{ xs: 12, md: 7 }}>
-              <ProductGallery
-                mainUrl={details.gallery.mainUrl || item.imageUrl}
-                hoverUrl={details.gallery.hoverUrl || item.hoverImageUrl}
-                extra={details.gallery.extra}
-                alt={item.name}
-              />
+              <Card
+                variant="feature"
+                className="ds-hover-lift"
+                sx={{
+                  p: 1,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderColor: 'rgba(138,115,94,0.34)',
+                }}
+              >
+                <Box
+                  aria-hidden
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0.18,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <Box component="img" src={productMediaBackdropUrl} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </Box>
+                <Box sx={{ position: 'relative', zIndex: 1 }}>
+                  <ProductGallery
+                    mainUrl={details.gallery.mainUrl || item.imageUrl}
+                    hoverUrl={details.gallery.hoverUrl || item.hoverImageUrl}
+                    extra={details.gallery.extra}
+                    alt={item.name}
+                  />
+                </Box>
+              </Card>
             </Grid>
             <Grid size={{ xs: 12, md: 5 }}>
               <Stack spacing={1.4}>
@@ -174,7 +205,7 @@ export default function ProductDetailsPage() {
                   onBuyNow={() => void handleBuyNow()}
                 />
 
-                <Card variant="surface" sx={{ p: 1.2 }}>
+                <Card variant="surface" className="ds-hover-lift" sx={{ p: 1.2 }}>
                   <Stack spacing={0.5}>
                     <Typography variant="subtitle2">Confianca de compra</Typography>
                     <Typography variant="body2" color="text.secondary">
@@ -185,11 +216,13 @@ export default function ProductDetailsPage() {
                 </Card>
               </Stack>
             </Grid>
-          </Grid>
+            </Grid>
+          </MotionReveal>
         ) : null}
 
         {relatedQuery.data && relatedQuery.data.length > 0 ? (
-          <Stack spacing={1.2}>
+          <MotionReveal variant="reveal-up" delayMs={140}>
+            <Stack spacing={1.2}>
             <Typography variant="h5">Relacionados</Typography>
             <Grid container spacing={2}>
               {relatedQuery.data.map((related) => (
@@ -203,7 +236,8 @@ export default function ProductDetailsPage() {
                 </Grid>
               ))}
             </Grid>
-          </Stack>
+            </Stack>
+          </MotionReveal>
         ) : null}
       </Stack>
     </AppShell>

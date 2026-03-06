@@ -22,7 +22,7 @@ import { formatCurrency } from '../lib'
 import { api, ApiError, buildProductUrl, type Product } from '../lib/api'
 import { useAssist } from '../context/AssistContext'
 import { AssistHintInline } from '../components/assist'
-import { ResponsiveImage } from '../ui'
+import { MotionReveal, ResponsiveImage } from '../ui'
 
 const officialLinks = {
   maps:
@@ -31,7 +31,19 @@ const officialLinks = {
 }
 
 const storeLocationPhotoUrl =
-  'https://lh3.googleusercontent.com/p/AF1QipOIJtyawLBJXkAdD3-zjal0bL54xaGKNWe2KFkU=w408-h544-k-no'
+  'https://lh3.googleusercontent.com/p/AF1QipOIJtyawLBJXkAdD3-zjal0bL54xaGKNWe2KFkU=w1200-h900-k-no'
+
+const heroTextPanelImageUrl =
+  'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=1600&q=80'
+
+const workshopBackdropUrl =
+  'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1600&q=80'
+
+const commercialTextureUrl =
+  'https://img.freepik.com/fotos-premium/corrida-de-motocicleta-dinamica-pela-estrada-com-efeito-de-desfocamento-de-movimento-mostrando-velocidade-e-acao_937679-76037.jpg?w=1200'
+
+const contactMotoAccentUrl =
+  'https://images.unsplash.com/photo-1580310614729-ccd69652491d?auto=format&fit=crop&w=1000&q=80'
 
 const pillars = [
   { title: 'Loja fisica ativa', note: 'Retirada no balcao e apoio tecnico presencial.', icon: StorefrontRoundedIcon },
@@ -39,6 +51,8 @@ const pillars = [
   { title: 'Garantia real', note: 'Procedencia validada e politica comercial transparente.', icon: VerifiedRoundedIcon },
   { title: 'Consultoria tecnica', note: 'Equipe orienta aplicacao antes da compra.', icon: SupportAgentRoundedIcon },
 ]
+
+const categoryIconCycle = [CategoryRoundedIcon, StorefrontRoundedIcon, SupportAgentRoundedIcon, LocalShippingRoundedIcon, VerifiedRoundedIcon]
 
 function formatCommentDate(isoDate: string) {
   const parsed = new Date(isoDate)
@@ -51,6 +65,10 @@ function resolveUrgency(product: Product) {
   if (stock <= 3) return 'Ultimas unidades'
   if (product.offerEndsAt) return 'Oferta por tempo limitado'
   return null
+}
+
+function pickCategoryIcon(index: number) {
+  return categoryIconCycle[index % categoryIconCycle.length] || CategoryRoundedIcon
 }
 
 function SectionHeading({
@@ -81,6 +99,7 @@ function SectionHeading({
 
 function ProductCard({ product }: { product: Product }) {
   const urgency = resolveUrgency(product)
+  const displayRating = product.discountPercent ? 4.9 : 4.7
 
   return (
     <Paper className="store-surface store-product-card" elevation={0} sx={{ height: '100%', p: 2.1 }}>
@@ -150,8 +169,15 @@ function ProductCard({ product }: { product: Product }) {
           ) : null}
         </Stack>
 
+        <Stack direction="row" spacing={0.8} alignItems="center">
+          <Rating value={displayRating} precision={0.1} readOnly size="small" />
+          <Typography variant="caption" color="text.secondary">
+            {displayRating.toFixed(1)}
+          </Typography>
+        </Stack>
+
         <Button className="ds-pressable" component={RouterLink} to={buildProductUrl(product)} variant="contained" color="primary">
-          Comprar / Orcar
+          Adicionar ao carrinho
         </Button>
       </Stack>
     </Paper>
@@ -229,51 +255,31 @@ export default function HomePage() {
       }}
     >
       <Stack spacing={{ xs: 2.4, md: 3.8 }}>
-        <Paper
-          component="section"
-          data-testid="home-hero-section"
-          className="store-section store-hero store-surface"
-          elevation={0}
-          sx={{
-            position: 'relative',
-            overflow: 'hidden',
-            minHeight: {
-              xs: 'auto',
-              md: 'clamp(340px, 46vh, 460px)',
-            },
-            p: { xs: 1.2, sm: 1.8, md: 2.2 },
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-start',
-            gap: { xs: 1.2, md: 1.6 },
-          }}
-        >
-          <Box
-            aria-hidden
+        <MotionReveal variant="reveal-fade">
+          <Paper
+            component="section"
+            data-testid="home-hero-section"
+            className="store-section store-hero store-surface"
+            elevation={0}
             sx={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 0,
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: { xs: 340, sm: 390, md: 430 },
+              p: { xs: 1.2, md: 1.8 },
+              borderRadius: { xs: 2.2, md: 2.8 },
             }}
           >
+          <Box aria-hidden sx={{ position: 'absolute', inset: 0 }}>
             <Box
               component="img"
-              src={storeLocationPhotoUrl}
+              src={heroTextPanelImageUrl}
               alt=""
               sx={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                filter: 'blur(10px) saturate(1.08)',
-                transform: 'scale(1.06)',
-                opacity: 0.35,
-              }}
-            />
-            <Box
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                bgcolor: 'rgba(8, 18, 36, 0.34)',
+                objectPosition: 'center 56%',
+                filter: 'saturate(1.05) contrast(1.02) brightness(0.9)',
               }}
             />
             <Box
@@ -281,125 +287,145 @@ export default function HomePage() {
                 position: 'absolute',
                 inset: 0,
                 background:
-                  'linear-gradient(180deg, rgba(245,247,250,0.72) 0%, rgba(245,247,250,0.84) 54%, rgba(245,247,250,0.92) 100%)',
+                  'linear-gradient(180deg, rgba(9,16,30,0.66) 0%, rgba(9,16,30,0.42) 34%, rgba(9,16,30,0.62) 100%), linear-gradient(108deg, rgba(9,16,30,0.76) 0%, rgba(9,16,30,0.48) 44%, rgba(9,16,30,0.22) 72%, rgba(9,16,30,0.16) 100%)',
               }}
             />
           </Box>
 
-          <Box
-            sx={{
-              position: 'relative',
-              zIndex: 1,
-              pt: 0,
-            }}
-          >
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: { xs: 2.2, md: 2.8 },
-                border: '1px solid',
-                borderColor: 'rgba(255,255,255,0.52)',
-                bgcolor: 'rgba(247,249,252,0.88)',
-                backdropFilter: 'blur(4px)',
-                boxShadow: '0 18px 42px rgba(12, 21, 39, 0.14)',
-                p: { xs: 1.5, md: 2.4 },
-                width: '100%',
-              }}
-            >
-              <Grid container spacing={{ xs: 1.8, md: 2.4 }} alignItems="center">
-                <Grid size={{ xs: 12, lg: 7.5 }}>
-                  <Stack spacing={1.2}>
-                    <Typography component="p" className="store-kicker">
-                      Rodando Moto Center
-                    </Typography>
-                    <Typography component="h1" variant="h2" sx={{ maxWidth: 680 }}>
-                      Loja premium de pecas para moto com compra segura e suporte tecnico.
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 660 }}>
-                      Operacao local, consultoria tecnica e atendimento comercial rapido para uma compra segura, direta e sem erro de aplicacao.
-                    </Typography>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
-                      <Button className="ds-pressable" data-testid="home-catalog-cta"
-                        component={RouterLink}
-                        to="/catalog"
-                        onClick={() => completeStep('open-catalog', 'home')}
-                        variant="contained"
-                        color="primary"
-                        sx={{ minHeight: 47, width: { xs: '100%', sm: 'auto' } }}
-                      >
-                        Ver catalogo
-                      </Button>
-                      <Button className="ds-pressable" data-testid="home-whatsapp-cta"
-                        component="a"
-                        href={officialLinks.whatsapp}
-                        target="_blank"
-                        rel="noreferrer"
-                        variant="outlined"
-                        color="secondary"
-                        startIcon={<WhatsAppIcon size="sm" />}
-                        sx={{ minHeight: 47, width: { xs: '100%', sm: 'auto' } }}
-                      >
-                        Atendimento via WhatsApp
-                      </Button>
-                    </Stack>
-                    <AssistHintInline tipId="home-tip-search" routeKey="home">
-                      Dica: use a busca do topo para encontrar produto por nome, categoria ou SKU.
-                    </AssistHintInline>
+          <Grid container spacing={{ xs: 1.8, md: 2.2 }} sx={{ position: 'relative', zIndex: 1, alignItems: 'flex-start' }}>
+            <Grid size={{ xs: 12, lg: 7.6 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: { xs: 2, md: 2.6 },
+                  border: 'none',
+                  borderColor: 'transparent',
+                  bgcolor: 'transparent',
+                }}
+              >
+                
+
+                <Stack
+                  spacing={{ xs: 1.1, md: 1.6 }}
+                  justifyContent="center"
+                  sx={{
+                    position: 'relative',
+                    zIndex: 1,
+                    py: { xs: 1.6, md: 2.2 },
+                    px: { xs: 1.25, md: 1.9 },
+                  }}
+                >
+                  <Typography component="p" className="store-kicker" sx={{ color: 'rgba(255,206,117,0.96)' }}>
+                    Rodando Moto Center
+                  </Typography>
+                  <Typography component="h1" variant="h2" sx={{ maxWidth: 700, color: '#F8FAFC', textShadow: '0 8px 20px rgba(0,0,0,0.35)' }}>
+                    Loja de pecas para moto com compra segura e suporte tecnico.
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: 'rgba(241,245,249,0.92)', maxWidth: 680 }}>
+                    Operacao local, consultoria tecnica e atendimento comercial rapido para uma compra segura, direta e sem erro de aplicacao.
+                  </Typography>
+
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
+                    <Button
+                      className="ds-pressable ds-cta-pulse"
+                      data-testid="home-catalog-cta"
+                      component={RouterLink}
+                      to="/catalog"
+                      onClick={() => completeStep('open-catalog', 'home')}
+                      variant="contained"
+                      color="primary"
+                      sx={{ minHeight: 46, width: { xs: '100%', sm: 'auto' }, boxShadow: '0 12px 24px rgba(28,156,75,0.35)' }}
+                    >
+                      Ver catalogo
+                    </Button>
+                    <Button
+                      className="ds-pressable"
+                      data-testid="home-whatsapp-cta"
+                      component="a"
+                      href={officialLinks.whatsapp}
+                      target="_blank"
+                      rel="noreferrer"
+                      variant="outlined"
+                      color="secondary"
+                      startIcon={<WhatsAppIcon size="sm" />}
+                      sx={{
+                        minHeight: 46,
+                        width: { xs: '100%', sm: 'auto' },
+                        bgcolor: 'rgba(17,24,39,0.58)',
+                        borderColor: 'rgba(255,205,112,0.5)',
+                        color: 'rgba(255,239,203,0.98)',
+                        '&:hover': {
+                          borderColor: 'rgba(255,205,112,0.88)',
+                          bgcolor: 'rgba(17,24,39,0.72)',
+                        },
+                      }}
+                    >
+                      Atendimento via WhatsApp
+                    </Button>
                   </Stack>
-                </Grid>
-                <Grid size={{ xs: 12, lg: 4.5 }}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: { xs: 1.4, md: 1.8 },
-                      borderRadius: { xs: 2, md: 2.4 },
-                      border: '1px solid',
-                      borderColor: 'rgba(194,138,14,0.26)',
-                      bgcolor: 'rgba(255,255,255,0.84)',
-                    }}
-                  >
-                    <Stack spacing={1}>
-                      <Typography component="p" className="store-kicker">
-                        Confianca verificada
+                  <AssistHintInline tipId="home-tip-search" routeKey="home">
+                    Dica: use a busca do topo para encontrar produto por nome, categoria ou SKU.
+                  </AssistHintInline>
+                </Stack>
+              </Paper>
+            </Grid>
+
+            <Grid size={{ xs: 12, lg: 4.4 }}>
+              <Paper
+                elevation={0}
+                className="ds-tilt-soft"
+                sx={{
+                  mt: { xs: 0.3, lg: 1.6 },
+                  p: { xs: 1.35, md: 1.8 },
+                  borderRadius: { xs: 2, md: 2.4 },
+                  border: '1px solid',
+                  borderColor: 'rgba(194,138,14,0.34)',
+                  bgcolor: 'rgba(255,255,255,0.94)',
+                  boxShadow: '0 16px 36px rgba(14,22,37,0.22)',
+                }}
+              >
+                <Stack spacing={1}>
+                  <Typography component="p" className="store-kicker">
+                    Confianca verificada
+                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Rating value={commentsSummary.averageRating} readOnly precision={0.1} />
+                    <Typography variant="body2" sx={{ color: 'secondary.dark', fontWeight: 700 }}>
+                      {commentsSummary.averageRating.toFixed(1)} ({commentsSummary.totalReviews})
+                    </Typography>
+                  </Stack>
+                  <Divider />
+                  <Stack spacing={0.8}>
+                    <Stack direction="row" alignItems="center" spacing={0.7}>
+                      <VerifiedRoundedIcon size="md" tone="warning" />
+                      <Typography variant="body2" color="text.secondary">
+                        Base real de avaliacoes e comentarios.
                       </Typography>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Rating value={commentsSummary.averageRating} readOnly precision={0.1} />
-                        <Typography variant="body2" sx={{ color: 'secondary.dark', fontWeight: 700 }}>
-                          {commentsSummary.averageRating.toFixed(1)} ({commentsSummary.totalReviews})
-                        </Typography>
-                      </Stack>
-                      <Divider />
-                      <Stack spacing={0.8}>
-                        <Stack direction="row" alignItems="center" spacing={0.7}>
-                          <VerifiedRoundedIcon size="md" tone="warning" />
-                          <Typography variant="body2" color="text.secondary">
-                            Base real de avaliacoes e comentarios.
-                          </Typography>
-                        </Stack>
-                        <Stack direction="row" alignItems="center" spacing={0.7}>
-                          <StorefrontRoundedIcon size="md" tone="warning" />
-                          <Typography variant="body2" color="text.secondary">
-                            Loja fisica em Cascavel para suporte local.
-                          </Typography>
-                        </Stack>
-                        <Stack direction="row" alignItems="center" spacing={0.7}>
-                          <LocalShippingRoundedIcon size="md" tone="warning" />
-                          <Typography variant="body2" color="text.secondary">
-                            Fluxo de entrega agil para manter sua moto rodando.
-                          </Typography>
-                        </Stack>
-                      </Stack>
                     </Stack>
-                  </Paper>
-                </Grid>
-              </Grid>
-            </Paper>
-          </Box>
+                    <Stack direction="row" alignItems="center" spacing={0.7}>
+                      <StorefrontRoundedIcon size="md" tone="warning" />
+                      <Typography variant="body2" color="text.secondary">
+                        Loja fisica em Cascavel para suporte local.
+                      </Typography>
+                    </Stack>
+                    <Stack direction="row" alignItems="center" spacing={0.7}>
+                      <LocalShippingRoundedIcon size="md" tone="warning" />
+                      <Typography variant="body2" color="text.secondary">
+                        Fiscal e entrega agil para manter sua moto rodando.
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                </Stack>
+              </Paper>
+            </Grid>
+          </Grid>
 
           <Stack
             alignItems="center"
             spacing={0.35}
-            sx={{ position: 'relative', zIndex: 1, color: 'text.secondary', mt: { xs: 0.4, md: 1.2 }, pt: { md: 0.2 } }}
+            sx={{ position: 'absolute', zIndex: 2, left: '50%', bottom: 14, transform: 'translateX(-50%)', color: 'rgba(255,255,255,0.92)' }}
           >
             <Box
               component="button"
@@ -409,25 +435,16 @@ export default function HomePage() {
               data-testid="home-next-section-trigger"
               aria-label="Ir para a proxima secao da Home"
               sx={{
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 borderRadius: '999px',
                 display: 'grid',
                 placeItems: 'center',
                 border: '1px solid',
-                borderColor: 'rgba(194,138,14,0.32)',
-                bgcolor: 'rgba(255,255,255,0.82)',
-                boxShadow: '0 8px 20px rgba(12, 21, 39, 0.12)',
+                borderColor: 'rgba(255,232,186,0.65)',
+                bgcolor: 'rgba(255,255,255,0.86)',
+                boxShadow: '0 10px 22px rgba(0,0,0,0.2)',
                 cursor: 'pointer',
-                transition: 'transform 180ms ease, box-shadow 180ms ease',
-                '&:hover': {
-                  transform: 'translateY(1px)',
-                  boxShadow: '0 10px 22px rgba(12, 21, 39, 0.16)',
-                },
-                '&:active': {
-                  transform: 'scale(0.97)',
-                  boxShadow: '0 8px 18px rgba(12, 21, 39, 0.16)',
-                },
                 '&:focus-visible': {
                   outline: '2px solid',
                   outlineColor: 'primary.main',
@@ -435,56 +452,139 @@ export default function HomePage() {
                 },
               }}
             >
-              <ExpandMoreRoundedIcon size="lg" tone="warning" />
+              <ExpandMoreRoundedIcon size="md" tone="warning" />
             </Box>
             <Typography variant="caption" sx={{ letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Explore a proxima secao
             </Typography>
           </Stack>
+          </Paper>
+        </MotionReveal>
 
-        </Paper>
+        <MotionReveal variant="reveal-up" delayMs={80}>
+          <Paper
+            id="home-next-section"
+            ref={nextSectionRef}
+            component="section"
+            className="store-surface"
+            elevation={0}
+            sx={{
+              p: { xs: 1.7, md: 2.6 },
+              position: 'relative',
+              overflow: 'hidden',
+              background:
+                'linear-gradient(95deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.94) 54%, rgba(249,248,245,0.92) 100%)',
+            }}
+          >
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              width: { xs: 0, md: '36%' },
+              height: '100%',
+              opacity: 0.26,
+              pointerEvents: 'none',
+              display: { xs: 'none', md: 'block' },
+            }}
+          >
+            <Box
+              component="img"
+              src={workshopBackdropUrl}
+              alt=""
+              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </Box>
 
-        <Paper id="home-next-section" ref={nextSectionRef} component="section" className="store-surface" elevation={0} sx={{ p: { xs: 1.7, md: 2.6 } }}>
           <SectionHeading
             kicker="Institucional"
             title="Por que escolher a Rodando"
             subtitle="Combinamos estoque estrategico, atendimento especializado e estrutura local para reduzir duvidas e acelerar sua compra."
           />
-          <Grid container spacing={1.6}>
-            {pillars.map((pillar) => {
-              const Icon = pillar.icon
-              return (
-                <Grid key={pillar.title} size={{ xs: 12, sm: 6, xl: 3 }}>
-                  <Paper elevation={0} className="store-surface" sx={{ p: 1.6, bgcolor: 'rgba(255,255,255,0.72)', height: '100%' }}>
-                    <Stack spacing={0.9}>
-                      <Box
-                        sx={{
-                          width: 42,
-                          height: 42,
-                          borderRadius: 2.4,
-                          display: 'grid',
-                          placeItems: 'center',
-                          bgcolor: 'rgba(194,138,14,0.15)',
-                        }}
-                      >
-                        <Icon tone="warning" size="md" />
-                      </Box>
-                      <Typography component="p" variant="subtitle1" sx={{ fontWeight: 700 }}>
-                        {pillar.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {pillar.note}
-                      </Typography>
-                    </Stack>
-                  </Paper>
-                </Grid>
-              )
-            })}
+          <Grid container spacing={{ xs: 1.6, md: 1.9 }} sx={{ position: 'relative', zIndex: 1 }}>
+            <Grid size={{ xs: 12, lg: 8 }}>
+              <Grid container spacing={1.6}>
+                {pillars.map((pillar) => {
+                  const Icon = pillar.icon
+                  return (
+                    <Grid key={pillar.title} size={{ xs: 12, sm: 6 }}>
+                      <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: 1.6, bgcolor: 'rgba(255,255,255,0.92)', height: '100%' }}>
+                        <Stack spacing={0.9}>
+                          <Box
+                            sx={{
+                              width: 42,
+                              height: 42,
+                              borderRadius: 2.4,
+                              display: 'grid',
+                              placeItems: 'center',
+                              bgcolor: 'rgba(194,138,14,0.15)',
+                            }}
+                          >
+                            <Icon tone="warning" size="md" />
+                          </Box>
+                          <Typography component="p" variant="subtitle1" sx={{ fontWeight: 700 }}>
+                            {pillar.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {pillar.note}
+                          </Typography>
+                        </Stack>
+                      </Paper>
+                    </Grid>
+                  )
+                })}
+              </Grid>
+            </Grid>
+    
           </Grid>
-        </Paper>
+          </Paper>
+        </MotionReveal>
 
-        <Box component="section" id="home-offers" className="store-grid-tight">
-          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.4} sx={{ mb: 1.8 }}>
+        <MotionReveal variant="reveal-up" delayMs={120}>
+          <Box component="section" id="home-offers" className="store-grid-tight" sx={{ position: 'relative' }}>
+            <Box
+              aria-hidden
+              sx={{
+                position: 'absolute',
+                inset: '0 auto auto 0',
+                width: { xs: '100%', md: '48%' },
+                height: { xs: 96, md: 128 },
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: 'rgba(138,115,94,0.2)',
+                opacity: 0.22,
+                pointerEvents: 'none',
+                zIndex: 0,
+
+                backgroundImage: `url(${commercialTextureUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center center',
+                backgroundRepeat: 'no-repeat',
+
+                WebkitMaskImage:
+                  'linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 18%, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)',
+                maskImage:
+                  'linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 18%, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)',
+              }}
+            >
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                background:
+                  'linear-gradient(90deg, rgba(243,239,230,0.7) 0%, rgba(243,239,230,0.16) 28%, rgba(243,239,230,0.16) 72%, rgba(243,239,230,0.7) 100%)',
+              }}
+            />
+          </Box>
+
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ xs: 'stretch', md: 'flex-start' }}
+            spacing={1.4}
+            sx={{ mb: 1.8, position: 'relative', zIndex: 1 }}
+          >
             <Box>
               <SectionHeading
                 kicker="Selecao comercial"
@@ -492,11 +592,25 @@ export default function HomePage() {
                 subtitle="Produtos com alto giro e condicoes de compra imediata."
               />
             </Box>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-              <Button className="ds-pressable" component={RouterLink} to="/catalog?promo=true&sort=discount-desc" variant="outlined" color="secondary">
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center" sx={{ alignSelf: { md: 'center' } }}>
+              <Button
+                className="ds-pressable"
+                component={RouterLink}
+                to="/catalog?promo=true&sort=discount-desc"
+                variant="outlined"
+                color="secondary"
+                sx={{ minHeight: 44, px: 2.4, whiteSpace: 'nowrap' }}
+              >
                 Ver promocoes
               </Button>
-              <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="text" color="primary">
+              <Button
+                className="ds-pressable"
+                component={RouterLink}
+                to="/catalog"
+                variant="text"
+                color="primary"
+                sx={{ minHeight: 44, px: 2.2, whiteSpace: 'nowrap' }}
+              >
                 Catalogo completo
               </Button>
             </Stack>
@@ -543,9 +657,30 @@ export default function HomePage() {
                     ))
                   )}
           </Grid>
-        </Box>
+          </Box>
+        </MotionReveal>
 
-        <Paper component="section" className="store-surface" elevation={0} sx={{ p: { xs: 1.7, md: 2.5 } }}>
+        <MotionReveal variant="reveal-up" delayMs={160}>
+          <Paper component="section" className="store-surface" elevation={0} sx={{ p: { xs: 1.7, md: 2.5 }, position: 'relative', overflow: 'hidden' }}>
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              // height: { xs: 78, md: 96 },
+              opacity: 0.16,
+              width: { xs: '100%', md: '48%' },
+              height: { xs: 96, md: 128 },
+              pointerEvents: 'none',
+              borderBottom: '1px solid',
+              borderColor: 'rgba(138,115,94,0.2)',
+              zIndex: 0,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+          </Box>
+          <Box sx={{ position: 'relative', zIndex: 1 }}>
           <SectionHeading
             kicker="Navegacao rapida"
             title="Categorias para decidir mais rapido"
@@ -568,24 +703,68 @@ export default function HomePage() {
               </Stack>
             </Paper>
           ) : (
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              {categoryChips.map((category) => (
-                <Chip
-                  key={category.name}
-                  component={RouterLink}
-                  to={`/catalog?category=${encodeURIComponent(category.name)}`}
-                  clickable
-                  label={`${category.name} (${category.total})`}
-                  icon={<CategoryRoundedIcon size="md" />}
-                  variant="outlined"
-                  color="secondary"
-                />
-              ))}
-            </Stack>
+            <Grid container spacing={1.2}>
+              {categoryChips.map((category, index) => {
+                const Icon = pickCategoryIcon(index)
+                return (
+                  <Grid key={category.name} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+                    <Paper
+                      component={RouterLink}
+                      to={`/catalog?category=${encodeURIComponent(category.name)}`}
+                      elevation={0}
+                      className="store-surface ds-pressable"
+                      sx={{
+                        p: 1.4,
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        minHeight: 80,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.2,
+                        borderColor: 'rgba(194,138,14,0.28)',
+                        transition: 'transform 170ms ease, box-shadow 220ms ease, border-color 200ms ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          borderColor: 'rgba(194,138,14,0.56)',
+                          boxShadow: '0 12px 22px rgba(10,18,33,0.09)',
+                        },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: '999px',
+                          bgcolor: 'rgba(194,138,14,0.15)',
+                          border: '1px solid',
+                          borderColor: 'rgba(194,138,14,0.36)',
+                          display: 'grid',
+                          placeItems: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Icon tone="warning" size="md" />
+                      </Box>
+                      <Stack spacing={0.1} sx={{ minWidth: 0 }}>
+                        <Typography component="span" variant="subtitle2" sx={{ color: 'text.primary', fontWeight: 700 }}>
+                          {category.name}
+                        </Typography>
+                        <Typography component="span" variant="caption" color="text.secondary">
+                          {category.total} itens
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                )
+              })}
+            </Grid>
           )}
-        </Paper>
+          </Box>
+          </Paper>
+        </MotionReveal>
 
-        <Box component="section" className="store-grid-tight">
+        <MotionReveal variant="reveal-up" delayMs={200}>
+          <Box component="section" className="store-grid-tight">
           <SectionHeading
             kicker="Avaliacoes verificadas"
             title="O que os clientes estao dizendo"
@@ -633,7 +812,7 @@ export default function HomePage() {
                       <Grid key={review.id} size={{ xs: 12, md: 4 }}>
                         <Paper
                           elevation={0}
-                          className="store-surface"
+                          className="store-surface ds-hover-lift"
                           sx={{ p: 2, height: '100%', animationDelay: `${Math.min(index, 5) * 80}ms` }}
                         >
                           <Stack spacing={1}>
@@ -667,12 +846,33 @@ export default function HomePage() {
               </Button>
             </Stack>
           ) : null}
-        </Box>
+          </Box>
+        </MotionReveal>
 
-        <Box component="section" id="home-contact" data-testid="home-contact-section" className="store-grid-tight">
-          <Grid container spacing={{ xs: 1.5, md: 2 }} alignItems="stretch">
-            <Grid size={{ xs: 12, lg: 7 }}>
-              <Paper elevation={0} className="store-surface" sx={{ p: { xs: 1.6, md: 2.5 }, height: '100%' }}>
+        <MotionReveal variant="reveal-up" delayMs={240}>
+          <Box component="section" id="home-contact" data-testid="home-contact-section" className="store-grid-tight">
+          <Grid container spacing={{ xs: 1.5, md: 2 }} alignItems="flex-start">
+            <Grid size={{ xs: 12, lg: 7 }} sx={{ alignSelf: 'flex-start' }}>
+              <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: { xs: 1.6, md: 2.5 }, position: 'relative', overflow: 'hidden', alignSelf: 'flex-start' }}>
+                <Box
+                  aria-hidden
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: { xs: 0, md: '100%' },
+                    height: { xs: 0, md: '100%' },
+                    opacity: 0.12,
+                    display: { xs: 'none', md: 'block' },
+                    pointerEvents: 'none',
+                    zIndex: 0,
+                    backgroundImage: `url(${contactMotoAccentUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
+                >
+                </Box>
+                <Box sx={{ position: 'relative', zIndex: 1 }}>
                 <SectionHeading
                   kicker="Presenca local"
                   title="Loja física e atendimento comercial"
@@ -697,10 +897,32 @@ export default function HomePage() {
                     Retirada no balcao e suporte tecnico para compra certa.
                   </Typography>
                 </Paper>
+                <Paper
+                  elevation={0}
+                  className="store-surface"
+                  sx={{
+                    mt: 1.2,
+                    p: { xs: 1.25, md: 1.5 },
+                    bgcolor: 'rgba(255,255,255,0.92)',
+                  }}
+                >
+                  <Stack spacing={0.55}>
+                    <Typography variant="subtitle2" sx={{ color: 'text.primary', fontWeight: 700 }}>
+                      Suporte para compra sem erro de aplicacao
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Validacao de compatibilidade antes do pedido.
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Confirmacao de estoque em tempo real para retirada ou envio.
+                    </Typography>
+                  </Stack>
+                </Paper>
+                </Box>
               </Paper>
             </Grid>
             <Grid size={{ xs: 12, lg: 5 }}>
-              <Paper elevation={0} className="store-surface" sx={{ p: { xs: 1.2, md: 1.6 }, height: '100%' }}>
+              <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: { xs: 1.2, md: 1.6 } }}>
                 <Stack spacing={1.2}>
                   <Box
                     component="a"
@@ -746,7 +968,8 @@ export default function HomePage() {
               </Paper>
             </Grid>
           </Grid>
-        </Box>
+          </Box>
+        </MotionReveal>
       </Stack>
     </AppShell>
   )

@@ -41,6 +41,15 @@ const {
   invalidatePublicCache,
   PUBLIC_CACHE_CONTROL,
 } = require('./perf/http')
+const { query: queryRequestBuffer } = require('./perf/request-buffer')
+const {
+  normalizeSql,
+  hashSql,
+  requiresProductionChallenge,
+  createSqlChallenge,
+  verifySqlChallenge,
+  executeSql,
+} = require('./ops/sql-runner')
 const {
   APP_ENV,
   validateEnvironment,
@@ -73,6 +82,14 @@ const OUTBOX_MAX_ATTEMPTS = 5
 const OUTBOX_RETRY_BASE_MS = 15_000
 const OUTBOX_RETRY_MAX_MS = 15 * 60 * 1000
 const OUTBOX_POLL_INTERVAL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS || 5000)
+const OPS_UI_DIR = path.join(__dirname, 'ops-ui')
+const OPS_REQUESTS_DEFAULT_LIMIT = 100
+const OPS_REQUESTS_MAX_LIMIT = 500
+const OPS_DB_PREVIEW_DEFAULT_LIMIT = 50
+const OPS_DB_PREVIEW_MAX_LIMIT = 200
+const OPS_SQL_RESULT_DEFAULT_LIMIT = 300
+const OPS_SQL_RESULT_MAX_LIMIT = 2_000
+const OPS_SQL_EXECUTION_TIMEOUT_MS = Math.max(500, Number(process.env.OPS_SQL_TIMEOUT_MS || 8_000))
 const PUBLIC_COMMENT_AUTHOR_FILTER_SQL = `
   NOT (
     lower(u.email) = 'cliente_demo@rodando.local'
@@ -145,6 +162,7 @@ app.use(async (_req, _res, next) => {
   }
 })
 app.use(attachAuth)
+app.use('/ops/assets', requireOwner, express.static(OPS_UI_DIR, { etag: true, maxAge: '5m', index: false }))
 
 app.use((req, res, next) => {
   const isPublicReadRequest = req.method === 'GET' && (
@@ -176,6 +194,14 @@ app.use((req, res, next) => {
     return res.status(204).send()
   }
   return next()
+})
+
+app.get('/ops', requireOwner, (_req, res, next) => {
+  const htmlPath = path.join(OPS_UI_DIR, 'index.html')
+  res.setHeader('Cache-Control', 'no-store')
+  res.sendFile(htmlPath, (error) => {
+    if (error) next(error)
+  })
 })
 
 app.get('/api/health', async (_req, res) => {
@@ -299,6 +325,178 @@ app.get('/api/metrics', async (_req, res) => {
     outbox,
     ...snapshot(),
   })
+})
+
+app.get('/api/owner/ops/requests', requireOwner, (req, res) => {
+  const limit = parsePositiveInt(req.query.limit, OPS_REQUESTS_DEFAULT_LIMIT, 1, OPS_REQUESTS_MAX_LIMIT)
+  const offset = parsePositiveInt(req.query.offset, 0, 0, 1_000_000)
+  const method = String(req.query.method || '').trim().toUpperCase()
+  const route = String(req.query.route || '').trim()
+  const q = String(req.query.q || '').trim()
+  const from = parseOptionalIsoDate(req.query.from)
+  const to = parseOptionalIsoDate(req.query.to)
+  const statusMin = parseOptionalStatusCode(req.query.statusMin)
+  const statusMax = parseOptionalStatusCode(req.query.statusMax)
+
+  const payload = queryRequestBuffer({
+    limit,
+    offset,
+    method,
+    route,
+    q,
+    from,
+    to,
+    statusMin,
+    statusMax,
+  })
+  res.setHeader('Cache-Control', 'no-store')
+  return res.json(payload)
+})
+
+app.get('/api/owner/ops/db/tables', requireOwner, async (_req, res) => {
+  const items = await listOpsTables()
+  res.setHeader('Cache-Control', 'no-store')
+  return res.json({ items })
+})
+
+app.get('/api/owner/ops/db/table/:table', requireOwner, async (req, res) => {
+  const table = sanitizeOpsIdentifier(req.params.table)
+  if (!table) {
+    return res.status(400).json({ error: 'Tabela invalida.' })
+  }
+
+  const tables = await listOpsTables()
+  const tableInfo = tables.find((item) => item.name === table)
+  if (!tableInfo) {
+    return res.status(404).json({ error: 'Tabela nao encontrada no schema public.' })
+  }
+
+  const columns = await listOpsColumns(table)
+  const columnNames = new Set(columns.map((item) => item.name))
+  const orderByRaw = sanitizeOpsIdentifier(req.query.orderBy)
+  const orderBy = orderByRaw && columnNames.has(orderByRaw) ? orderByRaw : null
+  const order = String(req.query.order || 'desc').trim().toLowerCase() === 'asc' ? 'ASC' : 'DESC'
+  const limit = parsePositiveInt(req.query.limit, OPS_DB_PREVIEW_DEFAULT_LIMIT, 1, OPS_DB_PREVIEW_MAX_LIMIT)
+  const offset = parsePositiveInt(req.query.offset, 0, 0, 10_000_000)
+
+  const orderSql = orderBy
+    ? `ORDER BY ${quoteOpsIdentifier(orderBy)} ${order}`
+    : `ORDER BY 1 ${order}`
+  const sql = `SELECT * FROM ${quoteOpsIdentifier(table)} ${orderSql} LIMIT $1 OFFSET $2`
+  const rows = await query(sql, [limit, offset])
+
+  res.setHeader('Cache-Control', 'no-store')
+  return res.json({
+    table,
+    columns,
+    rows: rows.rows,
+    meta: {
+      limit,
+      offset,
+      nextOffset: rows.rows.length === limit ? offset + limit : null,
+      rowEstimate: Number(tableInfo.rowEstimate || 0),
+    },
+  })
+})
+
+app.post('/api/owner/ops/db/sql/challenge', requireOwner, (req, res) => {
+  const sql = normalizeSql(req.body?.sql)
+  const challenge = createSqlChallenge({
+    sql,
+    userId: req.auth?.user?.id,
+  })
+  if (challenge.error) {
+    return res.status(400).json({ error: challenge.error })
+  }
+  res.setHeader('Cache-Control', 'no-store')
+  return res.status(201).json(challenge)
+})
+
+app.post('/api/owner/ops/db/sql', requireOwner, async (req, res) => {
+  const sql = normalizeSql(req.body?.sql)
+  if (!sql) {
+    return res.status(400).json({ error: 'SQL obrigatorio.' })
+  }
+
+  const ownerUserId = Number(req.auth?.user?.id || 0)
+  const challengeRequired = requiresProductionChallenge(APP_ENV)
+  if (challengeRequired) {
+    const challengeCheck = verifySqlChallenge({
+      challengeId: req.body?.challengeId,
+      phrase: req.body?.phrase,
+      sql,
+      userId: ownerUserId,
+    })
+    if (!challengeCheck.ok) {
+      await saveOwnerAuditLog(ownerUserId, {
+        actionType: 'ops_sql_execute',
+        entityType: 'ops_sql',
+        before: {
+          appEnv: APP_ENV,
+          challengeRequired,
+          challengeReason: challengeCheck.reason,
+          sqlHash: hashSql(sql),
+        },
+        after: {
+          status: 'blocked',
+        },
+      })
+      return res.status(409).json({
+        error: `Confirmacao dupla invalida (${challengeCheck.reason}). Gere novo desafio e tente novamente.`,
+      })
+    }
+  }
+
+  const rowLimit = parsePositiveInt(req.body?.rowLimit, OPS_SQL_RESULT_DEFAULT_LIMIT, 1, OPS_SQL_RESULT_MAX_LIMIT)
+  try {
+    const result = await executeSql({
+      sql,
+      timeoutMs: OPS_SQL_EXECUTION_TIMEOUT_MS,
+      rowLimit,
+    })
+    if (result.error) {
+      return res.status(400).json({ error: result.error })
+    }
+
+    await saveOwnerAuditLog(ownerUserId, {
+      actionType: 'ops_sql_execute',
+      entityType: 'ops_sql',
+      before: {
+        appEnv: APP_ENV,
+        challengeRequired,
+        rowLimit,
+      },
+      after: {
+        status: 'success',
+        sqlHash: result.sqlHash,
+        command: result.command,
+        rowCount: result.rowCount,
+        executionMs: result.executionMs,
+        truncated: result.truncated,
+      },
+    })
+
+    res.setHeader('Cache-Control', 'no-store')
+    return res.json(result)
+  } catch (error) {
+    await saveOwnerAuditLog(ownerUserId, {
+      actionType: 'ops_sql_execute',
+      entityType: 'ops_sql',
+      before: {
+        appEnv: APP_ENV,
+        challengeRequired,
+        rowLimit,
+        sqlHash: hashSql(sql),
+      },
+      after: {
+        status: 'error',
+        error: String(error?.message || error),
+      },
+    })
+    return res.status(400).json({
+      error: String(error?.message || 'Falha ao executar SQL.'),
+    })
+  }
 })
 
 function invalidateStorefrontCache(prefixes = PUBLIC_CACHE_PREFIXES) {
@@ -4232,6 +4430,76 @@ function normalizeOrderStatus(value) {
   const normalized = String(value || '').trim().toLowerCase()
   const allowed = new Set(['created', 'paid', 'cancelled', 'shipped', 'completed'])
   return allowed.has(normalized) ? normalized : ''
+}
+
+function sanitizeOpsIdentifier(value) {
+  const normalized = String(value || '').trim()
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(normalized)) return ''
+  return normalized
+}
+
+function quoteOpsIdentifier(value) {
+  const identifier = sanitizeOpsIdentifier(value)
+  if (!identifier) {
+    throw new Error('Identificador SQL invalido.')
+  }
+  return `"${identifier}"`
+}
+
+function parseOptionalIsoDate(value) {
+  if (value === null || value === undefined || String(value).trim() === '') return null
+  const parsed = new Date(String(value))
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed.toISOString()
+}
+
+function parseOptionalStatusCode(value) {
+  if (value === null || value === undefined || String(value).trim() === '') return null
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed)) return null
+  if (parsed < 100 || parsed > 599) return null
+  return parsed
+}
+
+async function listOpsTables() {
+  const rows = await query(
+    `SELECT
+      c.relname AS name,
+      COALESCE(s.n_live_tup::bigint, 0) AS "rowEstimate",
+      pg_size_pretty(pg_total_relation_size(c.oid)) AS "sizePretty",
+      COALESCE(obj_description(c.oid, 'pg_class'), '') AS comment
+     FROM pg_class c
+     JOIN pg_namespace n ON n.oid = c.relnamespace
+     LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
+     WHERE n.nspname = 'public'
+       AND c.relkind = 'r'
+     ORDER BY c.relname ASC`,
+  )
+  return rows.rows.map((row) => ({
+    name: row.name,
+    rowEstimate: Number(row.rowEstimate || 0),
+    sizePretty: row.sizePretty || '0 bytes',
+    comment: row.comment || '',
+  }))
+}
+
+async function listOpsColumns(tableName) {
+  const rows = await query(
+    `SELECT
+      column_name AS name,
+      data_type AS "dataType",
+      is_nullable AS "isNullable"
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = $1
+     ORDER BY ordinal_position ASC`,
+    [tableName],
+  )
+  return rows.rows.map((row) => ({
+    name: row.name,
+    dataType: row.dataType,
+    isNullable: String(row.isNullable || '').toUpperCase() === 'YES',
+  }))
 }
 
 function parsePositiveInt(value, fallback, min, max) {

@@ -158,7 +158,7 @@ export function StoreHeader() {
         sx={{
           borderBottom: '1px solid',
           borderColor: 'divider',
-          bgcolor: 'rgba(255,255,255,0.95)',
+          bgcolor: 'rgba(251,249,244,0.95)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
         }}
@@ -223,7 +223,7 @@ export function StoreHeader() {
                   borderRadius: 2,
                   border: '1px solid',
                   borderColor: 'divider',
-                  bgcolor: '#FFFFFF',
+                  bgcolor: '#FBF9F4',
                   color: 'text.primary',
                   font: 'inherit',
                   '&:focus': {
@@ -322,7 +322,7 @@ export function StoreHeader() {
                   borderRadius: 2,
                   border: '1px solid',
                   borderColor: 'divider',
-                  bgcolor: '#FFFFFF',
+                  bgcolor: '#FBF9F4',
                   font: 'inherit',
                 }}
               />
@@ -362,7 +362,7 @@ export function StoreHeader() {
               display: { xs: 'flex', md: 'none' },
               position: 'fixed',
               inset: 0,
-              bgcolor: '#FFFFFF',
+              bgcolor: '#FBF9F4',
               flexDirection: 'column',
               overflow: 'hidden',
               boxShadow: '0 20px 40px rgba(15, 23, 42, 0.2)',
@@ -427,13 +427,13 @@ export function StoreHeader() {
                             minHeight: 56,
                             borderRadius: 2.4,
                             border: '1px solid',
-                            borderColor: link.active ? 'rgba(22,163,74,0.34)' : 'rgba(15,23,42,0.08)',
-                            bgcolor: link.active ? 'rgba(22,163,74,0.12)' : 'transparent',
+                            borderColor: link.active ? 'rgba(51,74,98,0.36)' : 'rgba(15,23,42,0.08)',
+                            bgcolor: link.active ? 'rgba(51,74,98,0.12)' : 'transparent',
                             '&:hover': {
-                              bgcolor: link.active ? 'rgba(22,163,74,0.16)' : 'rgba(15,23,42,0.04)',
+                              bgcolor: link.active ? 'rgba(51,74,98,0.16)' : 'rgba(15,23,42,0.04)',
                             },
                             '&.Mui-selected': {
-                              bgcolor: 'rgba(22,163,74,0.12)',
+                              bgcolor: 'rgba(51,74,98,0.12)',
                             },
                           }}
                         >
@@ -493,7 +493,7 @@ export function StoreHeader() {
               sx={{
                 p: 2,
                 pb: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-                bgcolor: 'rgba(247, 245, 238, 0.78)',
+                bgcolor: 'rgba(243, 239, 230, 0.86)',
               }}
             >
               <Button

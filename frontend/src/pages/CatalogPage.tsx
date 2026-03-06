@@ -36,7 +36,7 @@ import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { useAssist } from '../context/AssistContext'
 import { AssistHintInline } from '../components/assist'
-import { ResponsiveImage } from '../ui'
+import { MotionReveal, ResponsiveImage } from '../ui'
 
 const PAGE_SIZE = 12
 const PRICE_MIN = 0
@@ -79,7 +79,7 @@ function ProductCard({
 
   return (
     <Paper
-      className="store-surface"
+      className="store-surface ds-hover-lift"
       elevation={0}
       sx={{
         p: { xs: 1.6, md: 2 },
@@ -195,6 +195,7 @@ function ProductCard({
       <Stack direction="row" spacing={0.8}>
         <AddToCartButton product={item} />
         <Button
+          className="ds-pressable"
           variant="outlined"
           color="primary"
           onMouseEnter={() => onPrefetchDetails(item)}
@@ -203,7 +204,7 @@ function ProductCard({
         >
           Ver detalhes
         </Button>
-        <Button variant="outlined" color="primary" onClick={() => onRequestReview(item)}>
+        <Button className="ds-pressable" variant="outlined" color="primary" onClick={() => onRequestReview(item)}>
           Avaliar
         </Button>
       </Stack>
@@ -216,6 +217,7 @@ function AddToCartButton({ product }: { product: Product }) {
   const { completeStep } = useAssist()
   return (
     <Button
+      className="ds-pressable"
       data-testid={`catalog-add-${product.id}`}
       variant="contained"
       color="primary"
@@ -572,39 +574,63 @@ export default function CatalogPage() {
   return (
     <AppShell contained={false}>
       <Stack spacing={{ xs: 2, md: 3 }}>
-        <Paper
+        <MotionReveal variant="reveal-fade">
+          <Paper
           className="store-section"
           elevation={0}
           sx={{
+            position: 'relative',
+            overflow: 'hidden',
             p: { xs: 1.4, md: 2.2 },
             borderRadius: 3,
             border: '1px solid',
             borderColor: { xs: 'divider', md: 'divider' },
             bgcolor: { xs: 'transparent', md: 'background.paper' },
+            background:
+              'linear-gradient(116deg, rgba(31,49,70,0.93) 0%, rgba(51,74,98,0.9) 48%, rgba(90,114,147,0.84) 100%)',
           }}
         >
-          <Stack spacing={{ xs: 0.6, md: 1 }}>
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              border: 'none',
+              width: { xs: '100%', md: '100%' },
+              height: { xs: 100, md: 200 },
+              opacity: 0.2,
+              display: { xs: 'none', md: 'block' },
+              pointerEvents: 'none',
+            }}
+          >
+            <Box component="img"  alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </Box>
+          <Stack spacing={{ xs: 0.6, md: 1 }} sx={{ position: 'relative', zIndex: 1 }}>
             <Breadcrumbs separator={<NavigateNextRoundedIcon size="sm" />}>
-              <Typography component={RouterLink} to="/" variant="body2" color="text.secondary" sx={{ color: { xs: 'text.secondary', md: 'text.secondary' } }}>
+              <Typography component={RouterLink} to="/" variant="body2" color="text.secondary" sx={{ color: 'rgba(242,247,255,0.88)' }}>
                 Inicio
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ color: { xs: 'text.secondary', md: 'text.secondary' } }}>
+              <Typography variant="body2" color="text.secondary" sx={{ color: 'rgba(242,247,255,0.88)' }}>
                 Catalogo
               </Typography>
-              {category ? <Typography variant="body2" sx={{ color: { xs: 'text.primary', md: 'text.primary' } }}>{category}</Typography> : null}
+              {category ? <Typography variant="body2" sx={{ color: '#FFFFFF' }}>{category}</Typography> : null}
             </Breadcrumbs>
-            <Typography variant="h3" sx={{ color: { xs: 'text.primary', md: 'text.primary' } }}>
+            <Typography variant="h3" sx={{ color: '#F8FBFF' }}>
               Catalogo de pecas
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ color: { xs: 'text.secondary', md: 'text.secondary' } }}>
+            <Typography variant="body2" color="text.secondary" sx={{ color: 'rgba(230,237,246,0.92)', maxWidth: 780 }}>
               Filtros reais por categoria, fabricante, preco, promocao, disponibilidade e ordenacao.
             </Typography>
           </Stack>
-        </Paper>
+          </Paper>
+        </MotionReveal>
 
         <Grid container spacing={{ xs: 1.6, md: 2.2 }} alignItems="flex-start">
           <Grid size={{ xs: 12, lg: 3 }}>
-            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', position: { lg: 'sticky' }, top: { lg: 110 }, display: { xs: 'none', lg: 'block' } }}>
+            <MotionReveal variant="reveal-up" delayMs={60} sx={{ display: { xs: 'none', lg: 'block' } }}>
+              <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'rgba(251,249,244,0.92)', position: { lg: 'sticky' }, top: { lg: 110 } }}>
               <FiltersPanel
                 search={draftSearch}
                 onSearchChange={setDraftSearch}
@@ -625,9 +651,11 @@ export default function CatalogPage() {
                 onApply={applyFilters}
                 onClear={clearFilters}
               />
-            </Paper>
+              </Paper>
+            </MotionReveal>
 
             <Button
+              className="ds-pressable"
               variant="outlined"
               color="primary"
               fullWidth
@@ -650,7 +678,8 @@ export default function CatalogPage() {
           </Grid>
 
           <Grid size={{ xs: 12, lg: 9 }}>
-            <Paper elevation={0} sx={{ p: { xs: 1.2, md: 2 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', mb: { xs: 1.6, md: 2 } }}>
+            <MotionReveal variant="reveal-up" delayMs={80}>
+              <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: { xs: 1.2, md: 2 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'rgba(251,249,244,0.9)', mb: { xs: 1.6, md: 2 } }}>
               <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.2}>
                 <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
                   <Chip label={`${meta?.total ?? 0} produtos`} size="small" />
@@ -663,7 +692,8 @@ export default function CatalogPage() {
                   Mostrando {showingStart} - {showingEnd} de {meta?.total ?? 0} produtos
                 </Typography>
               </Stack>
-            </Paper>
+              </Paper>
+            </MotionReveal>
 
             {errorMessage ? (
               <Alert severity="error" sx={{ mb: 2 }}>
@@ -702,12 +732,14 @@ export default function CatalogPage() {
               <Grid container spacing={2}>
                 {items.map((item) => (
                   <Grid key={item.id} size={{ xs: 12, md: 6, xl: 4 }}>
-                    <ProductCard
-                      item={item}
-                      onRequestReview={openReviewModal}
-                      onOpenDetails={(product) => navigate(buildProductUrl(product))}
-                      onPrefetchDetails={prefetchProductDetails}
-                    />
+                    <MotionReveal variant="reveal-up" delayMs={Math.min(140 + (Number(item.id) % 6) * 24, 280)}>
+                      <ProductCard
+                        item={item}
+                        onRequestReview={openReviewModal}
+                        onOpenDetails={(product) => navigate(buildProductUrl(product))}
+                        onPrefetchDetails={prefetchProductDetails}
+                      />
+                    </MotionReveal>
                   </Grid>
                 ))}
               </Grid>

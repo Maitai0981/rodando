@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rodando Ops</title>
+    <link rel="stylesheet" href="/ops/assets/ops.css" />
+  </head>
+  <body>
+    <main class="ops-layout">
+      <header class="ops-topbar">
+        <div class="ops-brand">
+          <p class="ops-eyebrow">Painel operacional</p>
+          <h1>Rodando Ops Console</h1>
+          <p class="ops-subtitle">Observabilidade, requests, banco e SQL em uma interface guiada por fluxo.</p>
+        </div>
+        <div class="ops-topbar-meta">
+          <span id="ops-env" class="chip">ambiente: --</span>
+          <button type="button" id="ops-refresh-all" class="button button-secondary">Atualizar tudo</button>
+        </div>
+      </header>
+
+      <section class="summary-grid">
+        <article class="summary-card summary-health">
+          <p class="summary-label">Health</p>
+          <p id="summary-health" class="summary-value">--</p>
+          <p class="summary-help">Status de vida da API</p>
+        </article>
+        <article class="summary-card summary-ready">
+          <p class="summary-label">Ready</p>
+          <p id="summary-ready" class="summary-value">--</p>
+          <p class="summary-help">Dependências críticas</p>
+        </article>
+        <article class="summary-card summary-requests">
+          <p class="summary-label">Requests</p>
+          <p class="summary-value"><span id="summary-requests-total">--</span> total</p>
+          <p class="summary-help"><span id="summary-requests-errors">--</span> erro(s) monitorado(s)</p>
+        </article>
+        <article class="summary-card summary-cache">
+          <p class="summary-label">Cache hit-rate</p>
+          <p id="summary-cache-hit" class="summary-value">--</p>
+          <p class="summary-help">Leituras públicas</p>
+        </article>
+      </section>
+
+      <nav class="ops-tabs" role="tablist" aria-label="Seções do painel Ops">
+        <button id="tab-status" class="tab-button" role="tab" aria-selected="true" aria-controls="panel-status" data-tab="status">Status</button>
+        <button id="tab-requests" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-requests" data-tab="requests" tabindex="-1">Requisições</button>
+        <button id="tab-db" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-db" data-tab="db" tabindex="-1">Banco</button>
+        <button id="tab-sql" class="tab-button" role="tab" aria-selected="false" aria-controls="panel-sql" data-tab="sql" tabindex="-1">SQL</button>
+      </nav>
+
+      <section id="panel-status" class="panel tab-panel active" role="tabpanel" aria-labelledby="tab-status">
+        <div class="panel-head">
+          <h2>Status e métricas</h2>
+          <button type="button" id="status-refresh-now" class="button button-secondary">Atualizar agora</button>
+        </div>
+        <p id="status-alert" class="section-alert" hidden></p>
+        <div id="status-cards" class="status-grid">
+          <article class="status-card"><h3>Health</h3><pre id="health-card">carregando...</pre></article>
+          <article class="status-card"><h3>Ready</h3><pre id="ready-card">carregando...</pre></article>
+          <article class="status-card"><h3>Metrics</h3><pre id="metrics-card">carregando...</pre></article>
+        </div>
+      </section>
+
+      <section id="panel-requests" class="panel tab-panel" role="tabpanel" aria-labelledby="tab-requests" hidden>
+        <div class="panel-head">
+          <h2>Monitor de requisições</h2>
+          <div class="inline-controls">
+            <button type="button" id="requests-refresh-now" class="button button-secondary">Atualizar agora</button>
+            <label for="requests-autorefresh">Auto-refresh</label>
+            <select id="requests-autorefresh">
+              <option value="0">desativado</option>
+              <option value="5">5s</option>
+              <option value="10" selected>10s</option>
+              <option value="20">20s</option>
+            </select>
+          </div>
+        </div>
+
+        <details class="filter-box" open>
+          <summary>Filtros de busca</summary>
+          <form id="requests-filter-form" class="filters">
+            <input name="q" placeholder="Buscar requestId, rota, userId" />
+            <input name="route" placeholder="Rota contém (ex: /api/products)" />
+            <select name="method">
+              <option value="">Todos métodos</option>
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+            <input name="statusMin" type="number" min="100" max="599" placeholder="status min" />
+            <input name="statusMax" type="number" min="100" max="599" placeholder="status max" />
+            <input name="from" type="datetime-local" aria-label="Data inicial" />
+            <input name="to" type="datetime-local" aria-label="Data final" />
+            <button type="submit" class="button button-primary">Filtrar</button>
+            <button type="button" id="requests-reset" class="button button-secondary">Limpar</button>
+          </form>
+        </details>
+        <p id="requests-alert" class="section-alert" hidden></p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Método</th>
+                <th>Rota</th>
+                <th>Status</th>
+                <th>Latência</th>
+                <th>User</th>
+                <th>Request</th>
+                <th>Payload</th>
+              </tr>
+            </thead>
+            <tbody id="requests-table-body"></tbody>
+          </table>
+        </div>
+        <p id="requests-meta" class="muted"></p>
+      </section>
+
+      <section id="panel-db" class="panel tab-panel" role="tabpanel" aria-labelledby="tab-db" hidden>
+        <div class="panel-head">
+          <h2>DB Explorer</h2>
+          <button type="button" id="db-refresh-now" class="button button-secondary">Atualizar tudo</button>
+        </div>
+        <p id="db-alert" class="section-alert" hidden></p>
+        <div class="db-grid">
+          <aside class="db-tables">
+            <div class="panel-head">
+              <h3>Tabelas</h3>
+              <button type="button" id="db-reload-tables" class="button button-secondary">Atualizar</button>
+            </div>
+            <ul id="db-table-list"></ul>
+          </aside>
+          <div>
+            <div class="panel-head">
+              <h3 id="db-preview-title">Preview</h3>
+              <form id="db-preview-form" class="inline-controls">
+                <label>
+                  limit
+                  <input name="limit" type="number" min="1" max="200" value="50" />
+                </label>
+                <label>
+                  offset
+                  <input name="offset" type="number" min="0" value="0" />
+                </label>
+                <label>
+                  order
+                  <select name="order">
+                    <option value="desc">desc</option>
+                    <option value="asc">asc</option>
+                  </select>
+                </label>
+                <select name="orderBy" id="db-order-by">
+                  <option value="">ordenação padrão</option>
+                </select>
+                <button type="submit" class="button button-primary">Aplicar</button>
+              </form>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead id="db-preview-head"></thead>
+                <tbody id="db-preview-body"></tbody>
+              </table>
+            </div>
+            <p id="db-preview-meta" class="muted"></p>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-sql" class="panel tab-panel" role="tabpanel" aria-labelledby="tab-sql" hidden>
+        <div class="panel-head">
+          <h2>SQL Console</h2>
+          <span id="sql-mode-badge" class="chip chip-warning">modo seguro</span>
+        </div>
+        <p class="muted">
+          Em staging/produção, executar SQL exige desafio com confirmação dupla.
+        </p>
+        <p id="sql-alert" class="section-alert" hidden></p>
+        <form id="sql-form">
+          <textarea id="sql-input" rows="8" spellcheck="false" placeholder="SELECT * FROM products ORDER BY id DESC LIMIT 20;"></textarea>
+          <div class="inline-controls">
+            <button type="button" id="sql-generate-challenge" class="button button-secondary">Gerar desafio</button>
+            <button type="submit" id="sql-run-button" class="button button-primary">Executar SQL</button>
+          </div>
+        </form>
+
+        <div class="challenge-box" id="sql-challenge-box" hidden>
+          <h3>Confirmação dupla</h3>
+          <p class="muted">Use a frase abaixo para confirmar esta execução:</p>
+          <code id="sql-challenge-phrase"></code>
+          <input id="sql-challenge-input" placeholder="Digite a frase exatamente" />
+        </div>
+
+        <h3>Resultado</h3>
+        <pre id="sql-result-meta">sem execução</pre>
+        <div class="table-wrap">
+          <table>
+            <thead id="sql-result-head"></thead>
+            <tbody id="sql-result-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/ops/assets/ops.js"></script>
+  </body>
+</html>
