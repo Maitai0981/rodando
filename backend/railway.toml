@@ -6,3 +6,22 @@ dockerfilePath = "Dockerfile"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "on_failure"
+
+# ─── Variáveis obrigatórias no dashboard do Railway ───────────────────────────
+# APP_ENV=production
+# DATABASE_URL=${{Postgres.DATABASE_URL}}          (link para o addon PostgreSQL)
+# ALLOWED_ORIGINS=https://<url-do-frontend>.railway.app
+# PUBLIC_APP_BASE_URL=https://<url-do-frontend>.railway.app
+# OWNER_SEED_EMAIL=seu-email@exemplo.com
+# OWNER_SEED_PASSWORD=senha-forte-aqui
+# OWNER_SEED_NAME=Nome do Dono
+# FLYWAY_CLEAN_DISABLED=true
+#
+# ─── Opcionais ────────────────────────────────────────────────────────────────
+# MERCADOPAGO_PUBLIC_KEY=APP_USR-...
+# MERCADOPAGO_ACCESS_TOKEN=APP_USR-...
+# MERCADOPAGO_NOTIFICATION_URL=https://<url-do-backend>.railway.app/api/payments/mercadopago/webhook
+# SMTP_HOST=smtp.resend.com
+# SMTP_PORT=587
+# SMTP_USERNAME=resend-api-key
+# SMTP_PASSWORD=sua-api-key-resend

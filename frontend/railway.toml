@@ -4,3 +4,6 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 restartPolicyType = "on_failure"
+
+# ─── Variáveis obrigatórias no dashboard do Railway ───────────────────────────
+# VITE_API_URL=https://<url-do-backend>.railway.app  (build arg — defina ANTES do deploy)
