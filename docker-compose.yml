@@ -1,9 +1,11 @@
 name: rodando
 
 services:
+
+  # ─── Banco de dados ────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: ${POSTGRES_CONTAINER_NAME:-rodando-postgres}
+    container_name: rodando-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -20,5 +22,54 @@ services:
       timeout: 5s
       retries: 20
 
+  # ─── Backend (Spring Boot) ─────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rodando-backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      PORT: 4000
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-rodando}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      PUBLIC_APP_BASE_URL: ${PUBLIC_APP_BASE_URL:-http://localhost:3000}
+      OWNER_SEED_EMAIL: ${OWNER_SEED_EMAIL:-owner@rodando.local}
+      OWNER_SEED_PASSWORD: ${OWNER_SEED_PASSWORD:-owner123}
+      OWNER_SEED_NAME: ${OWNER_SEED_NAME:-Owner}
+      SEED_BASE_CATALOG: ${SEED_BASE_CATALOG:-1}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-1}
+      MOCK_PAYMENT_PROVIDERS: ${MOCK_PAYMENT_PROVIDERS:-1}
+      MERCADOPAGO_PUBLIC_KEY: ${MERCADOPAGO_PUBLIC_KEY:-}
+      MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    ports:
+      - '4000:4000'
+    volumes:
+      - rodando_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─── Frontend (React + Nginx) ──────────────────────────────────────────────
+  # VITE_API_URL é embutida no JavaScript em tempo de build.
+  # Altere o valor abaixo se o backend não estiver em localhost:4000.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+    container_name: rodando-frontend
+    restart: unless-stopped
+    ports:
+      - '3000:80'
+    depends_on:
+      - backend
+
 volumes:
   rodando_pgdata:
+  rodando_uploads:
