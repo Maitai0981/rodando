@@ -1,0 +1,7 @@
+# Force LF for shell scripts and Maven wrapper
+*.sh text eol=lf
+mvnw text eol=lf
+mvnw.cmd text eol=crlf
+
+# Default behavior
+* text=auto
