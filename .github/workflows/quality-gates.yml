@@ -39,6 +39,10 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: Create test database
+        run: psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE rodando_test;"
+        env:
+          PGPASSWORD: postgres
       - run: chmod +x ./mvnw
       - run: ./mvnw test
 
@@ -100,12 +104,42 @@ jobs:
       - name: Install frontend deps
         working-directory: frontend
         run: npm ci
+      - name: Create e2e database
+        run: psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE rodando_e2e;"
+        env:
+          PGPASSWORD: postgres
       - name: Install Playwright browser
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+      - name: Start backend
+        working-directory: backend
+        run: |
+          chmod +x ./mvnw
+          ./mvnw spring-boot:run > ../backend-e2e.out.log 2>&1 &
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:4000/api/health >/dev/null 2>&1; then
+              echo "Backend ready"
+              break
+            fi
+            sleep 2
+          done
+          if ! curl -fsS http://127.0.0.1:4000/api/health >/dev/null 2>&1; then
+            echo "Backend did not become healthy"
+            cat ../backend-e2e.out.log || true
+            exit 1
+          fi
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/rodando_e2e
+          DB_RESET: "1"
+          OWNER_SEED_EMAIL: owner_test@rodando.local
+          OWNER_SEED_PASSWORD: "123456"
+          OWNER_SEED_NAME: Owner Test
+          MOCK_PAYMENT_PROVIDERS: "1"
       - name: Run e2e tests
         working-directory: frontend
         run: npm run test:e2e
+        env:
+          VITE_API_URL: http://127.0.0.1:4000
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -169,6 +203,10 @@ jobs:
       - name: Ensure Maven wrapper is executable
         working-directory: backend
         run: chmod +x ./mvnw
+      - name: Create perf database
+        run: psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE rodando_perf;"
+        env:
+          PGPASSWORD: postgres
       - name: Verify frontend lockfile
         working-directory: frontend
         run: npm ci --ignore-scripts
