@@ -12,6 +12,8 @@ const ownerSeedEmail = String(process.env.OWNER_SEED_EMAIL || 'owner_e2e@rodando
 const ownerSeedPassword = String(process.env.OWNER_SEED_PASSWORD || '123456')
 const ownerSeedName = String(process.env.OWNER_SEED_NAME || 'Owner E2E')
 const e2eResetToken = String(process.env.E2E_RESET_TOKEN || 'rodando-e2e-reset-token')
+const backendStartCommand =
+  process.platform === 'win32' ? 'cmd /c mvnw.cmd spring-boot:run' : './mvnw spring-boot:run'
 
 function describeDatabaseTarget(databaseUrl: string) {
   try {
@@ -45,7 +47,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm run dev',
+      command: backendStartCommand,
       cwd: '../backend',
       url: `http://127.0.0.1:${backendPort}/api/health`,
       reuseExistingServer: false,
@@ -53,10 +55,13 @@ export default defineConfig({
       stderr: 'pipe',
       env: {
         PORT: backendPort,
+        APP_ENV: 'e2e',
         DATABASE_URL: e2eDatabaseUrl,
+        PUBLIC_APP_BASE_URL: `http://127.0.0.1:${frontendPort}`,
         SEED_BASE_CATALOG: String(process.env.SEED_BASE_CATALOG || '1'),
         DB_RESET: String(process.env.DB_RESET || '1'),
         SEED_DEMO_DATA: String(process.env.SEED_DEMO_DATA || '0'),
+        MOCK_PAYMENT_PROVIDERS: String(process.env.MOCK_PAYMENT_PROVIDERS || '1'),
         OWNER_SEED_EMAIL: ownerSeedEmail,
         OWNER_SEED_PASSWORD: ownerSeedPassword,
         OWNER_SEED_NAME: ownerSeedName,
@@ -74,8 +79,10 @@ export default defineConfig({
       stderr: 'pipe',
       env: {
         VITE_PROXY_TARGET: `http://127.0.0.1:${backendPort}`,
-        VITE_ASSIST_ENABLED: String(process.env.VITE_ASSIST_ENABLED || '1'),
-        VITE_ASSIST_ROLLOUT_PERCENT: String(process.env.VITE_ASSIST_ROLLOUT_PERCENT || '25'),
+        VITE_ASSIST_ENABLED: String(process.env.VITE_ASSIST_ENABLED || '0'),
+        VITE_ASSIST_ROLLOUT_PERCENT: String(process.env.VITE_ASSIST_ROLLOUT_PERCENT || '0'),
+        VITE_MOCK_PAYMENT_PROVIDERS: String(process.env.VITE_MOCK_PAYMENT_PROVIDERS || '1'),
+        VITE_DISABLE_ROUTE_MOTION: String(process.env.VITE_DISABLE_ROUTE_MOTION || '1'),
       },
       timeout: 120_000,
     },

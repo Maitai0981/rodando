@@ -1,217 +1,118 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import HomePage from '../HomePage'
 import { renderWithProviders } from '../../test/renderWithProviders'
-import { api } from '../../lib/api'
+import { api, type Product } from '../../shared/lib/api'
 
-vi.mock('../../layouts/AppShell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+vi.mock('framer-motion', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('framer-motion')>()
+  return {
+    ...mod,
+    m: mod.motion,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    useInView: () => true,
+  }
+})
+
+const addProductMock = vi.fn()
+
+vi.mock('../../shared/context/CartContext', () => ({
+  useCart: () => ({ addProduct: addProductMock, itemCount: 0, items: [] }),
 }))
 
-vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({ user: null }),
+vi.mock('../../shared/context/AssistContext', () => ({
+  useAssist: () => ({ completeStep: vi.fn(), isStepCompleted: vi.fn(() => false) }),
 }))
+
+function makeProduct(overrides: Partial<Product> = {}): Product {
+  return {
+    id: 1,
+    name: 'Aro Dianteiro CG',
+    sku: 'ARO-001',
+    manufacturer: 'Rodando',
+    category: 'Rodas',
+    bikeModel: 'CG 160',
+    price: 149.9,
+    stock: 10,
+    imageUrl: '/img/aro.jpg',
+    description: 'Aro dianteiro original',
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+    ...overrides,
+  }
+}
+
+const highlightsMock = vi.spyOn(api, 'listCatalogHighlights')
+const categoriesMock = vi.spyOn(api, 'listCatalogCategories')
+const recommendationsMock = vi.spyOn(api, 'listCatalogRecommendations')
+const commentsMock = vi.spyOn(api, 'listComments')
 
 describe('HomePage', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
+    highlightsMock.mockResolvedValue({ items: [makeProduct(), makeProduct({ id: 2, name: 'Kit Corrente' })] })
+    categoriesMock.mockResolvedValue({ items: [{ name: 'Transmissão', count: 12 }, { name: 'Rodas', count: 8 }] })
+    recommendationsMock.mockResolvedValue({ items: [] })
+    commentsMock.mockResolvedValue({ summary: { averageRating: 4.8, totalReviews: 0 }, items: [] })
   })
 
-  function mockWithEmptyData() {
-    vi.spyOn(api, 'listCatalogHighlights').mockResolvedValue({ items: [] })
-    vi.spyOn(api, 'listPublicProducts').mockResolvedValue({
-      items: [],
-      meta: { page: 1, pageSize: 1, total: 0, totalPages: 0 },
-    })
-    vi.spyOn(api, 'listComments').mockResolvedValue({
-      items: [],
-      summary: { averageRating: 0, totalReviews: 0 },
-    })
-  }
-
-  function createHighlight(id: number) {
-    return {
-      id,
-      name: `Pastilha Premium ${id}`,
-      sku: `PP-${id}`,
-      manufacturer: 'QA',
-      category: 'Freio',
-      bikeModel: 'CG',
-      price: 79.9 + id,
-      stock: 6,
-      imageUrl: '/img',
-      description: 'desc',
-      isActive: 1,
-      createdAt: '',
-      updatedAt: '',
-      discountPercent: 10,
-    }
-  }
-
-  function mockViewportWidth(width: number) {
-    const originalMatchMedia = window.matchMedia
-    const matchMediaMock = vi.fn().mockImplementation((query: string) => {
-      const minWidthMatch = /min-width:\s*(\d+)px/i.exec(query)
-      const minWidth = minWidthMatch ? Number(minWidthMatch[1]) : 0
-      const matches = width >= minWidth
-
-      return {
-        matches,
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      }
-    })
-
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      configurable: true,
-      value: matchMediaMock,
-    })
-
-    return () => {
-      Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        configurable: true,
-        value: originalMatchMedia,
-      })
-    }
-  }
-
-  it('renderiza hero e dados reais de destaque/comentario', async () => {
-    vi.spyOn(api, 'listCatalogHighlights').mockResolvedValue({
-      items: [
-        {
-          id: 1,
-          name: 'Pastilha Premium',
-          sku: 'PP1',
-          manufacturer: 'QA',
-          category: 'Freio',
-          bikeModel: 'CG',
-          price: 79.9,
-          stock: 3,
-          imageUrl: '/img',
-          description: 'desc',
-          isActive: 1,
-          createdAt: '',
-          updatedAt: '',
-          discountPercent: 10,
-        },
-      ],
-    })
-
-    vi.spyOn(api, 'listPublicProducts').mockResolvedValue({
-      items: [
-        {
-          id: 1,
-          name: 'Pastilha Premium',
-          sku: 'PP1',
-          manufacturer: 'QA',
-          category: 'Freio',
-          bikeModel: 'CG',
-          price: 79.9,
-          stock: 3,
-          imageUrl: '/img',
-          description: 'desc',
-          isActive: 1,
-          createdAt: '',
-          updatedAt: '',
-        },
-      ],
-      meta: { page: 1, pageSize: 1, total: 1, totalPages: 1 },
-    })
-
-    vi.spyOn(api, 'listComments').mockResolvedValue({
-      items: [
-        {
-          id: 1,
-          userId: 1,
-          productId: 1,
-          authorName: 'Cliente QA',
-          message: 'Atendimento excelente.',
-          rating: 5,
-          productName: 'Pastilha Premium',
-          productImageUrl: '/img',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      summary: { averageRating: 4.8, totalReviews: 127 },
-    })
-
-    renderWithProviders(<HomePage />)
-
-    expect(screen.getByTestId('home-hero-section')).toBeInTheDocument()
-    expect(screen.getByTestId('home-catalog-cta')).toBeInTheDocument()
-
-    await waitFor(() => expect(screen.getByText('Pastilha Premium')).toBeInTheDocument())
-    expect(screen.getAllByText(/4.8/).length).toBeGreaterThan(0)
+  afterEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('renderiza estados vazios compactos com CTAs de acao', async () => {
-    mockWithEmptyData()
-
-    renderWithProviders(<HomePage />)
-
-    await waitFor(() => expect(screen.getByTestId('home-highlights-empty-state')).toBeInTheDocument())
-    expect(screen.getByTestId('home-categories-empty-state')).toBeInTheDocument()
-    expect(screen.getByTestId('home-reviews-empty-state')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ver catálogo geral' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Avaliar no catálogo' })).toBeInTheDocument()
+  it('renderiza links de navegação do hero', async () => {
+    renderWithProviders(<HomePage />, { initialEntries: ['/'] })
+    const catalogBtn = await screen.findByTestId('home-catalog-cta')
+    expect(catalogBtn).toBeInTheDocument()
   })
 
-  it('mantem secao de loja fisica com imagem e endereco visiveis', async () => {
-    mockWithEmptyData()
-
-    renderWithProviders(<HomePage />)
-
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Loja física e atendimento comercial' })).toBeInTheDocument())
-    expect(screen.getByAltText('Foto da loja física Rodando Moto Center')).toBeInTheDocument()
-    expect(screen.getByText('Av. Brasil, 8708 - Cascavel - PR')).toBeInTheDocument()
+  it('exibe seção de diferenciais institucionais', async () => {
+    renderWithProviders(<HomePage />, { initialEntries: ['/'] })
+    expect(await screen.findByText('Loja Física Ativa')).toBeInTheDocument()
+    expect(screen.getByText('Entrega Ágil')).toBeInTheDocument()
+    expect(screen.getByText('Garantia Real')).toBeInTheDocument()
+    expect(screen.getByText('Consultoria Técnica')).toBeInTheDocument()
   })
 
-  it('limita destaques para uma unica linha conforme breakpoint ativo', async () => {
-    vi.spyOn(api, 'listCatalogHighlights').mockResolvedValue({
-      items: [createHighlight(1), createHighlight(2), createHighlight(3), createHighlight(4), createHighlight(5), createHighlight(6)],
-    })
-    vi.spyOn(api, 'listPublicProducts').mockResolvedValue({
-      items: [],
-      meta: { page: 1, pageSize: 120, total: 0, totalPages: 0 },
-    })
-    vi.spyOn(api, 'listComments').mockResolvedValue({
-      items: [],
-      summary: { averageRating: 0, totalReviews: 0 },
-    })
-
-    const restoreViewport = mockViewportWidth(1536)
-
-    try {
-      renderWithProviders(<HomePage />)
-      await waitFor(() => expect(screen.getAllByTestId('home-highlight-card')).toHaveLength(4))
-    } finally {
-      restoreViewport()
-    }
+  it('exibe produtos de destaque carregados da API', async () => {
+    renderWithProviders(<HomePage />, { initialEntries: ['/'] })
+    expect(await screen.findByText('Aro Dianteiro CG')).toBeInTheDocument()
+    expect(screen.getByText('Kit Corrente')).toBeInTheDocument()
   })
 
-  it('seta do hero rola para a proxima secao', async () => {
-    mockWithEmptyData()
-    const scrollSpy = vi.fn()
-    Object.defineProperty(Element.prototype, 'scrollIntoView', {
-      configurable: true,
-      writable: true,
-      value: scrollSpy,
+  it('exibe categorias carregadas da API', async () => {
+    renderWithProviders(<HomePage />, { initialEntries: ['/'] })
+    expect(await screen.findByText('Transmissão')).toBeInTheDocument()
+    expect(screen.getByText('Rodas')).toBeInTheDocument()
+  })
+
+  it('chama addProduct ao clicar em Adicionar em destaque', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<HomePage />, { initialEntries: ['/'] })
+    const addButtons = await screen.findAllByRole('button', { name: /adicionar/i })
+    await user.click(addButtons[0])
+    expect(addProductMock).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), 1)
+  })
+
+  it('exibe nota média quando há avaliações', async () => {
+    commentsMock.mockResolvedValue({
+      summary: { averageRating: 4.8, totalReviews: 32 },
+      items: [{ id: 1, text: 'Ótimo produto', rating: 5, author: 'João', productId: 1, createdAt: '' }],
     })
+    renderWithProviders(<HomePage />, { initialEntries: ['/'] })
+    expect(await screen.findByText(/Nota média 4\.8/)).toBeInTheDocument()
+  })
 
-    renderWithProviders(<HomePage />)
+  it('exibe mensagem sem avaliações quando totalReviews é zero', async () => {
+    commentsMock.mockResolvedValue({ summary: { averageRating: 0, totalReviews: 0 }, items: [] })
+    renderWithProviders(<HomePage />, { initialEntries: ['/'] })
+    expect(await screen.findByText(/0 avaliações/i)).toBeInTheDocument()
+  })
 
-    await waitFor(() => expect(screen.getByTestId('home-next-section-trigger')).toBeInTheDocument())
-    expect(screen.getByRole('button', { name: /proxima secao/i })).toBeInTheDocument()
-    screen.getByTestId('home-next-section-trigger').click()
-    expect(scrollSpy).toHaveBeenCalled()
+  it('exibe rodapé com endereço da loja', async () => {
+    renderWithProviders(<HomePage />, { initialEntries: ['/'] })
+    const items = await screen.findAllByText(/Cascavel/i)
+    expect(items.length).toBeGreaterThan(0)
   })
 })

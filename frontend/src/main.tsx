@@ -1,16 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import { CssBaseline, ThemeProvider } from '@mui/material'
 import { QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import App from './App.tsx'
-import { AuthProvider } from './context/AuthContext'
-import { CartProvider } from './context/CartContext'
-import { AssistProvider } from './context/AssistContext'
-import { dsTheme } from './design-system/theme'
-import { queryClient } from './lib/queryClient'
-import { startWebVitals } from './lib/webVitals'
+import { AuthProvider } from './shared/context/AuthContext'
+import { CartProvider } from './shared/context/CartContext'
+import { AssistProvider } from './shared/context/AssistContext'
+import { SiteThemeProvider } from './shared/context/ThemeContext'
+import { queryClient } from './shared/lib/queryClient'
+import { startWebVitals } from './shared/lib/webVitals'
 
 if (import.meta.env.DEV || String(import.meta.env.VITE_WEB_VITALS || '0') === '1') {
   startWebVitals((sample) => {
@@ -21,9 +20,8 @@ if (import.meta.env.DEV || String(import.meta.env.VITE_WEB_VITALS || '0') === '1
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={dsTheme}>
-        <CssBaseline />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <SiteThemeProvider>
           <AuthProvider>
             <AssistProvider>
               <CartProvider>
@@ -31,8 +29,8 @@ createRoot(document.getElementById('root')!).render(
               </CartProvider>
             </AssistProvider>
           </AuthProvider>
-        </BrowserRouter>
-      </ThemeProvider>
+        </SiteThemeProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,
 )

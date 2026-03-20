@@ -34,13 +34,13 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-java@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci
-      - run: npm run test
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - run: chmod +x ./mvnw
+      - run: ./mvnw test
 
   frontend-quality:
     name: Frontend lint/build/unit/a11y
@@ -85,12 +85,15 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
-      - name: Install backend deps
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Ensure Maven wrapper is executable
         working-directory: backend
-        run: npm ci
+        run: chmod +x ./mvnw
       - name: Verify frontend lockfile
         working-directory: frontend
         run: npm ci --ignore-scripts
@@ -121,9 +124,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Backend audit (high)
-        working-directory: backend
-        run: npm audit --audit-level=high
       - name: Frontend audit (high)
         working-directory: frontend
         run: npm audit --audit-level=high
@@ -160,12 +160,15 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
-      - name: Install backend deps
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Ensure Maven wrapper is executable
         working-directory: backend
-        run: npm ci
+        run: chmod +x ./mvnw
       - name: Verify frontend lockfile
         working-directory: frontend
         run: npm ci --ignore-scripts
@@ -175,7 +178,7 @@ jobs:
       - name: Collect backend API perf
         working-directory: backend
         run: |
-          npm run start > perf-backend.out.log 2> perf-backend.err.log &
+          ./mvnw spring-boot:run > perf-backend.out.log 2> perf-backend.err.log &
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:4000/api/health >/dev/null; then
               break
@@ -187,7 +190,7 @@ jobs:
             cat perf-backend.err.log || true
             exit 1
           fi
-          npm run perf:api
+          ./mvnw exec:java -Dexec.mainClass=com.rodando.backend.tools.ApiPerfRunner
       - name: Collect frontend build perf
         working-directory: frontend
         run: |
@@ -226,4 +229,3 @@ jobs:
           test "${{ needs.frontend-e2e.result }}" = "success"
           test "${{ needs.security-audit.result }}" = "success"
           test "${{ needs.performance-report.result }}" = "success"
-

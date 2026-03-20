@@ -1,35 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  FormControl,
-  Grid,
-  InputLabel,
-  LinearProgress,
-  Divider,
-  MenuItem,
-  Pagination,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material'
-import { Link as RouterLink } from 'react-router-dom'
-import OwnerLayout from '../layouts/OwnerLayout'
-import { api, ApiError, type OwnerDashboardParams, type OwnerDashboardResponse } from '../lib/api'
-import { useAssist } from '../context/AssistContext'
-import { AssistHintInline } from '../components/assist'
+import { Link } from 'react-router-dom'
+import OwnerLayout from '../shared/layout/OwnerLayout'
+import { api, ApiError, type OwnerDashboardParams, type OwnerDashboardResponse } from '../shared/lib/api'
+import { useAssist } from '../shared/context/AssistContext'
 
 type SortDirection = 'asc' | 'desc'
+
 type SortBy = OwnerDashboardParams['sortBy']
 
 const DASHBOARD_PAGE_SIZE = 20
@@ -43,6 +19,17 @@ const defaultFilters: OwnerDashboardParams = {
   pageSize: DASHBOARD_PAGE_SIZE,
 }
 
+function formatDateInput(value: string | undefined) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toISOString().slice(0, 10)
+}
+
+function toCurrency(value: number | undefined) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0))
+}
+
 export default function OwnerDashboardPage() {
   const { completeStep } = useAssist()
   const [filters, setFilters] = useState<OwnerDashboardParams>(defaultFilters)
@@ -53,15 +40,8 @@ export default function OwnerDashboardPage() {
   const latestRequestRef = useRef(0)
   const kpiStepMarkedRef = useRef(false)
 
-  const categoryOptions = useMemo(
-    () => dashboard?.facets?.categories || [],
-    [dashboard?.facets?.categories],
-  )
-
-  const manufacturerOptions = useMemo(
-    () => dashboard?.facets?.manufacturers || [],
-    [dashboard?.facets?.manufacturers],
-  )
+  const categoryOptions = useMemo(() => dashboard?.facets?.categories || [], [dashboard?.facets?.categories])
+  const manufacturerOptions = useMemo(() => dashboard?.facets?.manufacturers || [], [dashboard?.facets?.manufacturers])
 
   const loadDashboard = useCallback(async (nextFilters: OwnerDashboardParams) => {
     const requestId = Date.now() + Math.random()
@@ -121,12 +101,7 @@ export default function OwnerDashboardPage() {
       const currentSortBy = prev.sortBy || 'revenue'
       const currentDirection = (prev.direction || 'desc') as SortDirection
       const nextDirection: SortDirection = currentSortBy === sortBy && currentDirection === 'desc' ? 'asc' : 'desc'
-      return {
-        ...prev,
-        sortBy,
-        direction: nextDirection,
-        page: 1,
-      }
+      return { ...prev, sortBy, direction: nextDirection, page: 1 }
     })
   }, [])
 
@@ -212,606 +187,268 @@ export default function OwnerDashboardPage() {
   const metricsDelta = metrics?.metricDelta
 
   const metricCards = [
-    { label: 'Receita', value: toCurrency(metrics?.revenueTotal), helper: 'Periodo selecionado', delta: metricsDelta?.revenueTotal },
-    { label: 'Ticket medio', value: toCurrency(metrics?.ticketAverage), helper: 'Receita / pedidos', delta: metricsDelta?.ticketAverage },
-    { label: 'Lucro bruto', value: toCurrency(metrics?.grossProfitTotal), helper: 'Margem agregada no periodo' },
-    { label: 'Unidades vendidas', value: String(metrics?.unitsSold || 0), helper: 'Volume no periodo', delta: metricsDelta?.unitsSold },
-    { label: 'Margem media', value: `${Number(metrics?.averageMargin || 0).toFixed(1)}%`, helper: 'Media do portfolio', delta: metricsDelta?.averageMargin },
-    { label: 'Conversao media', value: `${Number(metrics?.averageConversion || 0).toFixed(2)}%`, helper: 'Compras / visualizacoes', delta: metricsDelta?.averageConversion },
-    { label: 'Avaliacao media', value: Number(metrics?.averageRating || 0).toFixed(2), helper: `${metrics?.totalComments || 0} reviews reais`, delta: metricsDelta?.averageRating },
-    { label: 'Ativos / Inativos', value: `${metrics?.activeProducts || 0} / ${metrics?.inactiveProducts || 0}`, helper: 'Status de catalogo' },
-    {
-      label: 'Sem estoque',
-      value: String(metrics?.outOfStockProducts || 0),
-      helper: 'Ruptura atual',
-      delta: metricsDelta?.outOfStockProducts,
-      inverseDelta: true,
-    },
-    {
-      label: 'Estoque critico',
-      value: String(metrics?.criticalStockProducts || 0),
-      helper: 'Abaixo do minimo',
-      delta: metricsDelta?.criticalStockProducts,
-      inverseDelta: true,
-    },
-    { label: 'Devolucoes', value: String(metrics?.totalReturns || 0), helper: `${metrics?.returnedUnits || 0} unidades retornadas` },
-    { label: 'Reclamacoes abertas', value: String(metrics?.openComplaints || 0), helper: 'Atendimento pendente', inverseDelta: true },
+    { label: 'Receita', value: toCurrency(metrics?.revenueTotal), delta: metricsDelta?.revenueTotal },
+    { label: 'Ticket medio', value: toCurrency(metrics?.ticketAverage), delta: metricsDelta?.ticketAverage },
+    { label: 'Lucro bruto', value: toCurrency(metrics?.grossProfitTotal) },
+    { label: 'Unidades vendidas', value: String(metrics?.unitsSold || 0), delta: metricsDelta?.unitsSold },
+    { label: 'Margem media', value: `${Number(metrics?.averageMargin || 0).toFixed(1)}%`, delta: metricsDelta?.averageMargin },
+    { label: 'Conversao media', value: `${Number(metrics?.averageConversion || 0).toFixed(2)}%`, delta: metricsDelta?.averageConversion },
+    { label: 'Avaliacao media', value: Number(metrics?.averageRating || 0).toFixed(2), delta: metricsDelta?.averageRating },
   ]
 
   return (
     <OwnerLayout>
-      <Stack spacing={2.2} aria-busy={loading || exporting ? 'true' : 'false'}>
-        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.2}>
-          <Box>
-            <Typography variant="h4" sx={{ color: 'text.primary', lineHeight: 1.05 }}>
-              Dashboard de produtos
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
+      <div className="space-y-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl space-y-1">
+            <h1 className="text-2xl text-[#f0ede8] font-bold">Dashboard de produtos</h1>
+            <p className="text-sm text-[#9ca3af]">
               Analise performance, estoque, margem e funil para cada item do catalogo.
-            </Typography>
-            <Box sx={{ mt: 1.1, maxWidth: 520 }}>
-              <AssistHintInline tipId="owner-dashboard-tip-kpi" routeKey="owner-dashboard">
-                Dica: valide período e depois compare Receita, Conversão e Estoque crítico.
-              </AssistHintInline>
-            </Box>
-          </Box>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={1}
-            sx={{
-              width: { xs: '100%', md: 'auto' },
-              alignItems: 'stretch',
-              justifyContent: { sm: 'flex-end' },
-            }}
-          >
-            <Button
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
               data-testid="owner-dashboard-export-csv-button"
-              variant="outlined"
-              color="primary"
-              onClick={handleExportCsv}
+              className={`h-11 px-4 rounded-xl text-sm border border-[#d4a843]/40 text-[#d4a843] ${
+                exporting ? 'opacity-60' : 'opacity-100'
+              }`}
               disabled={exporting || loading}
-              sx={{
-                minHeight: 42,
-                minWidth: { sm: 152 },
-                width: { xs: '100%', sm: 152 },
-                whiteSpace: 'nowrap',
-              }}
+              onClick={handleExportCsv}
             >
               {exporting ? 'Exportando...' : 'Exportar CSV'}
-            </Button>
-            <Button
-              data-testid="owner-dashboard-refresh-button"
-              variant="contained"
-              color="primary"
+            </button>
+            <button
+              className={`h-11 px-5 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold ${
+                loading ? 'opacity-60' : 'opacity-100'
+              }`}
+              disabled={loading}
               onClick={() => void loadDashboard(filters)}
-              disabled={loading || exporting}
-              startIcon={(
-                <Box sx={{ width: 16, height: 16, display: 'inline-grid', placeItems: 'center' }}>
-                  {loading ? <CircularProgress size={14} color="inherit" /> : null}
-                </Box>
-              )}
-              sx={{
-                minHeight: 42,
-                minWidth: { sm: 152 },
-                width: { xs: '100%', sm: 152 },
-                whiteSpace: 'nowrap',
-              }}
             >
               Atualizar
-            </Button>
-          </Stack>
-        </Stack>
+            </button>
+          </div>
+        </div>
 
-        <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
-          <Grid container spacing={1.2}>
-            <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="owner-dashboard-period-label">Periodo</InputLabel>
-                <Select
-                  labelId="owner-dashboard-period-label"
-                  value={filters.period || 'month'}
-                  label="Periodo"
-                  onChange={(event) => handlePeriodChange(event.target.value as OwnerDashboardParams['period'])}
-                >
-                  <MenuItem value="day">Ultimo dia</MenuItem>
-                  <MenuItem value="week">Ultimos 7 dias</MenuItem>
-                  <MenuItem value="month">Ultimos 30 dias</MenuItem>
-                  <MenuItem value="custom">Personalizado</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="owner-dashboard-status-label">Status</InputLabel>
-                <Select
-                  labelId="owner-dashboard-status-label"
-                  value={filters.status || 'all'}
-                  label="Status"
-                  onChange={(event) => handleFilterChange({ status: event.target.value as OwnerDashboardParams['status'] })}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="active">Ativo</MenuItem>
-                  <MenuItem value="draft">Rascunho/Inativo</MenuItem>
-                  <MenuItem value="out-of-stock">Sem estoque</MenuItem>
-                  <MenuItem value="critical">Estoque critico</MenuItem>
-                  <MenuItem value="missing-image">Sem imagem</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="owner-dashboard-category-label">Categoria</InputLabel>
-                <Select
-                  labelId="owner-dashboard-category-label"
-                  value={filters.category || ''}
-                  label="Categoria"
-                  onChange={(event) => handleFilterChange({ category: String(event.target.value || '') })}
-                >
-                  <MenuItem value="">Todas</MenuItem>
-                  {categoryOptions.map((item) => (
-                    <MenuItem key={item} value={item}>{item}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="owner-dashboard-manufacturer-label">Marca</InputLabel>
-                <Select
-                  labelId="owner-dashboard-manufacturer-label"
-                  value={filters.manufacturer || ''}
-                  label="Marca"
-                  onChange={(event) => handleFilterChange({ manufacturer: String(event.target.value || '') })}
-                >
-                  <MenuItem value="">Todas</MenuItem>
-                  {manufacturerOptions.map((item) => (
-                    <MenuItem key={item} value={item}>{item}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 2.4 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Busca"
+        <div className="p-5 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="space-y-1">
+              <label htmlFor="owner-dashboard-period" className="text-[11px] uppercase tracking-widest text-[#f0c040]">
+                Periodo
+              </label>
+              <select
+                id="owner-dashboard-period"
+                aria-label="Periodo"
+                title="Periodo"
+                value={filters.period || 'month'}
+                onChange={(event) => handlePeriodChange(event.target.value as OwnerDashboardParams['period'])}
+                className="w-full h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
+              >
+                <option value="day" className="bg-[#111118]">Ultimo dia</option>
+                <option value="week" className="bg-[#111118]">Ultimos 7 dias</option>
+                <option value="month" className="bg-[#111118]">Ultimos 30 dias</option>
+                <option value="custom" className="bg-[#111118]">Personalizado</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="owner-dashboard-status" className="text-[11px] uppercase tracking-widest text-[#f0c040]">
+                Status
+              </label>
+              <select
+                id="owner-dashboard-status"
+                aria-label="Status"
+                title="Status"
+                value={filters.status || 'all'}
+                onChange={(event) => handleFilterChange({ status: event.target.value as OwnerDashboardParams['status'] })}
+                className="w-full h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
+              >
+                <option value="all" className="bg-[#111118]">Todos</option>
+                <option value="active" className="bg-[#111118]">Ativo</option>
+                <option value="draft" className="bg-[#111118]">Rascunho/Inativo</option>
+                <option value="out-of-stock" className="bg-[#111118]">Sem estoque</option>
+                <option value="critical" className="bg-[#111118]">Estoque critico</option>
+                <option value="missing-image" className="bg-[#111118]">Sem imagem</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="owner-dashboard-category" className="text-[11px] uppercase tracking-widest text-[#f0c040]">
+                Categoria
+              </label>
+              <select
+                id="owner-dashboard-category"
+                aria-label="Categoria"
+                title="Categoria"
+                value={filters.category || ''}
+                onChange={(event) => handleFilterChange({ category: String(event.target.value || '') })}
+                className="w-full h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
+              >
+                <option value="" className="bg-[#111118]">Categoria</option>
+                {categoryOptions.map((item) => (
+                  <option key={item} value={item} className="bg-[#111118]">{item}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="owner-dashboard-brand" className="text-[11px] uppercase tracking-widest text-[#f0c040]">
+                Marca
+              </label>
+              <select
+                id="owner-dashboard-brand"
+                aria-label="Marca"
+                title="Marca"
+                value={filters.manufacturer || ''}
+                onChange={(event) => handleFilterChange({ manufacturer: String(event.target.value || '') })}
+                className="w-full h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
+              >
+                <option value="" className="bg-[#111118]">Marca</option>
+                {manufacturerOptions.map((item) => (
+                  <option key={item} value={item} className="bg-[#111118]">{item}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="owner-dashboard-search" className="text-[11px] uppercase tracking-widest text-[#f0c040]">
+                Busca
+              </label>
+              <input
+                id="owner-dashboard-search"
+                aria-label="Busca"
+                title="Busca"
                 placeholder="SKU ou nome"
                 value={filters.q || ''}
                 onChange={(event) => handleFilterChange({ q: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return
+                  event.preventDefault()
+                  void loadDashboard({ ...filters, page: 1 })
+                }}
+                className="w-full h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
               />
-            </Grid>
-            {periodIsCustom ? (
-              <>
-                <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="date"
-                    label="Inicio"
-                    InputLabelProps={{ shrink: true }}
-                    value={formatDateInput(filters.startAt)}
-                    onChange={(event) => {
-                      const value = event.target.value
-                      handleFilterChange({ startAt: value ? `${value}T00:00:00.000Z` : undefined })
-                    }}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="date"
-                    label="Fim"
-                    InputLabelProps={{ shrink: true }}
-                    value={formatDateInput(filters.endAt)}
-                    onChange={(event) => {
-                      const value = event.target.value
-                      handleFilterChange({ endAt: value ? `${value}T23:59:59.999Z` : undefined })
-                    }}
-                  />
-                </Grid>
-              </>
-            ) : null}
-          </Grid>
-        </Paper>
+            </div>
+          </div>
+          {periodIsCustom ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+              <div>
+                <label htmlFor="owner-dashboard-start" className="sr-only">Data inicial</label>
+                <input
+                  id="owner-dashboard-start"
+                  type="date"
+                  aria-label="Data inicial"
+                  title="Data inicial"
+                  value={formatDateInput(filters.startAt)}
+                  onChange={(event) => {
+                    const value = event.target.value
+                    handleFilterChange({ startAt: value ? `${value}T00:00:00.000Z` : undefined })
+                  }}
+                  className="h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
+                />
+              </div>
+              <div>
+                <label htmlFor="owner-dashboard-end" className="sr-only">Data final</label>
+                <input
+                  id="owner-dashboard-end"
+                  type="date"
+                  aria-label="Data final"
+                  title="Data final"
+                  value={formatDateInput(filters.endAt)}
+                  onChange={(event) => {
+                    const value = event.target.value
+                    handleFilterChange({ endAt: value ? `${value}T23:59:59.999Z` : undefined })
+                  }}
+                  className="h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
 
-        {loading ? <LinearProgress color="primary" /> : null}
-        {error ? <Alert severity="error">{error}</Alert> : null}
-
-        <Grid container spacing={1.2}>
-          {metricCards.map((card) => (
-            <MetricCard
-              key={card.label}
-              label={card.label}
-              value={card.value}
-              helper={card.helper}
-              delta={card.delta}
-              inverseDelta={card.inverseDelta}
-            />
-          ))}
-        </Grid>
-
-        <Grid container spacing={1.2}>
-          <Grid size={{ xs: 12, lg: 4 }}>
-            <RankingPanel title="Top 10 por receita" items={dashboard?.rankings.topRevenue || []} metricKey="revenue" format="currency" />
-          </Grid>
-          <Grid size={{ xs: 12, lg: 4 }}>
-            <RankingPanel title="Top 10 por unidades" items={dashboard?.rankings.topUnits || []} metricKey="unitsSold" format="int" />
-          </Grid>
-          <Grid size={{ xs: 12, lg: 4 }}>
-            <RankingPanel title="Top 10 por margem" items={dashboard?.rankings.topMargin || []} metricKey="marginPercent" format="percent" />
-          </Grid>
-          <Grid size={{ xs: 12, lg: 6 }}>
-            <RankingPanel title="Maior taxa de devolucao" items={dashboard?.rankings.highReturnRate || []} metricKey="returnRate" format="percent" />
-          </Grid>
-          <Grid size={{ xs: 12, lg: 6 }}>
-            <RankingPanel title="Baixa conversao" items={dashboard?.rankings.lowConversion || []} metricKey="conversionRate" format="percent" />
-          </Grid>
-        </Grid>
-
-        <Grid container spacing={1.2}>
-          <Grid size={{ xs: 12, lg: 6 }}>
-            <Paper elevation={0} sx={{ p: 2, borderRadius: 2, height: '100%' }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Gestao de estoque</Typography>
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1.2 }}>
-                <Chip label={`Critico: ${dashboard?.inventory.criticalStock.length || 0}`} color="error" size="small" />
-                <Chip label={`Baixo: ${dashboard?.inventory.lowStock.length || 0}`} color="warning" size="small" />
-                <Chip label={`Parados: ${dashboard?.inventory.stagnant.length || 0}`} size="small" />
-                <Chip label={`Excesso: ${dashboard?.inventory.overstock.length || 0}`} color="success" size="small" />
-              </Stack>
-              <Stack spacing={0.8}>
-                {(dashboard?.inventory.criticalStock || []).slice(0, 4).map((item) => (
-                  <Stack key={String(item.id)} direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                      {String(item.name)}
-                    </Typography>
-                    <Typography variant="caption" color="error.main" sx={{ fontWeight: 700 }}>
-                      {String(item.stock)} un.
-                    </Typography>
-                  </Stack>
-                ))}
-                {(dashboard?.inventory.stagnant || []).slice(0, 2).map((item) => (
-                  <Stack key={`stagnant-${String(item.id)}`} direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      Parado: {String(item.name)}
-                    </Typography>
-                    <Typography variant="caption" color="warning.main" sx={{ fontWeight: 700 }}>
-                      {String(item.stock)} un.
-                    </Typography>
-                  </Stack>
-                ))}
-                {(dashboard?.inventory.criticalStock || []).length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">Sem itens criticos no filtro atual.</Typography>
-                ) : null}
-              </Stack>
-            </Paper>
-          </Grid>
-
-          <Grid size={{ xs: 12, lg: 6 }}>
-            <Paper elevation={0} sx={{ p: 2, borderRadius: 2, height: '100%' }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Funil por produto (agregado)</Typography>
-              <Stack spacing={1}>
-                <FunnelRow label="Visualizacoes" value={dashboard?.funnel.views || 0} ratio={100} />
-                <FunnelRow label="Cliques" value={dashboard?.funnel.clicks || 0} ratio={Math.min(100, dashboard?.funnel.ctr || 0)} />
-                <FunnelRow label="Adicoes ao carrinho" value={dashboard?.funnel.addToCart || 0} ratio={Math.min(100, dashboard?.funnel.addToCartRate || 0)} />
-                <FunnelRow label="Inicio de checkout" value={dashboard?.funnel.checkoutStart || 0} ratio={Math.min(100, (dashboard?.funnel.purchaseRate || 0) * 1.35)} />
-                <FunnelRow label="Compras" value={dashboard?.funnel.purchases || 0} ratio={Math.min(100, dashboard?.funnel.purchaseRate || 0)} />
-              </Stack>
-              <Divider sx={{ my: 1.2 }} />
-              <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap">
-                <Chip size="small" label={`CTR ${Number(dashboard?.funnel.ctr || 0).toFixed(2)}%`} />
-                <Chip size="small" label={`Add-to-cart ${Number(dashboard?.funnel.addToCartRate || 0).toFixed(2)}%`} />
-                <Chip size="small" label={`Abandono ${Number(dashboard?.funnel.abandonmentRate || 0).toFixed(2)}%`} />
-              </Stack>
-            </Paper>
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Qualidade e pos-venda</Typography>
-              <Grid container spacing={1.2}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Principais motivos de devolucao
-                  </Typography>
-                  <Stack spacing={0.7} sx={{ mt: 0.8 }}>
-                    {(dashboard?.quality?.topReturnReasons || []).slice(0, 6).map((reason) => (
-                      <Stack key={reason.label} direction="row" justifyContent="space-between" alignItems="center">
-                        <Typography variant="body2" sx={{ color: 'text.primary' }}>{reason.label}</Typography>
-                        <Chip size="small" label={`${reason.total}`} />
-                      </Stack>
-                    ))}
-                    {(dashboard?.quality?.topReturnReasons || []).length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">Sem devolucoes registradas no periodo.</Typography>
-                    ) : null}
-                  </Stack>
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Reclamacoes por severidade
-                  </Typography>
-                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 0.8 }}>
-                    {(dashboard?.quality?.complaintsBySeverity || []).map((bucket) => (
-                      <Chip
-                        key={bucket.severity}
-                        size="small"
-                        color={bucket.severity === 'high' ? 'error' : bucket.severity === 'medium' ? 'warning' : 'default'}
-                        label={`${capitalize(bucket.severity)}: ${bucket.total}`}
-                      />
-                    ))}
-                    <Chip size="small" color={dashboard?.quality?.complaintsOpen ? 'warning' : 'success'} label={`Abertas: ${dashboard?.quality?.complaintsOpen || 0}`} />
-                  </Stack>
-                </Grid>
-              </Grid>
-            </Paper>
-          </Grid>
-        </Grid>
-
-        <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Receita diaria no periodo</Typography>
-          <Stack spacing={0.6}>
-            {(dashboard?.trend || []).slice(-12).map((point) => (
-              <Stack key={point.date} direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="caption" color="text.secondary">{new Date(point.date).toLocaleDateString('pt-BR')}</Typography>
-                <Typography variant="caption" sx={{ color: 'text.primary' }}>
-                  {toCurrency(point.revenue)} • {point.units} un.
-                </Typography>
-              </Stack>
-            ))}
-          </Stack>
-        </Paper>
-
-        <Paper elevation={0} sx={{ borderRadius: 2 }}>
-          <Box data-testid="owner-dashboard-table-scroll" sx={{ width: '100%', overflowX: 'auto' }}>
-            <Table size="small" sx={{ minWidth: 1500 }}>
-            <TableHead>
-              <TableRow>
-                <SortableHead label="SKU" active={filters.sortBy === 'sku'} onClick={() => handleSort('sku')} direction={filters.direction || 'desc'} />
-                <SortableHead label="Nome" active={filters.sortBy === 'name'} onClick={() => handleSort('name')} direction={filters.direction || 'desc'} />
-                <TableCell>Categoria</TableCell>
-                <SortableHead label="Preco" active={filters.sortBy === 'price'} onClick={() => handleSort('price')} direction={filters.direction || 'desc'} />
-                <SortableHead label="Custo" active={filters.sortBy === 'cost'} onClick={() => handleSort('cost')} direction={filters.direction || 'desc'} />
-                <SortableHead label="Margem" active={filters.sortBy === 'margin'} onClick={() => handleSort('margin')} direction={filters.direction || 'desc'} />
-                <SortableHead label="Estoque" active={filters.sortBy === 'stock'} onClick={() => handleSort('stock')} direction={filters.direction || 'desc'} />
-                <SortableHead label="Vendas" active={filters.sortBy === 'unitsSold'} onClick={() => handleSort('unitsSold')} direction={filters.direction || 'desc'} />
-                <SortableHead label="Receita" active={filters.sortBy === 'revenue'} onClick={() => handleSort('revenue')} direction={filters.direction || 'desc'} />
-                <SortableHead label="Conversao" active={filters.sortBy === 'conversion'} onClick={() => handleSort('conversion')} direction={filters.direction || 'desc'} />
-                <TableCell>Rating</TableCell>
-                <TableCell>Devolucao</TableCell>
-                <TableCell>Reclamacoes</TableCell>
-                <SortableHead label="Status" active={filters.sortBy === 'status'} onClick={() => handleSort('status')} direction={filters.direction || 'desc'} />
-                <TableCell align="right">Acoes</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {products.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={15}>
-                    <Typography variant="body2" color="text.secondary" sx={{ py: 1.2 }}>
-                      Nenhum produto encontrado para os filtros aplicados.
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : products.map((item) => (
-                <TableRow key={item.id} hover>
-                  <TableCell>{item.sku}</TableCell>
-                  <TableCell>
-                    <Stack spacing={0.2}>
-                      <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>{item.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">{item.manufacturer}</Typography>
-                    </Stack>
-                  </TableCell>
-                  <TableCell>{item.category}</TableCell>
-                  <TableCell>{toCurrency(item.price)}</TableCell>
-                  <TableCell>{toCurrency(item.cost)}</TableCell>
-                  <TableCell>{item.marginPercent.toFixed(1)}%</TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      color={item.stockHealth === 'critical' ? 'error' : item.stockHealth === 'low' ? 'warning' : 'success'}
-                      label={`${item.stock} un.`}
-                    />
-                  </TableCell>
-                  <TableCell>{item.unitsSold}</TableCell>
-                  <TableCell>{toCurrency(item.revenue)}</TableCell>
-                  <TableCell>{item.conversionRate.toFixed(2)}%</TableCell>
-                  <TableCell>{item.averageRating.toFixed(1)} ({item.reviewCount})</TableCell>
-                  <TableCell>{item.returnRate.toFixed(2)}%</TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      color={item.openComplaints > 0 ? 'warning' : 'default'}
-                      label={item.openComplaints}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Chip size="small" variant="outlined" label={normalizeStatusLabel(item.status)} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      size="small"
-                      color="primary"
-                      component={RouterLink}
-                      to={`/owner/products/${item.id}/edit`}
-                      sx={{ textTransform: 'none', fontWeight: 600 }}
-                    >
-                      Editar
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-            </Table>
-          </Box>
-        </Paper>
-
-        {productMeta && productMeta.totalPages > 1 ? (
-          <Stack alignItems="center" sx={{ py: 1 }}>
-            <Pagination
-              page={productMeta.page}
-              count={productMeta.totalPages}
-              color="primary"
-              onChange={(_event, value) => setFilters((prev) => ({ ...prev, page: value, pageSize: DASHBOARD_PAGE_SIZE }))}
-            />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-              Mostrando {products.length} de {productMeta.total} produto(s)
-            </Typography>
-          </Stack>
+        {loading ? (
+          <div className="p-3 rounded-xl text-sm bg-[#d4a843]/[0.1] border border-[#d4a843]/30 text-[#f0c040]">
+            Carregando dashboard...
+          </div>
         ) : null}
-      </Stack>
+        {error ? (
+          <div className="p-3 rounded-xl text-sm bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#f87171]">
+            {error}
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {metricCards.map((metric) => (
+            <div key={metric.label} className="relative min-h-[120px] p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-[#d4a843]/70 via-transparent to-transparent" />
+              <p className="text-[11px] uppercase tracking-widest text-[#f0c040]">{metric.label}</p>
+              <p className="text-2xl text-[#f0ede8] font-bold">{metric.value}</p>
+              {typeof metric.delta === 'number' ? (
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                    metric.delta >= 0 ? 'bg-[#22c55e]/15 text-[#22c55e]' : 'bg-[#f87171]/15 text-[#f87171]'
+                  }`}
+                >
+                  {metric.delta >= 0 ? '+' : ''}{metric.delta.toFixed(1)}% vs periodo anterior
+                </span>
+              ) : null}
+            </div>
+          ))}
+        </div>
+
+        <div className="p-5 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm text-[#f0ede8] font-semibold">Produtos</h2>
+              <p className="text-xs text-[#6b7280]">Resumo por SKU</p>
+            </div>
+            <button
+              className="text-xs text-[#d4a843] hover:text-[#f0c040]"
+              onClick={() => handleSort('revenue')}
+            >
+              Ordenar por receita
+            </button>
+          </div>
+          <div data-testid="owner-dashboard-table-scroll" className="overflow-x-auto">
+            <table className="min-w-[720px] w-full text-xs text-[#9ca3af]">
+              <thead className="bg-white/[0.05]">
+                <tr className="text-left text-[#a1a1aa]">
+                  <th className="py-3 px-3">Produto</th>
+                  <th className="py-3 px-3">SKU</th>
+                  <th className="py-3 px-3">Estoque</th>
+                  <th className="py-3 px-3">Receita</th>
+                  <th className="py-3 px-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((product, index) => (
+                  <tr
+                    key={product.id}
+                    className={`border-t border-white/[0.06] ${index % 2 === 1 ? 'bg-white/[0.01]' : ''} hover:bg-white/[0.03]`}
+                  >
+                    <td className="py-3 px-3">
+                      <Link to={`/owner/products/${product.id}/edit`} className="text-[#f0ede8] font-semibold">
+                        {product.name}
+                      </Link>
+                    </td>
+                    <td className="py-3 px-3">{product.sku}</td>
+                    <td className="py-3 px-3">{product.stock}</td>
+                    <td className="py-3 px-3 text-[#d4a843] font-semibold">{toCurrency(product.revenue)}</td>
+                    <td className="py-3 px-3">{product.status}</td>
+                  </tr>
+                ))}
+                {products.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-[#9ca3af]">
+                      Nenhum produto encontrado.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+          {productMeta ? (
+            <div className="mt-3 text-xs text-[#6b7280]">
+              Pagina {productMeta.page} de {productMeta.totalPages} • {productMeta.total} itens
+            </div>
+          ) : null}
+        </div>
+      </div>
     </OwnerLayout>
   )
-}
-
-function MetricCard({
-  label,
-  value,
-  helper,
-  delta,
-  inverseDelta = false,
-}: {
-  label: string
-  value: string
-  helper: string
-  delta?: number
-  inverseDelta?: boolean
-}) {
-  const formattedDelta = typeof delta === 'number' ? `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%` : null
-  const deltaColor = typeof delta !== 'number'
-    ? 'text.secondary'
-    : inverseDelta
-      ? delta > 0 ? 'error.main' : 'success.main'
-      : delta > 0 ? 'success.main' : delta < 0 ? 'error.main' : 'text.secondary'
-
-  return (
-    <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-      <Paper elevation={0} sx={{ p: 1.8, borderRadius: 2, height: '100%' }}>
-        <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {label}
-        </Typography>
-        <Typography variant="h5" sx={{ color: 'text.primary', mt: 0.35 }}>{value}</Typography>
-        <Stack direction="row" spacing={0.8} alignItems="center" useFlexGap flexWrap="wrap">
-          <Typography variant="caption" color="text.secondary">{helper}</Typography>
-          {formattedDelta ? (
-            <Typography variant="caption" sx={{ color: deltaColor, fontWeight: 700 }}>
-              {formattedDelta}
-            </Typography>
-          ) : null}
-        </Stack>
-      </Paper>
-    </Grid>
-  )
-}
-
-function RankingPanel({
-  title,
-  items,
-  metricKey,
-  format,
-}: {
-  title: string
-  items: Array<Record<string, unknown>>
-  metricKey: 'revenue' | 'unitsSold' | 'marginPercent' | 'conversionRate' | 'returnRate'
-  format: 'currency' | 'int' | 'percent'
-}) {
-  const formatMetric = (value: unknown) => {
-    const numeric = Number(value || 0)
-    if (format === 'currency') return toCurrency(numeric)
-    if (format === 'percent') return `${numeric.toFixed(2)}%`
-    return String(Math.round(numeric))
-  }
-
-  return (
-    <Paper elevation={0} sx={{ p: 2, borderRadius: 2, height: '100%' }}>
-      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>{title}</Typography>
-      <Stack spacing={0.8}>
-        {items.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">Sem dados para o periodo selecionado.</Typography>
-        ) : items.map((item) => (
-          <Stack key={String(item.id)} direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-              {String(item.name)}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-              {formatMetric(item[metricKey])}
-            </Typography>
-          </Stack>
-        ))}
-      </Stack>
-    </Paper>
-  )
-}
-
-function FunnelRow({ label, value, ratio }: { label: string; value: number; ratio: number }) {
-  return (
-    <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.4 }}>
-        <Typography variant="body2" color="text.primary">{label}</Typography>
-        <Typography variant="caption" color="text.secondary">{value}</Typography>
-      </Stack>
-      <LinearProgress variant="determinate" value={Math.max(0, Math.min(100, ratio))} color="primary" />
-    </Box>
-  )
-}
-
-function SortableHead({
-  label,
-  active,
-  direction,
-  onClick,
-}: {
-  label: string
-  active: boolean
-  direction: SortDirection
-  onClick: () => void
-}) {
-  return (
-    <TableCell>
-      <Button
-        size="small"
-        color={active ? 'primary' : 'inherit'}
-        onClick={onClick}
-        sx={{ p: 0, minWidth: 0, fontWeight: 700, justifyContent: 'flex-start', textTransform: 'none' }}
-      >
-        {label}{active ? (direction === 'desc' ? ' ↓' : ' ↑') : ''}
-      </Button>
-    </TableCell>
-  )
-}
-
-function normalizeStatusLabel(status: string) {
-  switch (status) {
-    case 'active':
-      return 'Ativo'
-    case 'out-of-stock':
-      return 'Sem estoque'
-    case 'missing-image':
-      return 'Sem imagem'
-    case 'inactive':
-      return 'Inativo'
-    case 'draft':
-      return 'Rascunho'
-    default:
-      return status
-  }
-}
-
-function formatDateInput(value: string | undefined) {
-  if (!value) return ''
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toISOString().slice(0, 10)
-}
-
-function capitalize(value: string) {
-  const safe = String(value || '').trim()
-  if (!safe) return ''
-  return safe.charAt(0).toUpperCase() + safe.slice(1)
-}
-
-function toCurrency(value: number | undefined) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-  }).format(Number(value || 0))
 }

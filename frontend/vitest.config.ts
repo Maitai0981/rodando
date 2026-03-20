@@ -15,6 +15,7 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     css: true,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    exclude: ['src/a11y/**'],
     coverage: {
       enabled: false,
     },

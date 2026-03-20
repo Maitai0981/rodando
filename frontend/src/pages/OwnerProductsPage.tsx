@@ -1,33 +1,9 @@
-import { AddRoundedIcon, DeleteOutlineRoundedIcon, EditRoundedIcon, LocalOfferRoundedIcon } from '@/ui/primitives/Icon'
 import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink, useLocation } from 'react-router-dom'
-import {
-  Alert,
-  Button,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  MenuItem,
-  Pagination,
-  Paper,
-  Select,
-  Snackbar,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material'
-import OwnerLayout from '../layouts/OwnerLayout'
-import { api, ApiError, type OwnerOfferItem, type Product } from '../lib/api'
-import { useAssist } from '../context/AssistContext'
-import { AssistHintInline } from '../components/assist'
+import { Link, useLocation } from 'react-router-dom'
+import OwnerLayout from '../shared/layout/OwnerLayout'
+import { api, ApiError, type OwnerOfferItem, type Product } from '../shared/lib/api'
+import { useAssist } from '../shared/context/AssistContext'
+import { AssistHintInline } from '../features/assist'
 
 const OWNER_PAGE_SIZE = 10
 
@@ -79,6 +55,12 @@ export default function OwnerProductsPage() {
   useEffect(() => {
     setPage(1)
   }, [statusFilter, deferredQuery])
+
+  useEffect(() => {
+    if (!toast) return
+    const timeout = window.setTimeout(() => setToast(null), 2500)
+    return () => window.clearTimeout(timeout)
+  }, [toast])
 
   async function handleDeleteConfirm(mode: 'archive' | 'hard') {
     if (!deleteTarget) return
@@ -209,270 +191,314 @@ export default function OwnerProductsPage() {
 
   return (
     <OwnerLayout>
-      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 2 }}>
-        <Stack spacing={0.4}>
-          <Typography variant="h4" sx={{ color: 'text.primary' }}>
-            Produtos
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Gestao operacional de cadastro, vitrine e ofertas.
-          </Typography>
-        </Stack>
-        <Button
-          component={RouterLink}
-          to="/owner/products/new"
-          variant="contained"
-          color="primary"
-          startIcon={<AddRoundedIcon size="sm" />}
-          onClick={() => completeStep('open-create', 'owner-products')}
-        >
-          Novo produto
-        </Button>
-      </Stack>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h1 className="text-2xl text-[#f0ede8] font-bold">Produtos</h1>
+            <p className="text-sm text-[#9ca3af]">
+              Gestao operacional de cadastro, vitrine e ofertas.
+            </p>
+          </div>
+          <Link
+            to="/owner/products/new"
+            className="h-11 px-5 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold inline-flex items-center"
+            onClick={() => completeStep('open-create', 'owner-products')}
+          >
+            Novo produto
+          </Link>
+        </div>
 
-      <AssistHintInline tipId="owner-products-tip-image" routeKey="owner-products">
-        Dica: para publicar na vitrine, mantenha produto ativo com imagem principal válida.
-      </AssistHintInline>
+        <div className="flex items-center gap-2 text-xs text-[#9ca3af]">
+          <AssistHintInline tipId="owner-products-tip-image" routeKey="owner-products">
+            Dica: para publicar na vitrine, mantenha produto ativo com imagem principal valida.
+          </AssistHintInline>
+          <span>Produtos ativos com imagem valida aparecem no catalogo publico.</span>
+        </div>
 
-      {pendingImageRows.length > 0 ? (
-        <Alert
-          severity="warning"
-          sx={{ mb: 2 }}
-          action={
-            <Button
-              component={RouterLink}
-              to={`/owner/products/${pendingImageRows[0].id}/edit`}
-              size="small"
-              color="warning"
+        {pendingImageRows.length > 0 ? (
+          <div className="p-3 rounded-xl text-sm bg-[#eab308]/[0.12] border border-[#eab308]/20 text-[#facc15]">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <p>
+                {pendingImageRows.length} produto(s) ativos sem imagem de vitrine. Eles ficam ocultos no catalogo publico.
+              </p>
+              <Link
+                to={`/owner/products/${pendingImageRows[0].id}/edit`}
+                className="h-9 px-3 rounded-full text-xs border border-[#eab308]/40 text-[#facc15] inline-flex items-center"
+              >
+                Corrigir agora
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="p-5 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_220px_auto] gap-3 items-end">
+            <div className="space-y-1">
+              <label htmlFor="owner-products-search" className="text-[11px] uppercase tracking-widest text-[#f0c040]">
+                Busca
+              </label>
+              <input
+                id="owner-products-search"
+                data-testid="owner-products-search-input"
+                placeholder="Buscar por nome, SKU, fabricante ou categoria"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void loadProducts(query)
+                  }
+                }}
+                className="w-full h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="owner-products-status" className="text-[11px] uppercase tracking-widest text-[#f0c040]">
+                Status
+              </label>
+              <select
+                id="owner-products-status"
+                data-testid="owner-products-status-filter"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                className="w-full h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
+              >
+                <option value="all" className="bg-[#111118]">Todos os status</option>
+                <option value="active" className="bg-[#111118]">Ativos</option>
+                <option value="inactive" className="bg-[#111118]">Inativos</option>
+                <option value="pending-image" className="bg-[#111118]">Ativos sem imagem</option>
+                <option value="critical-stock" className="bg-[#111118]">Estoque critico ({'<='} 5)</option>
+              </select>
+            </div>
+            <button
+              data-testid="owner-products-search-button"
+              onClick={() => void loadProducts(query)}
+              className="h-11 px-4 rounded-xl text-sm border border-[#d4a843]/40 text-[#d4a843]"
             >
-              Corrigir agora
-            </Button>
-          }
-        >
-          {pendingImageRows.length} produto(s) ativos sem imagem de vitrine. Eles ficam ocultos no catalogo publico.
-        </Alert>
-      ) : null}
+              Buscar
+            </button>
+          </div>
+        </div>
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.2} sx={{ mb: 1.5 }}>
-        <TextField
-          inputProps={{ 'data-testid': 'owner-products-search-input' }}
-          fullWidth
-          size="small"
-          placeholder="Buscar por nome, SKU, fabricante ou categoria"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              void loadProducts(query)
-            }
-          }}
-        />
-        <FormControl size="small" sx={{ minWidth: 220 }}>
-          <Select
-            data-testid="owner-products-status-filter"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-            displayEmpty
-            inputProps={{ 'aria-label': 'Filtrar status de produtos' }}
-          >
-            <MenuItem value="all">Todos os status</MenuItem>
-            <MenuItem value="active">Ativos</MenuItem>
-            <MenuItem value="inactive">Inativos</MenuItem>
-            <MenuItem value="pending-image">Ativos sem imagem</MenuItem>
-            <MenuItem value="critical-stock">Estoque critico ({'<='} 5)</MenuItem>
-          </Select>
-        </FormControl>
-        <Button data-testid="owner-products-search-button" variant="outlined" color="primary" onClick={() => void loadProducts(query)}>
-          Buscar
-        </Button>
-      </Stack>
+        {error ? (
+          <div className="p-3 rounded-xl text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">
+            {error}
+          </div>
+        ) : null}
 
-      {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+        <div className="rounded-2xl overflow-hidden bg-white/[0.04] border border-white/[0.08]">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-xs text-[#9ca3af]">
+              <thead className="bg-white/[0.05]">
+                <tr className="text-left text-[#a1a1aa]">
+                  <th className="py-3 px-3">Produto</th>
+                  <th className="py-3 px-3">SKU</th>
+                  <th className="py-3 px-3">Categoria</th>
+                  <th className="py-3 px-3">Preco</th>
+                  <th className="py-3 px-3">Estoque</th>
+                  <th className="py-3 px-3">Vitrine</th>
+                  <th className="py-3 px-3">Oferta</th>
+                  <th className="py-3 px-3 text-right">Acoes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-4 px-3 text-[#9ca3af]">Carregando produtos...</td>
+                  </tr>
+                ) : filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-6 px-3 text-[#9ca3af]">Nenhum produto encontrado.</td>
+                  </tr>
+                ) : (
+                  pagedRows.map((item, index) => {
+                    const offer = offersByProductId.get(item.id)
+                    const hasImage = String(item.imageUrl || '').trim().length > 0
+                    const stock = Number(item.stock)
+                    const stockCritical = stock <= 5
+                    const isInactive = !item.isActive
 
-      <Paper elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden', bgcolor: 'background.paper' }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Produto</TableCell>
-              <TableCell>SKU</TableCell>
-              <TableCell>Categoria</TableCell>
-              <TableCell>Preco</TableCell>
-              <TableCell>Estoque</TableCell>
-              <TableCell>Vitrine</TableCell>
-              <TableCell>Oferta</TableCell>
-              <TableCell align="right">Acoes</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={8}>
-                  <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                    Carregando produtos...
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : filteredRows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8}>
-                  <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                    Nenhum produto encontrado.
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : pagedRows.map((item) => {
-                const offer = offersByProductId.get(item.id)
-                const hasImage = String(item.imageUrl || '').trim().length > 0
-                const stock = Number(item.stock)
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`border-t border-white/[0.06] ${index % 2 === 1 ? 'bg-white/[0.01]' : ''} hover:bg-white/[0.03]`}
+                      >
+                        <td className="py-3 px-3">
+                          <div className="text-sm text-[#f0ede8] font-semibold">{item.name}</div>
+                          <div className="text-xs text-[#6b7280]">{item.manufacturer} • {item.bikeModel}</div>
+                        </td>
+                        <td className="py-3 px-3">{item.sku}</td>
+                        <td className="py-3 px-3">{item.category}</td>
+                        <td className="py-3 px-3">R$ {Number(item.price).toFixed(2)}</td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${stockCritical ? 'bg-[#ef4444]/15 border border-[#ef4444]/30 text-[#f87171]' : 'bg-white/[0.06] border border-white/[0.08] text-[#cbd5f5]'}`}
+                          >
+                            {stock}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${
+                              isInactive
+                                ? 'bg-white/[0.06] border border-white/[0.1] text-[#cbd5f5]'
+                                : hasImage
+                                  ? 'bg-[#22c55e]/15 border border-[#22c55e]/25 text-[#22c55e]'
+                                  : 'bg-[#eab308]/15 border border-[#eab308]/25 text-[#facc15]'
+                            }`}
+                          >
+                            {!item.isActive ? 'Inativo' : hasImage ? 'Publicado' : 'Sem imagem'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          {offer ? (
+                            <div className="space-y-0.5">
+                              <div className="text-xs text-[#f0ede8] font-bold">{offer.badge}</div>
+                              <div className="text-xs text-[#6b7280]">
+                                R$ {Number(offer.compareAtPrice).toFixed(2)} • {offer.isActive ? 'Ativa' : 'Inativa'}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[#6b7280]">Sem oferta</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Link
+                              data-testid={`owner-edit-${item.id}`}
+                              to={`/owner/products/${item.id}/edit`}
+                              className="h-8 px-3 rounded-full text-[11px] border border-white/[0.12] text-[#e5e7eb] inline-flex items-center"
+                            >
+                              Editar
+                            </Link>
+                            <button
+                              data-testid={`owner-delete-${item.id}`}
+                              onClick={() => setDeleteTarget(item)}
+                              className="h-8 px-3 rounded-full text-[11px] border border-[#ef4444]/40 text-[#f87171]"
+                            >
+                              Excluir
+                            </button>
+                            {offer ? (
+                              <>
+                                <button
+                                  data-testid={`owner-offer-edit-${item.id}`}
+                                  onClick={() => void handleEditOffer(item, offer)}
+                                  className="h-8 px-3 rounded-full text-[11px] border border-[#d4a843]/40 text-[#d4a843]"
+                                >
+                                  Oferta
+                                </button>
+                                <button
+                                  data-testid={`owner-offer-remove-${item.id}`}
+                                  onClick={() => void handleDeleteOffer(offer)}
+                                  className="h-8 px-3 rounded-full text-[11px] border border-[#facc15]/40 text-[#facc15]"
+                                >
+                                  Remover
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                data-testid={`owner-offer-create-${item.id}`}
+                                onClick={() => void handleCreateOffer(item)}
+                                className="h-8 px-3 rounded-full text-[11px] border border-[#22c55e]/40 text-[#22c55e]"
+                              >
+                                Criar oferta
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-                return (
-                  <TableRow key={item.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                        {item.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {item.manufacturer} • {item.bikeModel}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{item.sku}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell>R$ {Number(item.price).toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={stock}
-                        color={stock <= 5 ? 'error' : 'default'}
-                        variant={stock <= 5 ? 'filled' : 'outlined'}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={!item.isActive ? 'Inativo' : hasImage ? 'Publicado' : 'Sem imagem'}
-                        color={!item.isActive ? 'default' : hasImage ? 'success' : 'warning'}
-                        variant={hasImage ? 'filled' : 'outlined'}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {offer ? (
-                        <Stack spacing={0.3}>
-                          <Typography variant="caption" sx={{ color: 'text.primary', fontWeight: 700 }}>
-                            {offer.badge}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            R$ {Number(offer.compareAtPrice).toFixed(2)} • {offer.isActive ? 'Ativa' : 'Inativa'}
-                          </Typography>
-                        </Stack>
-                      ) : (
-                        <Typography variant="caption" color="text.secondary">
-                          Sem oferta
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={0.4} justifyContent="flex-end">
-                        <Button
-                          data-testid={`owner-edit-${item.id}`}
-                          size="small"
-                          component={RouterLink}
-                          to={`/owner/products/${item.id}/edit`}
-                          startIcon={<EditRoundedIcon size="sm" />}
-                        >
-                          Editar
-                        </Button>
-                        <Button data-testid={`owner-delete-${item.id}`} size="small" color="error" startIcon={<DeleteOutlineRoundedIcon size="sm" />} onClick={() => setDeleteTarget(item)}>
-                          Excluir
-                        </Button>
-                        {offer ? (
-                          <>
-                            <Button data-testid={`owner-offer-edit-${item.id}`} size="small" color="primary" startIcon={<LocalOfferRoundedIcon size="sm" />} onClick={() => void handleEditOffer(item, offer)}>
-                              Oferta
-                            </Button>
-                            <Button data-testid={`owner-offer-remove-${item.id}`} size="small" color="warning" onClick={() => void handleDeleteOffer(offer)}>
-                              Remover
-                            </Button>
-                          </>
-                        ) : (
-                          <Button data-testid={`owner-offer-create-${item.id}`} size="small" color="success" startIcon={<LocalOfferRoundedIcon size="sm" />} onClick={() => void handleCreateOffer(item)}>
-                            Criar oferta
-                          </Button>
-                        )}
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-          </TableBody>
-        </Table>
-      </Paper>
+        {filteredRows.length > OWNER_PAGE_SIZE ? (
+          <div data-testid="owner-products-pagination" className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              disabled={safePage === 1}
+              className="w-9 h-9 rounded-xl text-xs disabled:opacity-40 border border-white/[0.1] text-[#e5e7eb]"
+            >
+              {'<'}
+            </button>
+            {Array.from({ length: pageCount }, (_, index) => index + 1).map((value) => (
+              <button
+                key={value}
+                onClick={() => setPage(value)}
+                className={`w-9 h-9 rounded-xl text-xs ${safePage === value ? 'bg-gradient-to-br from-[#d4a843] to-[#f0c040] text-black font-bold' : 'border border-white/[0.1] text-[#e5e7eb] font-medium'}`}
+              >
+                {value}
+              </button>
+            ))}
+            <button
+              onClick={() => setPage((prev) => Math.min(pageCount, prev + 1))}
+              disabled={safePage === pageCount}
+              className="w-9 h-9 rounded-xl text-xs disabled:opacity-40 border border-white/[0.1] text-[#e5e7eb]"
+            >
+              {'>'}
+            </button>
+          </div>
+        ) : null}
 
-      {filteredRows.length > OWNER_PAGE_SIZE ? (
-        <Stack alignItems="center" sx={{ mt: 2 }}>
-          <Pagination
-            data-testid="owner-products-pagination"
-            page={safePage}
-            count={pageCount}
-            color="primary"
-            onChange={(_event, value) => setPage(value)}
-          />
-        </Stack>
-      ) : null}
+        {toast ? (
+          <div className="p-3 rounded-xl text-sm bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]">
+            {toast}
+          </div>
+        ) : null}
 
-      <Snackbar open={Boolean(toast)} autoHideDuration={2500} onClose={() => setToast(null)}>
-        <Alert severity="success" variant="filled" onClose={() => setToast(null)}>{toast}</Alert>
-      </Snackbar>
-
-      <Dialog
-        data-testid="owner-delete-dialog"
-        open={Boolean(deleteTarget)}
-        onClose={() => {
-          if (deleteModeLoading) return
-          setDeleteTarget(null)
-        }}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>Remover produto</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={1}>
-            <Typography variant="body2" color="text.secondary">
-              Escolha como deseja remover <strong>{deleteTarget?.name}</strong>.
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Arquivar remove o item da vitrine e preserva historico. Excluir definitivo remove o produto quando nao ha pedidos vinculados.
-            </Typography>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            data-testid="owner-delete-cancel-button"
-            onClick={() => setDeleteTarget(null)}
-            disabled={Boolean(deleteModeLoading)}
-          >
-            Cancelar
-          </Button>
-          <Button
-            data-testid="owner-delete-archive-button"
-            variant="outlined"
-            color="primary"
-            onClick={() => void handleDeleteConfirm('archive')}
-            disabled={Boolean(deleteModeLoading)}
-          >
-            {deleteModeLoading === 'archive' ? 'Arquivando...' : 'Arquivar'}
-          </Button>
-          <Button
-            data-testid="owner-delete-hard-button"
-            variant="contained"
-            color="error"
-            onClick={() => void handleDeleteConfirm('hard')}
-            disabled={Boolean(deleteModeLoading)}
-          >
-            {deleteModeLoading === 'hard' ? 'Excluindo...' : 'Excluir definitivo'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        {deleteTarget ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/65"
+              onClick={() => {
+                if (deleteModeLoading) return
+                setDeleteTarget(null)
+              }}
+            />
+            <div
+              data-testid="owner-delete-dialog"
+              className="relative z-10 w-full max-w-md rounded-2xl p-5 bg-[#111118] border border-white/[0.08] text-[#f0ede8]"
+            >
+              <h3 className="text-sm font-bold">Remover produto</h3>
+              <p className="text-sm mt-2 text-[#9ca3af]">
+                Escolha como deseja remover <strong>{deleteTarget?.name}</strong>.
+              </p>
+              <p className="text-xs mt-2 text-[#6b7280]">
+                Arquivar remove o item da vitrine e preserva historico. Excluir definitivo remove o produto quando nao ha pedidos vinculados.
+              </p>
+              <div className="flex flex-wrap justify-end gap-2 mt-5">
+                <button
+                  data-testid="owner-delete-cancel-button"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={Boolean(deleteModeLoading)}
+                  className="px-3 py-1.5 rounded-lg text-xs border border-white/[0.12] text-[#e5e7eb]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  data-testid="owner-delete-archive-button"
+                  onClick={() => void handleDeleteConfirm('archive')}
+                  disabled={Boolean(deleteModeLoading)}
+                  className="px-3 py-1.5 rounded-lg text-xs border border-[#d4a843]/40 text-[#d4a843]"
+                >
+                  {deleteModeLoading === 'archive' ? 'Arquivando...' : 'Arquivar'}
+                </button>
+                <button
+                  data-testid="owner-delete-hard-button"
+                  onClick={() => void handleDeleteConfirm('hard')}
+                  disabled={Boolean(deleteModeLoading)}
+                  className="px-3 py-1.5 rounded-lg text-xs bg-[#ef4444]/15 border border-[#ef4444]/40 text-[#f87171]"
+                >
+                  {deleteModeLoading === 'hard' ? 'Excluindo...' : 'Excluir definitivo'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </OwnerLayout>
   )
 }

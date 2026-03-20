@@ -1,8 +1,0 @@
-export { ProductCard } from './ProductCard'
-export { ProductGallery } from './ProductGallery'
-export { VariantSelector } from './VariantSelector'
-export { QuantityStepper } from './QuantityStepper'
-export { AddToCartBar } from './AddToCartBar'
-export { FilterPanel } from './FilterPanel'
-export { SortControl } from './SortControl'
-export { TrustStrip } from './TrustStrip'

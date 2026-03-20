@@ -1,15 +1,18 @@
 import { Suspense } from 'react'
 import { useEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigationType } from 'react-router-dom'
-import RouteFallback from './components/common/RouteFallback'
+import { LazyMotion, MotionConfig, domAnimation } from 'framer-motion'
+import RouteFallback from './shared/common/RouteFallback'
 import { AppRoutes } from './routes'
 import { resolveTransitionDirection, toDirectionLabel, type TransitionNavigationType } from './routes/transitionMap'
 import { prefetchCriticalRoutes, prefetchRouteChunk } from './routes/prefetch'
+import { RouteMotionOrchestrator } from './routes/RouteMotionOrchestrator'
 
 export default function App() {
   const location = useLocation()
   const navigationType = useNavigationType() as TransitionNavigationType
   const previousPathRef = useRef(location.pathname)
+  const disableRouteMotion = String(import.meta.env.VITE_DISABLE_ROUTE_MOTION || '0') === '1'
 
   const direction = useMemo(() => {
     const resolved = resolveTransitionDirection(previousPathRef.current, location.pathname, navigationType)
@@ -43,13 +46,18 @@ export default function App() {
   }, [])
 
   return (
-    <Suspense fallback={<RouteFallback />}>
-      <div
-        data-route-direction={direction}
-        style={{ width: '100%', minHeight: '100vh', overflowX: 'hidden', position: 'relative' }}
-      >
-        <AppRoutes />
-      </div>
-    </Suspense>
+    <LazyMotion features={domAnimation} strict>
+      <MotionConfig reducedMotion="user" transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
+        <Suspense fallback={<RouteFallback />}>
+          {disableRouteMotion ? (
+            <AppRoutes />
+          ) : (
+            <RouteMotionOrchestrator routeKey={location.pathname} direction={direction}>
+              <AppRoutes />
+            </RouteMotionOrchestrator>
+          )}
+        </Suspense>
+      </MotionConfig>
+    </LazyMotion>
   )
 }

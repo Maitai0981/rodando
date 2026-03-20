@@ -1,987 +1,757 @@
-import { AccessTimeRoundedIcon, CategoryRoundedIcon, ExpandMoreRoundedIcon, LocalShippingRoundedIcon, StorefrontRoundedIcon, SupportAgentRoundedIcon, VerifiedRoundedIcon, WhatsAppIcon } from '@/ui/primitives/Icon'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState, type ElementType } from 'react'
+import { Link } from 'react-router-dom'
+import { AnimatePresence, m, useInView } from 'framer-motion'
 import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  Divider,
-  Grid,
-  Paper,
-  Rating,
-  Skeleton,
-  Stack,
-  Typography,
-  useMediaQuery,
-} from '@mui/material'
-import { useTheme } from '@mui/material/styles'
+  ArrowRight,
+  CheckCircle,
+  ChevronRight,
+  Clock,
+  Headphones,
+  MapPin,
+  Phone,
+  ShoppingCart,
+  Star,
+  Store,
+  Truck,
+  Shield,
+} from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { AppShell } from '../layouts/AppShell'
-import { formatCurrency } from '../lib'
-import { api, ApiError, buildProductUrl, type Product } from '../lib/api'
-import { useAssist } from '../context/AssistContext'
-import { AssistHintInline } from '../components/assist'
-import { MotionReveal, ResponsiveImage } from '../ui'
+import { ImageWithFallback } from '../shared/common/ImageWithFallback'
+import { useCart } from '../shared/context/CartContext'
+import { api, buildProductUrl } from '../shared/lib/api'
+import { formatCurrency } from '../shared/lib'
 
-const officialLinks = {
-  maps:
-    'https://www.google.com/maps/place/Rodando+Moto+Center/@-24.9539372,-53.4823137,17z/data=!3m1!4b1!4m6!3m5!1s0x94f3d6abd0f76d39:0x4c1de863cd816ba6!8m2!3d-24.9539372!4d-53.4823137!16s%2Fg%2F1thnpyhg?entry=ttu&g_ep=EgoyMDI2MDIyMi4wIKXMDSoASAFQAw%3D%3D',
-  whatsapp: 'https://wa.me/5545999346779',
+const heroImage =
+  'https://images.unsplash.com/photo-1738868191453-e3dec0a394e3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3RvcmN5Y2xlJTIwZGFyayUyMGRyYW1hdGljJTIwcmFjaW5nfGVufDF8fHx8MTc3MzA2OTA0OHww&ixlib=rb-4.1.0&q=80&w=1080'
+const partsImage =
+  'https://images.unsplash.com/photo-1675247911627-0fb610250598?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3RvcmN5Y2xlJTIwZW5naW5lJTIwcGFydHMlMjBjbG9zZSUyMHVwJTIwbHV4dXJ5fGVufDF8fHx8MTc3MzA2OTA0OHww&ixlib=rb-4.1.0&q=80&w=1080'
+const partsImage2 =
+  'https://images.unsplash.com/photo-1663342850009-d85dc9329916?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3RvcmN5Y2xlJTIwYWNjZXNzb3JpZXMlMjBwcmVtaXVtJTIwYmxhY2slMjBnb2xkfGVufDF8fHx8MTc3MzA2OTA1Mnww&ixlib=rb-4.1.0&q=80&w=1080'
+const shopImage =
+  'https://lh3.googleusercontent.com/p/AF1QipOIJtyawLBJXkAdD3-zjal0bL54xaGKNWe2KFkU=w408-h544-k-no' 
+function useScrollFadeIn<T extends HTMLElement = HTMLElement>() {
+  const ref = useRef<T | null>(null)
+  const isInView = useInView(ref, { once: true, margin: '-80px' })
+  return { ref, isInView }
 }
-const BRAND_SLOGAN = 'Rodando te ajudando a continuar rodando'
 
-const storeLocationPhotoUrl =
-  'https://lh3.googleusercontent.com/p/AF1QipOIJtyawLBJXkAdD3-zjal0bL54xaGKNWe2KFkU=w1200-h900-k-no'
-
-const heroTextPanelImageUrl =
-  'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=1600&q=80'
-
-const workshopBackdropUrl =
-  'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1600&q=80'
-
-const commercialTextureUrl =
-  'https://img.freepik.com/fotos-premium/corrida-de-motocicleta-dinamica-pela-estrada-com-efeito-de-desfocamento-de-movimento-mostrando-velocidade-e-acao_937679-76037.jpg?w=1200'
-
-const contactMotoAccentUrl =
-  'https://images.unsplash.com/photo-1580310614729-ccd69652491d?auto=format&fit=crop&w=1000&q=80'
-
-const pillars = [
-  { title: 'Loja fisica ativa', note: 'Retirada no balcao e apoio tecnico presencial.', icon: StorefrontRoundedIcon },
-  { title: 'Entrega agil', note: 'Despacho rapido para reduzir tempo de moto parada.', icon: LocalShippingRoundedIcon },
-  { title: 'Garantia real', note: 'Procedencia validada e politica comercial transparente.', icon: VerifiedRoundedIcon },
-  { title: 'Consultoria tecnica', note: 'Equipe orienta aplicacao antes da compra.', icon: SupportAgentRoundedIcon },
+const features = [
+  { icon: Store, title: 'Loja Física Ativa', desc: 'Retirada no balcão e suporte técnico presencial em Cascavel/PR.' },
+  { icon: Truck, title: 'Entrega Ágil', desc: 'Despacho rápido para reduzir tempo de moto parada.' },
+  { icon: Shield, title: 'Garantia Real', desc: 'Procedimento validado e política comercial transparente.' },
+  { icon: Headphones, title: 'Consultoria Técnica', desc: 'Equipe orienta aplicação antes da compra.' },
 ]
 
-const categoryIconCycle = [CategoryRoundedIcon, StorefrontRoundedIcon, SupportAgentRoundedIcon, LocalShippingRoundedIcon, VerifiedRoundedIcon]
+const PARTICLES = [
+  { className: 'w-[320px] h-[280px] left-[10%] top-[5%]', dx: 25, dy: -20, dur: 7 },
+  { className: 'w-[200px] h-[240px] left-[55%] top-[60%]', dx: -30, dy: 18, dur: 9 },
+  { className: 'w-[400px] h-[350px] left-[75%] top-[20%]', dx: 20, dy: 30, dur: 11 },
+  { className: 'w-[160px] h-[180px] left-[30%] top-[75%]', dx: -15, dy: -25, dur: 8 },
+  { className: 'w-[280px] h-[260px] left-[85%] top-[45%]', dx: 35, dy: -15, dur: 13 },
+  { className: 'w-[220px] h-[200px] left-[45%] top-[10%]', dx: -20, dy: 22, dur: 10 },
+]
 
-function formatCommentDate(isoDate: string) {
-  const parsed = new Date(isoDate)
-  if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleDateString('pt-BR')
-}
-
-function resolveUrgency(product: Product) {
-  const stock = Number(product.stock || 0)
-  if (stock <= 3) return 'Ultimas unidades'
-  if (product.offerEndsAt) return 'Oferta por tempo limitado'
-  return null
-}
-
-function pickCategoryIcon(index: number) {
-  return categoryIconCycle[index % categoryIconCycle.length] || CategoryRoundedIcon
-}
-
-function SectionHeading({
-  kicker,
-  title,
-  subtitle,
-}: {
-  kicker: string
-  title: string
-  subtitle?: string
-}) {
+function FeatureCard({ icon: Icon, title, desc, delay }: { icon: ElementType; title: string; desc: string; delay: number }) {
+  const { ref, isInView } = useScrollFadeIn<HTMLDivElement>()
   return (
-    <Stack spacing={0.7} sx={{ mb: 2 }}>
-      <Typography component="p" className="store-kicker">
-        {kicker}
-      </Typography>
-      <Typography component="h2" className="store-title">
-        {title}
-      </Typography>
-      {subtitle ? (
-        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720 }}>
-          {subtitle}
-        </Typography>
-      ) : null}
-    </Stack>
+    <m.div
+      ref={ref}
+      initial={{ opacity: 0, y: 40 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -6, boxShadow: '0 20px 60px rgba(212,168,67,0.12)' }}
+      className="group relative rounded-2xl p-6 cursor-default bg-white/[0.03] border border-[#d4a843]/10"
+    >
+      <m.div
+        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[linear-gradient(135deg,rgba(212,168,67,0.06),transparent)]"
+      />
+      <div className="relative z-10">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 bg-[linear-gradient(135deg,rgba(212,168,67,0.2),rgba(212,168,67,0.05))] border border-[#d4a843]/25"
+        >
+          <Icon className="w-5 h-5 text-[#d4a843]" />
+        </div>
+        <h3 className="mb-2 text-[#f0ede8] font-semibold text-[0.95rem]">
+          {title}
+        </h3>
+        <p className="text-sm leading-relaxed text-[#6b7280]">
+          {desc}
+        </p>
+      </div>
+    </m.div>
   )
 }
 
-function ProductCard({ product }: { product: Product }) {
-  const urgency = resolveUrgency(product)
-  const displayRating = product.discountPercent ? 4.9 : 4.7
+function HomeProductCard({
+  product,
+  delay,
+  onAddToCart,
+}: {
+  product: { id: number; name: string; seoSlug?: string | null; price: number; manufacturer?: string | null; category?: string | null; imageUrl?: string | null; compareAtPrice?: number | null }
+  delay: number
+  onAddToCart: (productId: number) => void
+}) {
+  const { ref, isInView } = useScrollFadeIn<HTMLDivElement>()
+  const [added, setAdded] = useState(false)
+  const addedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (addedTimerRef.current) clearTimeout(addedTimerRef.current)
+    }
+  }, [])
+
+  const handleAdd = () => {
+    onAddToCart(product.id)
+    setAdded(true)
+    if (addedTimerRef.current) clearTimeout(addedTimerRef.current)
+    addedTimerRef.current = setTimeout(() => {
+      setAdded(false)
+      addedTimerRef.current = null
+    }, 1500)
+  }
 
   return (
-    <Paper className="store-surface store-product-card" elevation={0} sx={{ height: '100%', p: 2.1 }}>
-      <Stack spacing={1.25} sx={{ height: '100%' }}>
-        <Box
-          sx={{
-            position: 'relative',
-            aspectRatio: '4 / 3',
-            borderRadius: 2.4,
-            overflow: 'hidden',
-            bgcolor: 'grey.100',
-            border: '1px solid',
-            borderColor: 'divider',
-          }}
+    <m.div
+      ref={ref}
+      data-testid="home-highlight-card"
+      initial={{ opacity: 0, scale: 0.92 }}
+      animate={isInView ? { opacity: 1, scale: 1 } : {}}
+      transition={{ duration: 0.6, delay }}
+      whileHover={{ y: -8 }}
+      className="group relative rounded-2xl overflow-hidden bg-white/[0.03] border border-white/[0.06]"
+    >
+      <div className="relative h-44 overflow-hidden bg-white/[0.03]">
+        <ImageWithFallback
+          src={product.imageUrl || (product.id % 2 === 0 ? partsImage2 : partsImage)}
+          alt={product.name}
+          className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-[transform,opacity] duration-700 ease-out group-hover:scale-[1.03]"
+        />
+        <div
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center bg-black/50"
         >
-          <ResponsiveImage
-            src={product.imageUrl}
-            alt={product.name}
-            className="ds-image-pan"
-            sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 25vw"
-            sx={{
-              transition: 'transform 260ms ease, opacity 220ms ease',
-              '.store-product-card:hover &': {
-                transform: product.hoverImageUrl ? 'scale(1.03)' : 'scale(1.05)',
-                opacity: product.hoverImageUrl ? 0 : 1,
-              },
-            }}
-          />
-          {product.hoverImageUrl ? (
-            <ResponsiveImage
-              src={product.hoverImageUrl}
-              alt={`${product.name} detalhe`}
-              sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 25vw"
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                opacity: 0,
-                transition: 'opacity 220ms ease',
-                '.store-product-card:hover &': {
-                  opacity: 1,
-                },
-              }}
-            />
-          ) : null}
-        </Box>
-
-        <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
-          <Chip size="small" label={product.category} variant="outlined" color="secondary" />
-          {product.discountPercent ? <Chip size="small" label={`${product.discountPercent}% OFF`} color="warning" /> : null}
-          {urgency ? <Chip size="small" label={urgency} color="primary" icon={<AccessTimeRoundedIcon size="sm" />} /> : null}
-        </Stack>
-
-        <Typography component="p" variant="h6" sx={{ lineHeight: 1.15 }}>
+          <Link to={buildProductUrl({ id: product.id, name: product.name, seoSlug: product.seoSlug ?? undefined })}>
+            <m.button
+              className="px-4 py-2 rounded-full text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-semibold"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Ver produto
+            </m.button>
+          </Link>
+        </div>
+      </div>
+      <div className="p-4">
+        <p className="text-xs mb-1 text-[#d4a843]">
+          {(product.manufacturer || 'Rodando')} · {product.category || 'Peças'}
+        </p>
+        <h3 className="text-sm mb-3 leading-snug text-[#f0ede8] font-semibold">
           {product.name}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {product.manufacturer} - {product.bikeModel}
-        </Typography>
-
-        <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mt: 'auto' }}>
-          <Typography variant="h5" sx={{ color: 'info.main', fontWeight: 700 }}>
-            {formatCurrency(Number(product.price))}
-          </Typography>
-          {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) ? (
-            <Typography variant="body2" color="text.secondary" sx={{ textDecoration: 'line-through' }}>
-              {formatCurrency(Number(product.compareAtPrice))}
-            </Typography>
-          ) : null}
-        </Stack>
-
-        <Stack direction="row" spacing={0.8} alignItems="center">
-          <Rating value={displayRating} precision={0.1} readOnly size="small" />
-          <Typography variant="caption" color="text.secondary">
-            {displayRating.toFixed(1)}
-          </Typography>
-        </Stack>
-
-        <Button className="ds-pressable ds-action-glint" component={RouterLink} to={buildProductUrl(product)} variant="contained" color="primary">
-          Adicionar ao carrinho
-        </Button>
-      </Stack>
-    </Paper>
+        </h3>
+        <div className="flex items-center justify-between">
+          <div>
+            {product.compareAtPrice ? (
+              <p className="text-xs line-through text-[#4b5563]">
+                {formatCurrency(Number(product.compareAtPrice))}
+              </p>
+            ) : null}
+            <p className="text-lg text-[#d4a843] font-bold">
+              {formatCurrency(Number(product.price))}
+            </p>
+          </div>
+          <m.button
+            onClick={handleAdd}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-black font-bold transition-colors ${added ? 'bg-[#22c55e]/85' : 'bg-gradient-to-br from-[#d4a843] to-[#f0c040]'}`}
+            whileHover={{ scale: 1.06, boxShadow: '0 0 15px rgba(212,168,67,0.4)' }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <AnimatePresence mode="wait">
+              {added ? (
+                <m.span key="ok" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                  ✓
+                </m.span>
+              ) : (
+                <m.span key="cart" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                </m.span>
+              )}
+            </AnimatePresence>
+            {added ? 'Adicionado!' : 'Adicionar'}
+          </m.button>
+        </div>
+      </div>
+    </m.div>
   )
 }
 
 export default function HomePage() {
-  const theme = useTheme()
-  const isSmUp = useMediaQuery(theme.breakpoints.up('sm'))
-  const isXlUp = useMediaQuery(theme.breakpoints.up('xl'))
-  const { completeStep } = useAssist()
-  const socialProofMarkedRef = useRef(false)
-  const nextSectionRef = useRef<HTMLDivElement | null>(null)
-  const highlightsPerRow = isXlUp ? 4 : isSmUp ? 2 : 1
+  const heroRef = useRef(null)
+  const { addProduct } = useCart()
+
+  const { ref: featRef, isInView: featInView } = useScrollFadeIn()
+  const { ref: prodsRef, isInView: prodsInView } = useScrollFadeIn()
+  const { ref: catsRef, isInView: catsInView } = useScrollFadeIn()
+  const { ref: testimonRef, isInView: testimonInView } = useScrollFadeIn()
+  const { ref: localRef, isInView: localInView } = useScrollFadeIn()
+  const [highlightLimit, setHighlightLimit] = useState(4)
+
+  useEffect(() => {
+    const getLimit = () => {
+      if (window.matchMedia('(min-width: 1536px)').matches) return 4
+      if (window.matchMedia('(min-width: 1280px)').matches) return 4
+      if (window.matchMedia('(min-width: 1024px)').matches) return 3
+      if (window.matchMedia('(min-width: 640px)').matches) return 2
+      return 1
+    }
+    const update = () => setHighlightLimit(getLimit())
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   const highlightsQuery = useQuery({
     queryKey: ['home-highlights'],
     queryFn: () => api.listCatalogHighlights(),
+    retry: false,
   })
-  const categoriesQuery = useQuery({
-    queryKey: ['home-categories-source'],
-    queryFn: () => api.listPublicProducts({ page: 1, pageSize: 120, sort: 'best-sellers' }),
+
+  const catalogQuery = useQuery({
+    queryKey: ['home-catalog-categories'],
+    queryFn: () => api.listCatalogCategories(),
+    retry: false,
   })
+
   const commentsQuery = useQuery({
     queryKey: ['home-comments'],
     queryFn: () => api.listComments({ limit: 6 }),
+    retry: false,
   })
 
-  const highlights = useMemo(() => highlightsQuery.data?.items ?? [], [highlightsQuery.data?.items])
-  const visibleHighlights = useMemo(() => highlights.slice(0, highlightsPerRow), [highlights, highlightsPerRow])
-  const categoryChips = useMemo(() => {
-    const groups = new Map<string, number>()
-    for (const item of categoriesQuery.data?.items ?? []) {
-      const name = String(item.category || '').trim()
-      if (!name) continue
-      groups.set(name, Number(groups.get(name) || 0) + 1)
-    }
-    return Array.from(groups.entries())
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'))
-      .slice(0, 8)
-      .map(([name, total]) => ({ name, total }))
-  }, [categoriesQuery.data?.items])
-
-  const comments = commentsQuery.data?.items ?? []
-  const commentsSummary = commentsQuery.data?.summary ?? { averageRating: 0, totalReviews: 0 }
-
-  const highlightsError = highlightsQuery.error instanceof ApiError ? highlightsQuery.error.message : null
-  const categoriesError = categoriesQuery.error instanceof ApiError ? categoriesQuery.error.message : null
-  const commentsError = commentsQuery.error instanceof ApiError ? commentsQuery.error.message : null
-
-  useEffect(() => {
-    if (!commentsQuery.isSuccess || socialProofMarkedRef.current) return
-    completeStep('social-proof-viewed', 'home')
-    socialProofMarkedRef.current = true
-  }, [commentsQuery.isSuccess, completeStep])
-
-  const handleScrollToNextSection = useCallback(() => {
-    const target = nextSectionRef.current ?? document.getElementById('home-next-section')
-    if (!target) return
-    const prefersReducedMotion = typeof window !== 'undefined'
-      && typeof window.matchMedia === 'function'
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    target.scrollIntoView({
-      behavior: prefersReducedMotion ? 'auto' : 'smooth',
-      block: 'start',
-    })
-  }, [])
+  const highlightItems = useMemo(() => highlightsQuery.data?.items ?? [], [highlightsQuery.data?.items])
+  const highlightProducts = useMemo(
+    () => highlightItems.slice(0, highlightLimit),
+    [highlightItems, highlightLimit],
+  )
+  const categories = useMemo(
+    () => (catalogQuery.data?.items ?? []).slice(0, 6),
+    [catalogQuery.data?.items],
+  )
+  const comments = useMemo(() => commentsQuery.data?.items ?? [], [commentsQuery.data?.items])
+  const commentsSummary = commentsQuery.data?.summary
+  const commentsSummaryLabel = commentsQuery.isError
+    ? 'Avaliações indisponíveis no momento'
+    : `Nota média ${Number(commentsSummary?.averageRating || 0).toFixed(1)} • ${commentsSummary?.totalReviews || 0} avaliações`
 
   return (
-    <AppShell
-      contained={false}
-      mainProps={{
-        className: 'store-page',
-        pb: { xs: 4.6, md: 6.8 },
-      }}
-    >
-      <Stack spacing={{ xs: 2.4, md: 3.8 }}>
-        <MotionReveal variant="reveal-fade">
-          <Paper
-            component="section"
-            data-testid="home-hero-section"
-            className="store-section store-hero store-surface"
-            elevation={0}
-            sx={{
-              position: 'relative',
-              overflow: 'hidden',
-              minHeight: { xs: 340, sm: 390, md: 430 },
-              p: { xs: 1.2, md: 1.8 },
-              borderRadius: { xs: 2.2, md: 2.8 },
-            }}
-          >
-          <Box aria-hidden sx={{ position: 'absolute', inset: 0 }}>
-            <Box
-              component="img"
-              src={heroTextPanelImageUrl}
-              alt=""
-              sx={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center 56%',
-                filter: 'saturate(1.05) contrast(1.02) brightness(0.9)',
-              }}
-            />
-            <Box
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                background:
-                  'linear-gradient(180deg, rgba(9,16,30,0.66) 0%, rgba(9,16,30,0.42) 34%, rgba(9,16,30,0.62) 100%), linear-gradient(108deg, rgba(9,16,30,0.76) 0%, rgba(9,16,30,0.48) 44%, rgba(9,16,30,0.22) 72%, rgba(9,16,30,0.16) 100%)',
-              }}
-            />
-          </Box>
+    <div>
+      <section ref={heroRef} data-testid="home-hero-section" className="relative min-h-screen flex items-center overflow-hidden bg-[#0a0a0f]">
+        <m.div className="absolute inset-0">
+          <ImageWithFallback src={heroImage} alt="Motocicleta premium" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,10,15,0.97)_0%,rgba(10,10,15,0.7)_50%,rgba(10,10,15,0.3)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(10,10,15,1)_0%,transparent_50%)]" />
+        </m.div>
 
-          <Grid container spacing={{ xs: 1.8, md: 2.2 }} sx={{ position: 'relative', zIndex: 1, alignItems: 'flex-start' }}>
-            <Grid size={{ xs: 12, lg: 7.6 }}>
-              <Paper
-                elevation={0}
-                sx={{
-                  position: 'relative',
-                  overflow: 'hidden',
-                  borderRadius: { xs: 2, md: 2.6 },
-                  border: 'none',
-                  borderColor: 'transparent',
-                  bgcolor: 'transparent',
-                }}
-              >
-                
-
-                <Stack
-                  spacing={{ xs: 1.1, md: 1.6 }}
-                  justifyContent="center"
-                  sx={{
-                    position: 'relative',
-                    zIndex: 1,
-                    py: { xs: 1.6, md: 2.2 },
-                    px: { xs: 1.25, md: 1.9 },
-                  }}
-                >
-                  <Typography component="p" className="store-kicker" sx={{ color: 'rgba(255,206,117,0.96)' }}>
-                    Rodando Moto Center
-                  </Typography>
-                  <Typography component="h1" variant="h2" sx={{ maxWidth: 700, color: '#F8FAFC', textShadow: '0 8px 20px rgba(0,0,0,0.35)' }}>
-                    Loja de pecas para moto com compra segura e suporte tecnico.
-                  </Typography>
-                <Typography variant="body1" sx={{ color: 'rgba(241,245,249,0.92)', maxWidth: 680 }}>
-                  Operacao local, consultoria tecnica e atendimento comercial rapido para uma compra segura, direta e sem erro de aplicacao.
-                </Typography>
-                <Typography
-                  variant="subtitle2"
-                  className="brand-slogan"
-                  sx={{
-                    color: 'rgba(255,225,166,0.98)',
-                    fontWeight: 700,
-                    letterSpacing: '0.012em',
-                  }}
-                >
-                  {BRAND_SLOGAN}
-                </Typography>
-
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
-                    <Button
-                      className="ds-pressable ds-action-glint ds-cta-pulse"
-                      data-testid="home-catalog-cta"
-                      component={RouterLink}
-                      to="/catalog"
-                      onClick={() => completeStep('open-catalog', 'home')}
-                      variant="contained"
-                      color="primary"
-                      sx={{ minHeight: 46, width: { xs: '100%', sm: 'auto' }, boxShadow: '0 12px 24px rgba(28,156,75,0.35)' }}
-                    >
-                      Ver catalogo
-                    </Button>
-                    <Button
-                      className="ds-pressable ds-action-glint"
-                      data-testid="home-whatsapp-cta"
-                      component="a"
-                      href={officialLinks.whatsapp}
-                      target="_blank"
-                      rel="noreferrer"
-                      variant="outlined"
-                      color="secondary"
-                      startIcon={<WhatsAppIcon size="sm" />}
-                      sx={{
-                        minHeight: 46,
-                        width: { xs: '100%', sm: 'auto' },
-                        bgcolor: 'rgba(17,24,39,0.58)',
-                        borderColor: 'rgba(255,205,112,0.5)',
-                        color: 'rgba(255,239,203,0.98)',
-                        '&:hover': {
-                          borderColor: 'rgba(255,205,112,0.88)',
-                          bgcolor: 'rgba(17,24,39,0.72)',
-                        },
-                      }}
-                    >
-                      Atendimento via WhatsApp
-                    </Button>
-                  </Stack>
-                  <AssistHintInline tipId="home-tip-search" routeKey="home">
-                    Dica: use a busca do topo para encontrar produto por nome, categoria ou SKU.
-                  </AssistHintInline>
-                </Stack>
-              </Paper>
-            </Grid>
-
-            <Grid size={{ xs: 12, lg: 4.4 }}>
-              <Paper
-                elevation={0}
-                className="ds-tilt-soft"
-                sx={{
-                  mt: { xs: 0.3, lg: 1.6 },
-                  p: { xs: 1.35, md: 1.8 },
-                  borderRadius: { xs: 2, md: 2.4 },
-                  border: '1px solid',
-                  borderColor: 'rgba(194,138,14,0.34)',
-                  bgcolor: 'rgba(255,255,255,0.94)',
-                  boxShadow: '0 16px 36px rgba(14,22,37,0.22)',
-                }}
-              >
-                <Stack spacing={1}>
-                  <Typography component="p" className="store-kicker">
-                    Confianca verificada
-                  </Typography>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Rating value={commentsSummary.averageRating} readOnly precision={0.1} />
-                    <Typography variant="body2" sx={{ color: 'secondary.dark', fontWeight: 700 }}>
-                      {commentsSummary.averageRating.toFixed(1)} ({commentsSummary.totalReviews})
-                    </Typography>
-                  </Stack>
-                  <Divider />
-                  <Stack spacing={0.8}>
-                    <Stack direction="row" alignItems="center" spacing={0.7}>
-                      <VerifiedRoundedIcon size="md" tone="warning" />
-                      <Typography variant="body2" color="text.secondary">
-                        Base real de avaliacoes e comentarios.
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" alignItems="center" spacing={0.7}>
-                      <StorefrontRoundedIcon size="md" tone="warning" />
-                      <Typography variant="body2" color="text.secondary">
-                        Loja fisica em Cascavel para suporte local.
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" alignItems="center" spacing={0.7}>
-                      <LocalShippingRoundedIcon size="md" tone="warning" />
-                      <Typography variant="body2" color="text.secondary">
-                        Fiscal e entrega agil para manter sua moto rodando.
-                      </Typography>
-                    </Stack>
-                  </Stack>
-                </Stack>
-              </Paper>
-            </Grid>
-          </Grid>
-
-          <Stack
-            alignItems="center"
-            spacing={0.35}
-            sx={{ position: 'absolute', zIndex: 2, left: '50%', bottom: 14, transform: 'translateX(-50%)', color: 'rgba(255,255,255,0.92)' }}
-          >
-            <Box
-              component="button"
-              type="button"
-              className="ds-pressable ds-attention-float"
-              onClick={handleScrollToNextSection}
-              data-testid="home-next-section-trigger"
-              aria-label="Ir para a proxima secao da Home"
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: '999px',
-                display: 'grid',
-                placeItems: 'center',
-                border: '1px solid',
-                borderColor: 'rgba(255,232,186,0.65)',
-                bgcolor: 'rgba(255,255,255,0.86)',
-                boxShadow: '0 10px 22px rgba(0,0,0,0.2)',
-                cursor: 'pointer',
-                '&:focus-visible': {
-                  outline: '2px solid',
-                  outlineColor: 'primary.main',
-                  outlineOffset: 2,
-                },
-              }}
-            >
-              <ExpandMoreRoundedIcon size="md" tone="warning" />
-            </Box>
-            <Typography variant="caption" sx={{ letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Explore a proxima secao
-            </Typography>
-          </Stack>
-          </Paper>
-        </MotionReveal>
-
-        <MotionReveal variant="reveal-up" delayMs={80}>
-          <Paper
-            id="home-next-section"
-            ref={nextSectionRef}
-            component="section"
-            className="store-surface"
-            elevation={0}
-            sx={{
-              p: { xs: 1.7, md: 2.6 },
-              position: 'relative',
-              overflow: 'hidden',
-              background:
-                'linear-gradient(95deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.94) 54%, rgba(249,248,245,0.92) 100%)',
-            }}
-          >
-          <Box
-            aria-hidden
-            sx={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              width: { xs: 0, md: '36%' },
-              height: '100%',
-              opacity: 0.26,
-              pointerEvents: 'none',
-              display: { xs: 'none', md: 'block' },
-            }}
-          >
-            <Box
-              component="img"
-              src={workshopBackdropUrl}
-              alt=""
-              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          </Box>
-
-          <SectionHeading
-            kicker="Institucional"
-            title="Por que escolher a Rodando"
-            subtitle="Combinamos estoque estrategico, atendimento especializado e estrutura local para reduzir duvidas e acelerar sua compra."
+        {PARTICLES.map((p, i) => (
+          <m.div
+            key={i}
+            className={`absolute rounded-full pointer-events-none blur-[40px] bg-[radial-gradient(circle,rgba(212,168,67,0.07)_0%,transparent_70%)] ${p.className}`}
+            animate={{ x: [0, p.dx, 0], y: [0, p.dy, 0] }}
+            transition={{ duration: p.dur, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <Grid container spacing={{ xs: 1.6, md: 1.9 }} sx={{ position: 'relative', zIndex: 1 }}>
-            <Grid size={{ xs: 12, lg: 8 }}>
-              <Grid container spacing={1.6}>
-                {pillars.map((pillar) => {
-                  const Icon = pillar.icon
-                  return (
-                    <Grid key={pillar.title} size={{ xs: 12, sm: 6 }}>
-                      <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: 1.6, bgcolor: 'rgba(255,255,255,0.92)', height: '100%' }}>
-                        <Stack spacing={0.9}>
-                          <Box
-                            sx={{
-                              width: 42,
-                              height: 42,
-                              borderRadius: 2.4,
-                              display: 'grid',
-                              placeItems: 'center',
-                              bgcolor: 'rgba(194,138,14,0.15)',
-                            }}
-                          >
-                            <Icon tone="warning" size="md" />
-                          </Box>
-                          <Typography component="p" variant="subtitle1" sx={{ fontWeight: 700 }}>
-                            {pillar.title}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {pillar.note}
-                          </Typography>
-                        </Stack>
-                      </Paper>
-                    </Grid>
-                  )
-                })}
-              </Grid>
-            </Grid>
-    
-          </Grid>
-          </Paper>
-        </MotionReveal>
+        ))}
 
-        <MotionReveal variant="reveal-up" delayMs={120}>
-          <Box component="section" id="home-offers" className="store-grid-tight" sx={{ position: 'relative' }}>
-            <Box
-              aria-hidden
-              sx={{
-                position: 'absolute',
-                inset: '0 auto auto 0',
-                width: { xs: '100%', md: '48%' },
-                height: { xs: 96, md: 128 },
-                overflow: 'hidden',
-                border: '1px solid',
-                borderColor: 'rgba(138,115,94,0.2)',
-                opacity: 0.22,
-                pointerEvents: 'none',
-                zIndex: 0,
-
-                backgroundImage: `url(${commercialTextureUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center center',
-                backgroundRepeat: 'no-repeat',
-
-                WebkitMaskImage:
-                  'linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 18%, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)',
-                maskImage:
-                  'linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 18%, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)',
-              }}
+        <m.div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+          <div className="max-w-2xl">
+            <m.div
+              initial={{ opacity: 0, x: -40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="flex items-center gap-2 mb-6"
             >
-            <Box
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                background:
-                  'linear-gradient(90deg, rgba(243,239,230,0.7) 0%, rgba(243,239,230,0.16) 28%, rgba(243,239,230,0.16) 72%, rgba(243,239,230,0.7) 100%)',
-              }}
-            />
-          </Box>
+              <div className="h-px w-8 bg-[#d4a843]" />
+              <span className="text-xs tracking-widest uppercase text-[#d4a843] font-semibold">
+                Cascavel · Paraná
+              </span>
+            </m.div>
 
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            justifyContent="space-between"
-            alignItems={{ xs: 'stretch', md: 'flex-start' }}
-            spacing={1.4}
-            sx={{ mb: 1.8, position: 'relative', zIndex: 1 }}
+            <m.h1
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="mb-6 font-['Rajdhani'] text-[clamp(2.4rem,6vw,4.5rem)] font-bold leading-[1.1] text-[#f0ede8]"
+            >
+              <span
+                className="bg-gradient-to-br from-[#d4a843] to-[#f0c040] bg-clip-text text-transparent"
+              >
+                Rodando
+              </span>{' '}
+                te ajudando a continuar rodando
+            </m.h1>
+
+            <m.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+              className="flex flex-wrap gap-3 mb-12"
+            >
+              <Link to="/catalog">
+                <m.button
+                  data-testid="home-catalog-cta"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold"
+                  whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(212,168,67,0.5)' }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Ver Catálogo
+                  <ArrowRight className="w-4 h-4" />
+                </m.button>
+              </Link>
+              <m.a
+                href="https://wa.me/5545999634779"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm bg-white/[0.06] border border-white/[0.15] text-[#f0ede8] font-semibold"
+                whileHover={{ scale: 1.05, background: 'rgba(255,255,255,0.1)' }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <Phone className="w-4 h-4" />
+                Atendimento via WhatsApp
+              </m.a>
+            </m.div>
+
+            <m.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 1 }}
+              className="flex flex-wrap gap-5"
+            >
+              {[
+                { icon: Star, label: 'Avaliações reais' },
+                { icon: Store, label: 'Loja física em Cascavel' },
+                { icon: Truck, label: 'Entrega e retirada rápidas' },
+              ].map(({ icon: Icon, label }) => (
+                <div key={label} className="flex items-center gap-2">
+                  <Icon className="w-3.5 h-3.5 text-[#d4a843]" />
+                  <span className="text-xs text-[#6b7280]">
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </m.div>
+          </div>
+        </m.div>
+
+        <m.button
+          type="button"
+          data-testid="home-next-section-trigger"
+          aria-label="Proxima secao"
+          onClick={() => featRef.current?.scrollIntoView({ behavior: 'smooth' })}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <span className="text-xs tracking-widest uppercase text-[#d4a843]/50">
+            Explorar
+          </span>
+          <div className="w-px h-8 bg-gradient-to-b from-[#d4a843]/50 to-transparent" />
+        </m.button>
+      </section>
+
+      <section ref={featRef} className="py-24 bg-[#0d0d14]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <m.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={featInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8 }}
+            className="mb-16"
           >
-            <Box>
-              <SectionHeading
-                kicker="Selecao comercial"
-                title="Destaques da semana"
-                subtitle="Produtos com alto giro e condicoes de compra imediata."
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px w-8 bg-[#d4a843]" />
+              <span className="text-xs tracking-widest uppercase text-[#d4a843] font-semibold">
+                Institucional
+              </span>
+            </div>
+            <h2 className="font-['Rajdhani'] text-[clamp(1.8rem,4vw,2.8rem)] font-bold text-[#f0ede8]">
+              Por que escolher a{' '}
+              <span
+                className="bg-gradient-to-br from-[#d4a843] to-[#f0c040] bg-clip-text text-transparent"
+              >
+                RODANDO?
+              </span>
+            </h2>
+            <p className="mt-3 text-sm max-w-lg leading-relaxed text-[#6b7280]">
+              Combinamos estoque extenso, atendimento especializado e estrutura local para reduzir dúvidas e agilizar sua compra.
+            </p>
+          </m.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {features.map((f, i) => (
+              <FeatureCard key={f.title} {...f} delay={i * 0.1} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section ref={prodsRef} className="py-24 bg-[#0a0a0f]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <m.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={prodsInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8 }}
+            className="flex items-end justify-between mb-12"
+          >
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-px w-8 bg-[#d4a843]" />
+                <span className="text-xs tracking-widest uppercase text-[#d4a843] font-semibold">
+                  Seleção Comercial
+                </span>
+              </div>
+              <h2 className="font-['Rajdhani'] text-[clamp(1.8rem,4vw,2.8rem)] font-bold text-[#f0ede8]">
+                Destaques da semana
+              </h2>
+              <p className="mt-2 text-sm text-[#6b7280]">
+                Produtos com alto giro e condições de compra imediata.
+              </p>
+            </div>
+            <Link to="/catalog">
+              <m.button
+                className="hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm border border-[#d4a843]/30 text-[#d4a843] bg-[#d4a843]/5 font-semibold"
+                whileHover={{ background: 'rgba(212,168,67,0.12)', scale: 1.03 }}
+              >
+                Ver catálogo completo
+                <ChevronRight className="w-4 h-4" />
+              </m.button>
+            </Link>
+          </m.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {highlightProducts.map((product, i) => (
+              <HomeProductCard
+                key={product.id}
+                product={{
+                  id: product.id,
+                  name: product.name,
+                  seoSlug: product.seoSlug,
+                  price: Number(product.price || 0),
+                  manufacturer: product.manufacturer,
+                  category: product.category,
+                  imageUrl: product.imageUrl,
+                  compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
+                }}
+                delay={i * 0.1}
+                onAddToCart={(id) => {
+                  const match = highlightProducts.find((item) => item.id === id)
+                  if (match) {
+                    void addProduct(match, 1)
+                  }
+                }}
               />
-            </Box>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center" sx={{ alignSelf: { md: 'center' } }}>
-              <Button
-                className="ds-pressable ds-action-glint"
-                component={RouterLink}
-                to="/catalog?promo=true&sort=discount-desc"
-                variant="outlined"
-                color="secondary"
-                sx={{ minHeight: 44, px: 2.4, whiteSpace: 'nowrap' }}
-              >
-                Ver promocoes
-              </Button>
-              <Button
-                className="ds-pressable ds-link-slide"
-                component={RouterLink}
-                to="/catalog"
-                variant="text"
-                color="primary"
-                sx={{ minHeight: 44, px: 2.2, whiteSpace: 'nowrap' }}
-              >
-                Catalogo completo
-              </Button>
-            </Stack>
-          </Stack>
+            ))}
+            {highlightsQuery.isError ? (
+              <div className="col-span-full rounded-2xl border border-[#ef4444]/20 bg-[#ef4444]/10 p-4 text-sm text-[#f87171]">
+                <p>Não foi possível carregar os destaques agora.</p>
+                <Link to="/catalog" className="mt-2 inline-block text-xs text-[#d4a843]">
+                  Abrir catálogo mesmo assim
+                </Link>
+              </div>
+            ) : null}
+            {highlightProducts.length === 0 && !highlightsQuery.isError ? (
+              <div data-testid="home-highlights-empty-state" className="col-span-full text-sm text-[#6b7280]">
+                <p>Nenhum destaque disponível no momento.</p>
+                <Link to="/catalog" className="text-xs text-[#d4a843]">
+                  Ir ao catálogo
+                </Link>
+              </div>
+            ) : null}
+          </div>
 
-          {highlightsError ? (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              {highlightsError}
-            </Alert>
-          ) : null}
-
-          <Grid container spacing={1.7}>
-            {highlightsQuery.isLoading
-              ? Array.from({ length: highlightsPerRow }).map((_, index) => (
-                  <Grid key={`card-skeleton-${index}`} size={{ xs: 12, sm: 6, xl: 3 }}>
-                    <Paper elevation={0} className="store-surface" sx={{ p: 2 }}>
-                      <Stack spacing={1.1}>
-                        <Skeleton variant="rounded" sx={{ width: '100%', aspectRatio: '4 / 3', borderRadius: 2 }} />
-                        <Skeleton variant="text" width={120} />
-                        <Skeleton variant="text" width="70%" />
-                        <Skeleton variant="rounded" height={44} />
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                ))
-              : highlights.length === 0 ? (
-                  <Grid size={{ xs: 12 }}>
-                    <Paper data-testid="home-highlights-empty-state" elevation={0} className="store-surface" sx={{ p: { xs: 1.5, md: 2 } }}>
-                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems={{ sm: 'center' }} justifyContent="space-between">
-                        <Typography variant="body2" color="text.secondary">
-                          Nenhum destaque publico no momento. Confira o catalogo completo ou as promocoes ativas.
-                        </Typography>
-                        <Button className="ds-pressable ds-action-glint" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
-                          Ver catalogo
-                        </Button>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                ) : (
-                    visibleHighlights.map((product) => (
-                      <Grid data-testid="home-highlight-card" key={`highlight-${product.id}`} size={{ xs: 12, sm: 6, xl: 3 }}>
-                        <ProductCard product={product} />
-                      </Grid>
-                    ))
-                  )}
-          </Grid>
-          </Box>
-        </MotionReveal>
-
-        <MotionReveal variant="reveal-up" delayMs={160}>
-          <Paper component="section" className="store-surface" elevation={0} sx={{ p: { xs: 1.7, md: 2.5 }, position: 'relative', overflow: 'hidden' }}>
-          <Box
-            aria-hidden
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              // height: { xs: 78, md: 96 },
-              opacity: 0.16,
-              width: { xs: '100%', md: '48%' },
-              height: { xs: 96, md: 128 },
-              pointerEvents: 'none',
-              borderBottom: '1px solid',
-              borderColor: 'rgba(138,115,94,0.2)',
-              zIndex: 0,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={prodsInView ? { opacity: 1 } : {}}
+            transition={{ delay: 0.6 }}
+            className="mt-8 text-center sm:hidden"
           >
-          </Box>
-          <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <SectionHeading
-            kicker="Navegacao rapida"
-            title="Categorias para decidir mais rapido"
-            subtitle="Acesse direto os grupos com maior demanda e encontre a peca certa em menos tempo."
-          />
-          {categoriesError ? (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              {categoriesError}
-            </Alert>
-          ) : null}
-          {categoryChips.length === 0 ? (
-            <Paper data-testid="home-categories-empty-state" elevation={0} className="store-surface" sx={{ p: 1.4, bgcolor: 'grey.50' }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1} justifyContent="space-between" alignItems={{ sm: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Sem categorias publicas ativas ainda.
-                </Typography>
-                <Button className="ds-pressable ds-action-glint" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
-                  Ver catálogo geral
-                </Button>
-              </Stack>
-            </Paper>
+            <Link to="/catalog">
+              <button
+                className="px-6 py-2.5 rounded-xl text-sm border border-[#d4a843]/30 text-[#d4a843] bg-[#d4a843]/5 font-semibold"
+              >
+                Ver catálogo completo
+              </button>
+            </Link>
+          </m.div>
+        </div>
+      </section>
+
+      <section ref={catsRef} className="py-20 bg-[#0d0d14]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <m.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={catsInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8 }}
+            className="mb-10"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px w-8 bg-[#d4a843]" />
+              <span className="text-xs tracking-widest uppercase text-[#d4a843] font-semibold">
+                Categorias
+              </span>
+            </div>
+            <h2 className="font-['Rajdhani'] text-[clamp(1.6rem,4vw,2.4rem)] font-bold text-[#f0ede8]">
+              Encontre rápido por categoria
+            </h2>
+            <p className="mt-2 text-sm text-[#6b7280]">
+              Filtre por tipo de peça e agilize a escolha do item certo.
+            </p>
+          </m.div>
+
+          {catalogQuery.isError ? (
+            <div className="p-6 rounded-2xl border border-[#ef4444]/20 bg-[#ef4444]/10 text-[#f87171]">
+              <p className="text-sm">O catálogo está temporariamente indisponível.</p>
+              <Link to="/catalog" className="text-xs text-[#d4a843]">
+                Tentar carregar no catálogo
+              </Link>
+            </div>
+          ) : categories.length === 0 && !catalogQuery.isLoading ? (
+            <div data-testid="home-categories-empty-state" className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-[#6b7280]">
+              <p className="text-sm">Nenhuma categoria disponível no momento.</p>
+              <Link to="/catalog" className="text-xs text-[#d4a843]">
+                Ver catálogo geral
+              </Link>
+            </div>
           ) : (
-            <Grid container spacing={1.2}>
-              {categoryChips.map((category, index) => {
-                const Icon = pickCategoryIcon(index)
-                return (
-                  <Grid key={category.name} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                    <Paper
-                      component={RouterLink}
-                      to={`/catalog?category=${encodeURIComponent(category.name)}`}
-                      elevation={0}
-                      className="store-surface ds-pressable ds-action-glint"
-                      sx={{
-                        p: 1.4,
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        minHeight: 80,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.2,
-                        borderColor: 'rgba(194,138,14,0.28)',
-                        transition: 'transform 170ms ease, box-shadow 220ms ease, border-color 200ms ease',
-                        '&:hover': {
-                          transform: 'translateY(-2px)',
-                          borderColor: 'rgba(194,138,14,0.56)',
-                          boxShadow: '0 12px 22px rgba(10,18,33,0.09)',
-                        },
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 38,
-                          height: 38,
-                          borderRadius: '999px',
-                          bgcolor: 'rgba(194,138,14,0.15)',
-                          border: '1px solid',
-                          borderColor: 'rgba(194,138,14,0.36)',
-                          display: 'grid',
-                          placeItems: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Icon tone="warning" size="md" />
-                      </Box>
-                      <Stack spacing={0.1} sx={{ minWidth: 0 }}>
-                        <Typography component="span" variant="subtitle2" sx={{ color: 'text.primary', fontWeight: 700 }}>
-                          {category.name}
-                        </Typography>
-                        <Typography component="span" variant="caption" color="text.secondary">
-                          {category.total} itens
-                        </Typography>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                )
-              })}
-            </Grid>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {categories.map((category) => (
+                <Link
+                  key={category.name}
+                  to={`/catalog?category=${encodeURIComponent(category.name)}`}
+                  className="p-5 rounded-2xl flex items-center justify-between bg-white/[0.03] border border-white/[0.06] text-[#f0ede8]"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{category.name}</p>
+                    <p className="text-xs text-[#6b7280]">{category.count} itens</p>
+                  </div>
+                  <span className="text-xs text-[#d4a843]">Ver</span>
+                </Link>
+              ))}
+            </div>
           )}
-          </Box>
-          </Paper>
-        </MotionReveal>
+        </div>
+      </section>
 
-        <MotionReveal variant="reveal-up" delayMs={200}>
-          <Box component="section" className="store-grid-tight">
-          <SectionHeading
-            kicker="Avaliacoes verificadas"
-            title="O que os clientes estao dizendo"
-            subtitle="Feedbacks reais para apoiar sua decisao com mais seguranca."
-          />
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-            <Rating value={commentsSummary.averageRating} readOnly precision={0.1} />
-            <Typography variant="body2" sx={{ color: 'secondary.dark', fontWeight: 700 }}>
-              {commentsSummary.averageRating.toFixed(1)} ({commentsSummary.totalReviews} avaliacoes)
-            </Typography>
-          </Stack>
+      <section ref={testimonRef} className="py-24 bg-[#0d0d14]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <m.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={testimonInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8 }}
+            className="mb-12"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px w-8 bg-[#d4a843]" />
+              <span className="text-xs tracking-widest uppercase text-[#d4a843] font-semibold">
+                Avaliações verificadas
+              </span>
+            </div>
+            <h2 className="font-['Rajdhani'] text-[clamp(1.8rem,4vw,2.8rem)] font-bold text-[#f0ede8]">
+              O que clientes estão dizendo
+            </h2>
+            <p className="mt-2 text-sm text-[#6b7280]">
+              Feedback real para você decidir com mais segurança.
+            </p>
+            <div className="mt-3 text-xs text-[#d4a843]">{commentsSummaryLabel}</div>
+          </m.div>
 
-          {commentsError ? (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              {commentsError}
-            </Alert>
-          ) : null}
-
-          <Grid container spacing={1.7}>
-            {commentsQuery.isLoading
-              ? Array.from({ length: 3 }).map((_, index) => (
-                  <Grid key={`comment-skeleton-${index}`} size={{ xs: 12, md: 4 }}>
-                    <Paper elevation={0} className="store-surface" sx={{ p: 2 }}>
-                      <Skeleton variant="text" width={100} />
-                      <Skeleton variant="text" width="100%" />
-                      <Skeleton variant="text" width="70%" />
-                    </Paper>
-                  </Grid>
-                ))
-              : comments.length === 0 ? (
-                  <Grid size={{ xs: 12 }}>
-                    <Paper data-testid="home-reviews-empty-state" elevation={0} className="store-surface" sx={{ p: { xs: 1.5, md: 2 } }}>
-                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems={{ sm: 'center' }} justifyContent="space-between">
-                        <Typography variant="body2" color="text.secondary">
-                          Ainda nao existem avaliacoes publicadas por usuarios reais.
-                        </Typography>
-                        <Button className="ds-pressable ds-action-glint" component={RouterLink} to="/catalog" variant="contained" color="primary" size="small">
-                          Avaliar no catálogo
-                        </Button>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                ) : (
-                    comments.map((review, index) => (
-                      <Grid key={review.id} size={{ xs: 12, md: 4 }}>
-                        <Paper
-                          elevation={0}
-                          className="store-surface ds-hover-lift"
-                          sx={{ p: 2, height: '100%', animationDelay: `${Math.min(index, 5) * 80}ms` }}
-                        >
-                          <Stack spacing={1}>
-                            <Rating value={review.rating} precision={0.5} readOnly size="small" />
-                            <Typography variant="body2" color="text.secondary">
-                              "{review.message}"
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              Produto: {review.productName}
-                            </Typography>
-                            <Typography component="p" variant="subtitle2" sx={{ color: 'text.primary', fontWeight: 700 }}>
-                              {review.authorName}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {formatCommentDate(review.createdAt)}
-                            </Typography>
-                          </Stack>
-                        </Paper>
-                      </Grid>
-                    ))
-                  )}
-          </Grid>
-
-          {comments.length > 0 ? (
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 2 }}>
-              <Button className="ds-pressable ds-action-glint" component={RouterLink} to="/catalog" variant="contained" color="primary">
+          {commentsQuery.isError ? (
+            <div className="p-6 rounded-2xl border border-[#ef4444]/20 bg-[#ef4444]/10 text-[#f87171]">
+              <p className="text-sm">As avaliações não puderam ser carregadas no momento.</p>
+              <Link to="/catalog" className="text-xs text-[#d4a843]">
+                Continuar para o catálogo
+              </Link>
+            </div>
+          ) : comments.length === 0 && !commentsQuery.isLoading ? (
+            <div data-testid="home-reviews-empty-state" className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-[#6b7280]">
+              <p className="text-sm">Nenhuma avaliação registrada ainda.</p>
+              <Link to="/catalog" className="text-xs text-[#d4a843]">
                 Avaliar no catálogo
-              </Button>
-              <Button className="ds-pressable ds-action-glint" component={RouterLink} to="/catalog?promo=true&sort=discount-desc" variant="outlined" color="secondary">
-                Ver promocoes ativas
-              </Button>
-            </Stack>
-          ) : null}
-          </Box>
-        </MotionReveal>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {comments.map((t, i) => (
+                <m.div
+                  key={t.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={testimonInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.7, delay: i * 0.15 }}
+                  whileHover={{ y: -5, boxShadow: '0 20px 50px rgba(212,168,67,0.1)' }}
+                  className="p-6 rounded-2xl bg-white/[0.03] border border-[#d4a843]/10"
+                >
+                  <div className="flex gap-0.5 mb-4">
+                    {[...Array(t.rating)].map((_, j) => (
+                      <Star key={j} className="w-4 h-4 fill-current text-[#d4a843]" />
+                    ))}
+                  </div>
+                  <p className="text-sm leading-relaxed mb-5 text-[#9ca3af]">
+                    "{t.message}"
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold">
+                      {t.authorName?.[0] || 'R'}
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#f0ede8] font-semibold">
+                        {t.authorName || 'Cliente'}
+                      </p>
+                      <p className="text-xs text-[#4b5563]">
+                        {t.productName || 'Compra verificada'}
+                      </p>
+                    </div>
+                  </div>
+                </m.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
-        <MotionReveal variant="reveal-up" delayMs={240}>
-          <Box component="section" id="home-contact" data-testid="home-contact-section" className="store-grid-tight">
-          <Grid container spacing={{ xs: 1.5, md: 2 }} alignItems="flex-start">
-            <Grid size={{ xs: 12, lg: 7 }} sx={{ alignSelf: 'flex-start' }}>
-              <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: { xs: 1.6, md: 2.5 }, position: 'relative', overflow: 'hidden', alignSelf: 'flex-start' }}>
-                <Box
-                  aria-hidden
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    width: { xs: 0, md: '100%' },
-                    height: { xs: 0, md: '100%' },
-                    opacity: 0.12,
-                    display: { xs: 'none', md: 'block' },
-                    pointerEvents: 'none',
-                    zIndex: 0,
-                    backgroundImage: `url(${contactMotoAccentUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                  }}
-                >
-                </Box>
-                <Box sx={{ position: 'relative', zIndex: 1 }}>
-                <SectionHeading
-                  kicker="Presenca local"
-                  title="Loja física e atendimento comercial"
-                  subtitle="Atendimento de segunda a sexta, retirada local e suporte rapido para orcamento e validacao de aplicacao."
-                />
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1.4 }}>
-                  <Button className="ds-pressable ds-action-glint" component="a" href={officialLinks.whatsapp} target="_blank" rel="noreferrer" variant="contained" color="primary" startIcon={<WhatsAppIcon size="sm" />}>
-                    Falar com vendedor
-                  </Button>
-                  <Button className="ds-pressable ds-action-glint" component="a" href={officialLinks.maps} target="_blank" rel="noreferrer" variant="outlined" color="secondary">
-                    Abrir no mapa
-                  </Button>
-                </Stack>
-                <Paper elevation={0} className="store-surface" sx={{ p: { xs: 1.4, md: 1.7 }, bgcolor: 'grey.50' }}>
-                  <Typography component="p" variant="subtitle2" sx={{ color: 'text.primary', fontWeight: 700, mb: 0.6 }}>
-                    Atendimento local com horario comercial
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.4 }}>
-                    Seg a Sex: 08h as 18h
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Retirada no balcao e suporte tecnico para compra certa.
-                  </Typography>
-                </Paper>
-                <Paper
-                  elevation={0}
-                  className="store-surface"
-                  sx={{
-                    mt: 1.2,
-                    p: { xs: 1.25, md: 1.5 },
-                    bgcolor: 'rgba(255,255,255,0.92)',
-                  }}
-                >
-                  <Stack spacing={0.55}>
-                    <Typography variant="subtitle2" sx={{ color: 'text.primary', fontWeight: 700 }}>
-                      Suporte para compra sem erro de aplicacao
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Validacao de compatibilidade antes do pedido.
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Confirmacao de estoque em tempo real para retirada ou envio.
-                    </Typography>
-                  </Stack>
-                </Paper>
-                </Box>
-              </Paper>
-            </Grid>
-            <Grid size={{ xs: 12, lg: 5 }}>
-              <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: { xs: 1.2, md: 1.6 } }}>
-                <Stack spacing={1.2}>
-                  <Box
-                    component="a"
-                    href={officialLinks.maps}
-                    target="_blank"
-                    rel="noreferrer"
-                    sx={{
-                      display: 'block',
-                      borderRadius: 2.4,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      overflow: 'hidden',
-                      aspectRatio: { xs: '16 / 11', md: '5 / 4' },
-                      bgcolor: 'grey.100',
-                    }}
+      <section ref={localRef} className="py-24 bg-[#0a0a0f]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <m.div
+              initial={{ opacity: 0, x: -40 }}
+              animate={localInView ? { opacity: 1, x: 0 } : {}}
+              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-px w-8 bg-[#d4a843]" />
+                <span className="text-xs tracking-widest uppercase text-[#d4a843] font-semibold">
+                  Presença Local
+                </span>
+              </div>
+              <h2 className="font-['Rajdhani'] text-[clamp(1.8rem,4vw,2.8rem)] font-bold text-[#f0ede8] leading-[1.15]">
+                Loja física e atendimento comercial
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-[#6b7280] max-w-[400px]">
+                Atendimento de segunda a sexta, retirada local e suporte rápido para orçamento e validação de aplicação.
+              </p>
+
+              <div className="mt-8 space-y-4">
+                {[
+                  {
+                    title: 'Atendimento local com horário comercial',
+                    items: ['Seg a Sex, 08h às 18h', 'Retirada no balcão e suporte técnico para compra certa'],
+                  },
+                  {
+                    title: 'Suporte para compra sem erro de aplicação',
+                    items: ['Validação de compatibilidade antes do pedido.', 'Confirmação de estoque em tempo real para retirada ou envio.'],
+                  },
+                ].map((block, i) => (
+                  <m.div
+                    key={block.title}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={localInView ? { opacity: 1, x: 0 } : {}}
+                    transition={{ delay: 0.3 + i * 0.15 }}
+                    className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.06]"
                   >
-                    <ResponsiveImage
-                      src={storeLocationPhotoUrl}
-                      alt="Foto da loja física Rodando Moto Center"
-                      className="ds-image-pan"
-                      sizes="(max-width: 900px) 100vw, 40vw"
-                    />
-                  </Box>
-                  <Paper elevation={0} className="store-surface" sx={{ p: { xs: 1.4, md: 1.8 }, bgcolor: 'grey.50' }}>
-                    <Typography variant="overline" sx={{ color: 'secondary.dark', fontWeight: 700 }}>
-                      ENDERECO
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: 'text.primary', fontWeight: 700, mb: 0.8 }}>
+                    <h4 className="text-sm mb-2 text-[#f0ede8] font-semibold">
+                      {block.title}
+                    </h4>
+                    {block.items.map((item) => (
+                      <p key={item} className="flex items-start gap-2 text-xs mt-1.5 text-[#6b7280]">
+                        <CheckCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-[#d4a843]" />
+                        {item}
+                      </p>
+                    ))}
+                  </m.div>
+                ))}
+              </div>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <m.a
+                  href="https://wa.me/5545999634779"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold"
+                  whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(212,168,67,0.4)' }}
+                >
+                  <Phone className="w-4 h-4" />
+                  Falar com vendedor
+                </m.a>
+                <div className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm bg-white/[0.04] border border-white/[0.08] text-[#6b7280]">
+                  <Clock className="w-4 h-4 text-[#d4a843]" />
+                  <span>~5 min. de resposta</span>
+                </div>
+              </div>
+            </m.div>
+
+            <m.div
+              initial={{ opacity: 0, x: 40, scale: 0.95 }}
+              animate={localInView ? { opacity: 1, x: 0, scale: 1 } : {}}
+              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+              className="relative"
+            >
+              <div className="rounded-2xl overflow-hidden border border-[#d4a843]/15">
+                <ImageWithFallback src={shopImage} alt="Foto da loja física Rodando Moto Center" className="w-full h-80 lg:h-96 object-cover" />
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/60 to-transparent" />
+              </div>
+              <m.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={localInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.6 }}
+                className="absolute bottom-5 left-5 right-5 p-4 rounded-xl bg-black/85 border border-[#d4a843]/20 backdrop-blur-[12px]"
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 flex-shrink-0 text-[#d4a843]" />
+                  <div>
+                    <p className="text-sm text-[#f0ede8] font-semibold">
                       Av. Brasil, 8708 - Cascavel - PR
-                    </Typography>
-                    <Divider sx={{ my: 1.2 }} />
-                    <Typography variant="body2" color="text.secondary">
-                      Telefone: +55 45 3037-5858
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      WhatsApp: +55 45 99934-6779
-                    </Typography>
-                  </Paper>
-                </Stack>
-              </Paper>
-            </Grid>
-          </Grid>
-          </Box>
-        </MotionReveal>
-      </Stack>
-    </AppShell>
+                    </p>
+                    <p className="text-xs text-[#6b7280]">
+                      Segunda a sexta, 08h às 18h
+                    </p>
+                  </div>
+                </div>
+              </m.div>
+              <div className="absolute -inset-1 rounded-2xl -z-10 blur-xl opacity-20 bg-[linear-gradient(135deg,#d4a843,transparent)]" />
+            </m.div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 bg-[#0d0d14]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <m.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="relative rounded-3xl overflow-hidden p-10 lg:p-16 text-center bg-[linear-gradient(135deg,rgba(212,168,67,0.12),rgba(212,168,67,0.04),rgba(10,10,15,0.8))] border border-[#d4a843]/20"
+          >
+            <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_50%,rgba(212,168,67,0.08)_0%,transparent_70%)]" />
+            <h2 className="font-['Rajdhani'] text-[clamp(2rem,5vw,3.5rem)] font-bold text-[#f0ede8]">
+              Sua moto merece o{' '}
+              <span className="bg-gradient-to-br from-[#d4a843] to-[#f0c040] bg-clip-text text-transparent">
+                melhor
+              </span>
+            </h2>
+            <p className="mt-3 text-sm text-[#6b7280]">
+              Acesse o catálogo e encontre exatamente o que você precisa.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 mt-8">
+              <Link to="/catalog">
+                <m.button
+                  className="flex items-center gap-2 px-8 py-3.5 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold"
+                  whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(212,168,67,0.5)' }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Explorar catálogo
+                  <ArrowRight className="w-4 h-4" />
+                </m.button>
+              </Link>
+            </div>
+          </m.div>
+        </div>
+      </section>
+    </div>
   )
 }
-

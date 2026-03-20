@@ -1,14 +1,39 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Grid, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import OwnerLayout from '../layouts/OwnerLayout'
-import { api, ApiError, type OwnerSettings } from '../lib/api'
-import { useAssist } from '../context/AssistContext'
-import { AssistHintInline } from '../components/assist'
+import OwnerLayout from '../shared/layout/OwnerLayout'
+import { api, ApiError, type OwnerSettings } from '../shared/lib/api'
+import { useAssist } from '../shared/context/AssistContext'
 
 function toDraft(item: OwnerSettings): OwnerSettings {
   return { ...item }
 }
+
+type FieldDescriptor = { key: keyof OwnerSettings; label: string; type?: 'number' | 'checkbox' }
+
+const SETTINGS_FIELDS: FieldDescriptor[] = [
+  { key: 'salesAlertEmail', label: 'Email de alerta' },
+  { key: 'salesAlertWhatsapp', label: 'WhatsApp (opcional)' },
+  { key: 'storeName', label: 'Nome da loja' },
+  { key: 'storeCnpj', label: 'CNPJ' },
+  { key: 'storeIe', label: 'IE' },
+  { key: 'storeAddressStreet', label: 'Rua' },
+  { key: 'storeAddressNumber', label: 'Numero' },
+  { key: 'storeAddressComplement', label: 'Complemento' },
+  { key: 'storeAddressDistrict', label: 'Bairro' },
+  { key: 'storeAddressCity', label: 'Cidade' },
+  { key: 'storeAddressState', label: 'UF' },
+  { key: 'storeAddressCep', label: 'CEP da loja' },
+  { key: 'taxProfile', label: 'Perfil tributario' },
+  { key: 'storeLat', label: 'Latitude', type: 'number' },
+  { key: 'storeLng', label: 'Longitude', type: 'number' },
+  { key: 'freeShippingGlobalMin', label: 'Meta frete gratis', type: 'number' },
+  { key: 'taxPercent', label: 'Impostos %', type: 'number' },
+  { key: 'gatewayFeePercent', label: 'Gateway %', type: 'number' },
+  { key: 'gatewayFixedFee', label: 'Taxa fixa gateway', type: 'number' },
+  { key: 'operationalPercent', label: 'Operacional %', type: 'number' },
+  { key: 'packagingCost', label: 'Custo de embalagem', type: 'number' },
+  { key: 'blockBelowMinimum', label: 'Bloquear abaixo do minimo', type: 'checkbox' },
+]
 
 export default function OwnerSettingsPage() {
   const { completeStep } = useAssist()
@@ -52,76 +77,91 @@ export default function OwnerSettingsPage() {
 
   return (
     <OwnerLayout>
-      <Stack spacing={2}>
-        <Typography variant="h4">Configurações do owner</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Defina alertas de venda, endereço da loja, frete e parâmetros de custo operacional.
-        </Typography>
-        <AssistHintInline tipId="owner-settings-tip-alert" routeKey="owner-settings">
-          O email de alerta de venda é obrigatório para operação confiável.
-        </AssistHintInline>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl text-[#f0ede8] font-bold">Configurações do owner</h1>
+          <p className="text-sm text-[#9ca3af]">
+            Defina alertas de venda, endereço da loja, frete e parâmetros de custo operacional.
+          </p>
+        </div>
 
         {settingsQuery.isLoading || !draft ? (
-          <Paper sx={{ p: 2.4, borderRadius: 3 }}>
-            <Typography variant="body2" color="text.secondary">Carregando configurações...</Typography>
-          </Paper>
+          <div className="p-3 rounded-xl text-sm bg-white/[0.04] border border-white/[0.08] text-[#9ca3af]">
+            Carregando configurações...
+          </div>
         ) : (
-          <Paper sx={{ p: 2.4, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-            <Grid container spacing={1.4}>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField label="Email de alerta" fullWidth value={draft.salesAlertEmail} onChange={(event) => setDraft((prev) => (prev ? { ...prev, salesAlertEmail: event.target.value } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField label="WhatsApp (opcional)" fullWidth value={draft.salesAlertWhatsapp} onChange={(event) => setDraft((prev) => (prev ? { ...prev, salesAlertWhatsapp: event.target.value } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField label="Nome da loja" fullWidth value={draft.storeName} onChange={(event) => setDraft((prev) => (prev ? { ...prev, storeName: event.target.value } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 3 }}>
-                <TextField label="CNPJ" fullWidth value={draft.storeCnpj} onChange={(event) => setDraft((prev) => (prev ? { ...prev, storeCnpj: event.target.value } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 3 }}>
-                <TextField label="IE" fullWidth value={draft.storeIe} onChange={(event) => setDraft((prev) => (prev ? { ...prev, storeIe: event.target.value } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 3 }}>
-                <TextField label="CEP da loja" fullWidth value={draft.storeAddressCep} onChange={(event) => setDraft((prev) => (prev ? { ...prev, storeAddressCep: event.target.value } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 3 }}>
-                <TextField label="Cidade" fullWidth value={draft.storeAddressCity} onChange={(event) => setDraft((prev) => (prev ? { ...prev, storeAddressCity: event.target.value } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 3 }}>
-                <TextField label="UF" fullWidth value={draft.storeAddressState} onChange={(event) => setDraft((prev) => (prev ? { ...prev, storeAddressState: event.target.value } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 3 }}>
-                <TextField label="Meta frete grátis" type="number" fullWidth value={draft.freeShippingGlobalMin} onChange={(event) => setDraft((prev) => (prev ? { ...prev, freeShippingGlobalMin: Number(event.target.value || 0) } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 2 }}>
-                <TextField label="Impostos %" type="number" fullWidth value={draft.taxPercent} onChange={(event) => setDraft((prev) => (prev ? { ...prev, taxPercent: Number(event.target.value || 0) } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 2 }}>
-                <TextField label="Gateway %" type="number" fullWidth value={draft.gatewayFeePercent} onChange={(event) => setDraft((prev) => (prev ? { ...prev, gatewayFeePercent: Number(event.target.value || 0) } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 2 }}>
-                <TextField label="Taxa fixa gateway" type="number" fullWidth value={draft.gatewayFixedFee} onChange={(event) => setDraft((prev) => (prev ? { ...prev, gatewayFixedFee: Number(event.target.value || 0) } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 2 }}>
-                <TextField label="Operacional %" type="number" fullWidth value={draft.operationalPercent} onChange={(event) => setDraft((prev) => (prev ? { ...prev, operationalPercent: Number(event.target.value || 0) } : prev))} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 3 }}>
-                <TextField label="Custo de embalagem" type="number" fullWidth value={draft.packagingCost} onChange={(event) => setDraft((prev) => (prev ? { ...prev, packagingCost: Number(event.target.value || 0) } : prev))} />
-              </Grid>
-            </Grid>
-            <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-              <Button variant="contained" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-                Salvar configurações
-              </Button>
-            </Stack>
-          </Paper>
+          <div className="p-5 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {SETTINGS_FIELDS.map((field) => {
+                const value = draft?.[field.key]
+                if (field.type === 'checkbox') {
+                  return (
+                    <div key={field.key} className="md:col-span-3 pt-2">
+                      <label className="flex items-center gap-2 text-sm text-[#f0ede8]">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-[#d4a843]"
+                          checked={Boolean(value)}
+                          onChange={(event) =>
+                            setDraft((prev) =>
+                              prev ? { ...prev, [field.key]: event.target.checked } : prev,
+                            )
+                          }
+                        />
+                        {field.label}
+                      </label>
+                    </div>
+                  )
+                }
+                const fieldId = `owner-settings-${field.key}`
+                return (
+                  <div key={field.key}>
+                    <label htmlFor={fieldId} className="text-[11px] uppercase tracking-widest text-[#f0c040]">
+                      {field.label}
+                    </label>
+                    <input
+                      id={fieldId}
+                      type={field.type || 'text'}
+                      value={field.type === 'number' ? String(value ?? '') : String(value ?? '')}
+                      onChange={(event) =>
+                        setDraft((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                [field.key]: field.type === 'number' ? Number(event.target.value || 0) : event.target.value,
+                              }
+                            : prev,
+                        )
+                      }
+                      className="w-full mt-2 h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <button
+              onClick={() => saveMutation.mutate()}
+              className={`mt-4 h-11 px-5 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold ${
+                saveMutation.isPending ? 'opacity-70' : 'opacity-100'
+              }`}
+              disabled={saveMutation.isPending}
+            >
+              Salvar configurações
+            </button>
+          </div>
         )}
 
-        {feedback ? <Alert severity="success">{feedback}</Alert> : null}
-        {error ? <Alert severity="error">{error}</Alert> : null}
-      </Stack>
+        {feedback ? (
+          <div className="p-3 rounded-xl text-sm bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]">
+            {feedback}
+          </div>
+        ) : null}
+        {error ? (
+          <div className="p-3 rounded-xl text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">
+            {error}
+          </div>
+        ) : null}
+      </div>
     </OwnerLayout>
   )
 }

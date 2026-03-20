@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom/vitest'
+import { expect } from 'vitest'
+import * as axeMatchers from 'vitest-axe/matchers.js'
+
+expect.extend(axeMatchers)
 
 type StorageLike = {
   getItem: (key: string) => string | null
@@ -24,6 +28,22 @@ function createMemoryStorage(): StorageLike {
 }
 
 if (typeof window !== 'undefined') {
+  if (typeof window.matchMedia !== 'function') {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    })
+  }
+
   const storage = (window as unknown as { localStorage?: Partial<StorageLike> }).localStorage
   const hasStorageApi = Boolean(
     storage &&
@@ -38,6 +58,67 @@ if (typeof window !== 'undefined') {
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
       value: fallbackStorage,
+    })
+  }
+
+  if (!('IntersectionObserver' in window)) {
+    class TestIntersectionObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return []
+      }
+    }
+
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: TestIntersectionObserver,
+    })
+  }
+
+  if (!('ResizeObserver' in window)) {
+    class TestResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    Object.defineProperty(window, 'ResizeObserver', {
+      configurable: true,
+      value: TestResizeObserver,
+    })
+  }
+
+  if (typeof HTMLCanvasElement !== 'undefined') {
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      configurable: true,
+      value: () => ({
+        fillRect() {},
+        clearRect() {},
+        getImageData: () => ({ data: [] }),
+        putImageData() {},
+        createImageData: () => [],
+        setTransform() {},
+        drawImage() {},
+        save() {},
+        fillText() {},
+        restore() {},
+        beginPath() {},
+        moveTo() {},
+        lineTo() {},
+        closePath() {},
+        stroke() {},
+        translate() {},
+        scale() {},
+        rotate() {},
+        arc() {},
+        fill() {},
+        measureText: () => ({ width: 0 }),
+        transform() {},
+        rect() {},
+        clip() {},
+      }),
     })
   }
 }

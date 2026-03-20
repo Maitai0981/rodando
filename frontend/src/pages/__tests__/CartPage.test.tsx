@@ -1,114 +1,175 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import CartPage from '../CartPage'
 import { renderWithProviders } from '../../test/renderWithProviders'
-import { api } from '../../lib/api'
+import { api } from '../../shared/lib/api'
 
-const mockAuthState: {
-  status: 'authenticated' | 'anonymous'
-  user?: { name?: string; document?: string; phone?: string }
-} = {
-  status: 'authenticated',
-  user: { name: 'Cliente Teste', document: '', phone: '' },
+let authStatus: 'authenticated' | 'anonymous' = 'anonymous'
+let cartItems: object[] = [
+  {
+    productId: 1,
+    quantity: 1,
+    name: 'Kit corrente',
+    manufacturer: 'Rodando',
+    category: 'Transmissao',
+    price: 199.9,
+    imageUrl: '/img',
+  },
+]
+const clearMock = vi.fn()
+const updateQtyMock = vi.fn()
+const removeItemMock = vi.fn()
+
+vi.mock('../../shared/context/AuthContext', () => ({
+  useAuth: () => ({ status: authStatus }),
+}))
+
+vi.mock('../../shared/context/CartContext', () => ({
+  useCart: () => ({
+    items: cartItems,
+    itemCount: cartItems.length,
+    total: cartItems.reduce((s, i: object) => s + ((i as { price: number }).price ?? 0), 0),
+    updateQty: updateQtyMock,
+    removeItem: removeItemMock,
+    clear: clearMock,
+    loading: false,
+  }),
+}))
+
+function LocationReadout() {
+  const location = useLocation()
+  return <div data-testid="cart-location">{location.pathname}{location.search}</div>
 }
-
-const mockCartState: {
-  items: Array<{
-    productId: number
-    name: string
-    manufacturer: string
-    bikeModel: string
-    sku: string
-    stock: number
-    imageUrl: string
-    price: number
-    quantity: number
-  }>
-  total: number
-  itemCount: number
-  loading: boolean
-  updateQty: ReturnType<typeof vi.fn>
-  removeItem: ReturnType<typeof vi.fn>
-  clear: ReturnType<typeof vi.fn>
-} = {
-  items: [],
-  total: 0,
-  itemCount: 0,
-  loading: false,
-  updateQty: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-}
-
-vi.mock('../../layouts/AppShell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => mockAuthState,
-}))
-
-vi.mock('../../context/CartContext', () => ({
-  useCart: () => mockCartState,
-}))
 
 describe('CartPage', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
-    mockAuthState.status = 'authenticated'
-    mockAuthState.user = { name: 'Cliente Teste', document: '', phone: '' }
-    mockCartState.items = []
-    mockCartState.total = 0
-    mockCartState.itemCount = 0
-    mockCartState.loading = false
-    mockCartState.updateQty = vi.fn()
-    mockCartState.removeItem = vi.fn()
-    mockCartState.clear = vi.fn()
-  })
-
-  it('renderiza estado vazio e CTA de checkout desabilitado', async () => {
-    vi.spyOn(api, 'listCatalogRecommendations').mockResolvedValue({ items: [] })
-
-    renderWithProviders(<CartPage />)
-
-    await waitFor(() => expect(screen.getByText('Itens selecionados')).toBeInTheDocument())
-    await waitFor(() => expect(screen.getByText('Sua mochila esta vazia')).toBeInTheDocument())
-    expect(screen.getByText('Resumo')).toBeInTheDocument()
-    expect(screen.getByTestId('cart-checkout-button')).toBeDisabled()
-    expect(screen.getByTestId('cart-empty-catalog-cta')).toBeInTheDocument()
-  })
-
-  it('exige confirmacao antes de limpar mochila e permite seguir para checkout com itens', async () => {
-    mockAuthState.user = { name: '', document: '', phone: '' }
-    mockCartState.items = [
+    authStatus = 'anonymous'
+    cartItems = [
       {
-        productId: 10,
-        name: 'Produto Guardrail',
-        manufacturer: 'QA',
-        bikeModel: 'CG 160',
-        sku: 'QA-10',
-        stock: 5,
-        imageUrl: 'https://example.com/produto.jpg',
-        price: 99.9,
+        productId: 1,
         quantity: 1,
+        name: 'Kit corrente',
+        manufacturer: 'Rodando',
+        category: 'Transmissao',
+        price: 199.9,
+        imageUrl: '/img',
       },
     ]
-    mockCartState.total = 99.9
-    mockCartState.itemCount = 1
-
-    vi.spyOn(api, 'listCatalogRecommendations').mockResolvedValue({ items: [] })
-
-    renderWithProviders(<CartPage />)
-
-    await waitFor(() => expect(screen.getByText('Produto Guardrail')).toBeInTheDocument())
-    expect(screen.getByTestId('cart-checkout-button')).toBeEnabled()
-
-    fireEvent.click(screen.getByTestId('cart-clear'))
-    expect(screen.getByRole('dialog', { name: 'Limpar mochila?' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Limpar mochila?' })).not.toBeInTheDocument()
+    clearMock.mockReset()
+    updateQtyMock.mockReset()
+    removeItemMock.mockReset()
+    vi.restoreAllMocks()
+    vi.spyOn(api, 'listAddresses').mockResolvedValue({
+      items: [
+        {
+          id: 9,
+          userId: 1,
+          label: 'Casa',
+          cep: '85800000',
+          street: 'Av. Brasil',
+          number: '100',
+          complement: '',
+          district: 'Centro',
+          city: 'Cascavel',
+          state: 'PR',
+          reference: '',
+          lat: null,
+          lng: null,
+          isDefault: true,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      defaultAddressId: 9,
     })
+    vi.spyOn(api, 'quoteOrder').mockResolvedValue({
+      quote: {
+        deliveryMethod: 'delivery',
+        shippingCost: 18.5,
+        distanceKm: 8.2,
+        etaDays: 2,
+        ruleApplied: 'distance_base',
+        freeShippingApplied: false,
+      },
+    })
+  })
+
+  it('redireciona visitante anonimo para /auth?returnTo=/checkout', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/auth" element={<LocationReadout />} />
+      </Routes>,
+      { initialEntries: ['/cart'] },
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar pedido' }))
+    await waitFor(() => expect(screen.getByTestId('cart-location')).toHaveTextContent('/auth?returnTo=/checkout'))
+  })
+
+  it('redireciona cliente autenticado para /checkout', async () => {
+    authStatus = 'authenticated'
+    renderWithProviders(
+      <Routes>
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<LocationReadout />} />
+      </Routes>,
+      { initialEntries: ['/cart'] },
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar pedido' }))
+    await waitFor(() => expect(screen.getByTestId('cart-location')).toHaveTextContent('/checkout'))
+  })
+
+  it('usa a previsao de frete do backend para entrega', async () => {
+    authStatus = 'authenticated'
+    renderWithProviders(<CartPage />, { initialEntries: ['/cart'] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Entrega' }))
+
+    await waitFor(() =>
+      expect(api.quoteOrder).toHaveBeenCalledWith({ deliveryMethod: 'delivery', addressId: 9 }),
+    )
+    expect(await screen.findByText('R$ 18,50')).toBeInTheDocument()
+    expect(screen.getAllByText(/Entrega estimada em 2 dia\(s\) para 8.2 km\./)).toHaveLength(2)
+  })
+
+  it('exibe carrinho vazio quando não há itens', () => {
+    cartItems = []
+    renderWithProviders(<CartPage />, { initialEntries: ['/cart'] })
+
+    expect(screen.getByText('Sua mochila está vazia')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Finalizar pedido' })).toBeDisabled()
+  })
+
+  it('aplica cupom de desconto e exibe subtração no resumo', async () => {
+    authStatus = 'authenticated'
+    renderWithProviders(<CartPage />, { initialEntries: ['/cart'] })
+
+    const couponInput = screen.getByPlaceholderText(/Ex:/i)
+    fireEvent.change(couponInput, { target: { value: 'TESTE20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }))
+
+    await waitFor(() => expect(screen.getByText(/TESTE20 aplicado/)).toBeInTheDocument())
+    expect(screen.getByText(/Desconto \(10%\)/)).toBeInTheDocument()
+  })
+
+  it('chama removeItem ao clicar no botao remover item', async () => {
+    renderWithProviders(<CartPage />, { initialEntries: ['/cart'] })
+
+    const removeBtn = await screen.findByRole('button', { name: /remover item/i })
+    fireEvent.click(removeBtn)
+
+    await waitFor(() => expect(removeItemMock).toHaveBeenCalledWith(1), { timeout: 1000 })
+  })
+
+  it('chama updateQty ao clicar em aumentar quantidade', async () => {
+    renderWithProviders(<CartPage />, { initialEntries: ['/cart'] })
+
+    const increaseBtn = await screen.findByRole('button', { name: /aumentar quantidade/i })
+    fireEvent.click(increaseBtn)
+
+    expect(updateQtyMock).toHaveBeenCalledWith(1, 2)
   })
 })

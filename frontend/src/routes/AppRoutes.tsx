@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import { lazy } from 'react'
 import { OwnerRoute } from './guards/OwnerRoute'
+import SiteLayout from '../shared/layout/SiteLayout'
 
 export const routeImporters = {
   home: () => import('../pages/HomePage'),
@@ -43,19 +44,21 @@ const OwnerOrdersPage = lazy(routeImporters.ownerOrders)
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/catalog" element={<CatalogPage />} />
-      <Route path="/produto/:idSlug" element={<ProductDetailsPage />} />
-      <Route path="/cart" element={<CartPage />} />
-      <Route path="/checkout" element={<CheckoutPage />} />
-      <Route path="/auth" element={<SignInPage />} />
-      <Route path="/auth/signup" element={<SignUpPage />} />
-      <Route path="/account/profile" element={<AccountProfilePage />} />
-      <Route path="/orders" element={<OrdersPage />} />
-      <Route path="/orders/:id" element={<OrderDetailsPage />} />
+      <Route element={<SiteLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/catalog" element={<CatalogPage />} />
+        <Route path="/produto/:idSlug" element={<ProductDetailsPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/auth" element={<SignInPage />} />
+        <Route path="/auth/signup" element={<SignUpPage />} />
+        <Route path="/account/profile" element={<AccountProfilePage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/orders/:id" element={<OrderDetailsPage />} />
+      </Route>
+
       <Route path="/owner/login" element={<OwnerSignInPage />} />
       <Route path="/owner" element={<OwnerGatePage />} />
-
       <Route
         path="/owner/dashboard"
         element={

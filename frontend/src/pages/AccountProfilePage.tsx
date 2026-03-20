@@ -1,12 +1,9 @@
-import { useMemo, useState } from 'react'
-import { Alert, Button, Divider, Grid, Paper, Stack, TextField, Typography } from '@mui/material'
-import { Link as RouterLink } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AppShell } from '../layouts/AppShell'
-import { useAuth } from '../context/AuthContext'
-import { useAssist } from '../context/AssistContext'
-import { api, ApiError, type AddressItem } from '../lib/api'
-import { ActionGuardDialog, AssistHintInline, TaskEmptyStateGuide } from '../components/assist'
+import { api, ApiError, type AddressItem } from '../shared/lib/api'
+import { useAuth } from '../shared/context/AuthContext'
+import { useAssist } from '../shared/context/AssistContext'
 
 type AddressDraft = {
   label: string
@@ -20,6 +17,8 @@ type AddressDraft = {
   reference: string
 }
 
+const ADDRESS_LIMIT = 10
+
 const EMPTY_ADDRESS: AddressDraft = {
   label: '',
   cep: '',
@@ -32,59 +31,101 @@ const EMPTY_ADDRESS: AddressDraft = {
   reference: '',
 }
 
+const ADDRESS_FIELDS: Array<{ key: keyof AddressDraft; label: string }> = [
+  { key: 'label', label: 'Apelido' },
+  { key: 'cep', label: 'CEP' },
+  { key: 'street', label: 'Rua' },
+  { key: 'number', label: 'Numero' },
+  { key: 'complement', label: 'Complemento' },
+  { key: 'district', label: 'Bairro' },
+  { key: 'city', label: 'Cidade' },
+  { key: 'state', label: 'Estado' },
+  { key: 'reference', label: 'Referencia' },
+]
+
+function toAddressDraft(item: AddressItem): AddressDraft {
+  return {
+    label: item.label || '',
+    cep: item.cep || '',
+    street: item.street || '',
+    number: item.number || '',
+    complement: item.complement || '',
+    district: item.district || '',
+    city: item.city || '',
+    state: item.state || '',
+    reference: item.reference || '',
+  }
+}
+
 function AddressCard({
   item,
+  onEdit,
   onSetDefault,
   onDelete,
 }: {
   item: AddressItem
+  onEdit: (item: AddressItem) => void
   onSetDefault: (id: number) => void
   onDelete: (id: number) => void
 }) {
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.2 }}>
-      <Stack spacing={1}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="subtitle2">{item.label || 'Endereço'}</Typography>
-          {item.isDefault ? (
-            <Typography variant="caption" color="primary.main" sx={{ fontWeight: 700 }}>
-              Principal
-            </Typography>
-          ) : null}
-        </Stack>
-        <Typography variant="body2" color="text.secondary">
-          {item.street}, {item.number || 's/n'} {item.complement ? `- ${item.complement}` : ''}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {item.district ? `${item.district} - ` : ''}
-          {item.city}/{item.state} • CEP {item.cep}
-        </Typography>
-        <Stack direction="row" spacing={1}>
-          {!item.isDefault ? (
-            <Button size="small" variant="outlined" onClick={() => onSetDefault(item.id)}>
-              Tornar principal
-            </Button>
-          ) : null}
-          <Button size="small" color="error" onClick={() => onDelete(item.id)}>
-            Remover
-          </Button>
-        </Stack>
-      </Stack>
-    </Paper>
+    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+      <div className="flex items-center justify-between mb-2 gap-3">
+        <p className="text-sm text-[#f0ede8] font-semibold">{item.label || 'Endereço'}</p>
+        {item.isDefault ? (
+          <span className="text-xs text-[#d4a843] font-bold">Principal</span>
+        ) : null}
+      </div>
+      <p className="text-xs text-[#9ca3af]">
+        {item.street}, {item.number || 's/n'} {item.complement ? `- ${item.complement}` : ''}
+      </p>
+      <p className="text-xs text-[#9ca3af]">
+        {item.district ? `${item.district} - ` : ''}
+        {item.city}/{item.state} • CEP {item.cep}
+      </p>
+      <div className="flex flex-wrap gap-2 mt-3">
+        <button
+          onClick={() => onEdit(item)}
+          className="px-3 py-1.5 rounded-lg text-xs border border-white/[0.12] text-[#f0ede8]"
+        >
+          Editar
+        </button>
+        {!item.isDefault ? (
+          <button
+            onClick={() => onSetDefault(item.id)}
+            className="px-3 py-1.5 rounded-lg text-xs border border-[#d4a843]/40 text-[#d4a843]"
+          >
+            Tornar principal
+          </button>
+        ) : null}
+        <button
+          onClick={() => onDelete(item.id)}
+          className="px-3 py-1.5 rounded-lg text-xs border border-[#ef4444]/40 text-[#f87171]"
+        >
+          Remover
+        </button>
+      </div>
+    </div>
   )
 }
 
 export default function AccountProfilePage() {
   const queryClient = useQueryClient()
   const { user, status, refreshSession } = useAuth()
-  const { completeStep, trackAssistEvent } = useAssist()
+  const { completeStep } = useAssist()
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [profileName, setProfileName] = useState(user?.name || '')
-  const [profilePhone, setProfilePhone] = useState(user?.phone || '')
-  const [profileDocument, setProfileDocument] = useState(user?.document || '')
+  const [profileName, setProfileName] = useState('')
+  const [profilePhone, setProfilePhone] = useState('')
+  const [profileDocument, setProfileDocument] = useState('')
   const [draft, setDraft] = useState<AddressDraft>(EMPTY_ADDRESS)
-  const [deleteAddressId, setDeleteAddressId] = useState<number | null>(null)
+  const [editingAddressId, setEditingAddressId] = useState<number | null>(null)
+
+  useEffect(() => {
+    setProfileName(user?.name || '')
+    setProfilePhone(user?.phone || '')
+    setProfileDocument(user?.document || '')
+  }, [user?.document, user?.name, user?.phone])
 
   const addressesQuery = useQuery({
     queryKey: ['account-addresses'],
@@ -92,42 +133,79 @@ export default function AccountProfilePage() {
     enabled: status === 'authenticated',
   })
 
-  const createAddressMutation = useMutation({
-    mutationFn: () =>
-      api.createAddress({
+  const addresses = useMemo(() => addressesQuery.data?.items ?? [], [addressesQuery.data?.items])
+  const editingAddress = useMemo(
+    () => addresses.find((item) => item.id === editingAddressId) ?? null,
+    [addresses, editingAddressId],
+  )
+  const addressLimitReached = addresses.length >= ADDRESS_LIMIT && editingAddressId == null
+  const isAddressDraftEmpty = useMemo(
+    () => Object.values(draft).every((value) => value.trim() === ''),
+    [draft],
+  )
+
+  const saveAddressMutation = useMutation({
+    mutationFn: async (mode: 'create' | 'update') => {
+      const payload = {
         ...draft,
-        lat: null,
-        lng: null,
-        isDefault: false,
-      }),
-    onSuccess: async () => {
+        lat: editingAddress?.lat ?? null,
+        lng: editingAddress?.lng ?? null,
+        isDefault: editingAddress?.isDefault ?? false,
+      }
+      if (mode === 'update' && editingAddressId != null) {
+        return api.updateAddress(editingAddressId, payload)
+      }
+      return api.createAddress(payload)
+    },
+    onSuccess: async (_, mode) => {
       setDraft(EMPTY_ADDRESS)
+      setEditingAddressId(null)
       await queryClient.invalidateQueries({ queryKey: ['account-addresses'] })
-      setFeedback('Endereço cadastrado com sucesso.')
-      completeStep('address-created', 'account-profile')
+      setFeedback(
+        mode === 'update' ? 'Endereço atualizado com sucesso.' : 'Endereço cadastrado com sucesso.',
+      )
+      if (mode === 'create') {
+        completeStep('address-created', 'account-profile')
+      }
     },
     onError: (err) => {
-      setError(err instanceof ApiError ? err.message : 'Falha ao cadastrar endereço.')
+      setError(err instanceof ApiError ? err.message : 'Falha ao salvar endereço.')
     },
   })
 
-  const addresses = useMemo(() => addressesQuery.data?.items ?? [], [addressesQuery.data?.items])
+  function resetAddressForm() {
+    setDraft(EMPTY_ADDRESS)
+    setEditingAddressId(null)
+  }
 
   async function handleSaveProfile() {
     setError(null)
     setFeedback(null)
     try {
-      await api.updateProfile({
-        name: profileName,
-        phone: profilePhone,
-        document: profileDocument,
-      })
+      await api.updateProfile({ name: profileName, phone: profilePhone, document: profileDocument })
       await refreshSession()
       setFeedback('Perfil atualizado com sucesso.')
       completeStep('profile-saved', 'account-profile')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Falha ao atualizar perfil.')
     }
+  }
+
+  function handleEditAddress(item: AddressItem) {
+    setError(null)
+    setFeedback(null)
+    setEditingAddressId(item.id)
+    setDraft(toAddressDraft(item))
+  }
+
+  function handleSaveAddress() {
+    setError(null)
+    setFeedback(null)
+    if (addressLimitReached) {
+      setError(`Você pode cadastrar até ${ADDRESS_LIMIT} endereços de entrega.`)
+      return
+    }
+    void saveAddressMutation.mutate(editingAddressId != null ? 'update' : 'create')
   }
 
   async function handleSetDefault(id: number) {
@@ -151,155 +229,210 @@ export default function AccountProfilePage() {
       await api.deleteAddress(id)
       await queryClient.invalidateQueries({ queryKey: ['account-addresses'] })
       await refreshSession()
+      if (editingAddressId === id) {
+        resetAddressForm()
+      }
       setFeedback('Endereço removido.')
-      setDeleteAddressId(null)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Falha ao remover endereço.')
     }
   }
 
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+            <h1 className="text-2xl mb-2 text-[#f0ede8] font-bold">Minha conta</h1>
+            <p className="text-sm text-[#6b7280]">Carregando seus dados...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (status !== 'authenticated') {
     return (
-      <AppShell>
-        <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="h5" sx={{ mb: 1 }}>
-            Minha conta
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Entre para editar perfil e gerenciar endereços.
-          </Typography>
-          <Button component={RouterLink} to="/auth" variant="contained">
-            Entrar
-          </Button>
-        </Paper>
-      </AppShell>
+      <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+            <h1 className="text-2xl mb-2 text-[#f0ede8] font-bold">Minha conta</h1>
+            <p className="text-sm mb-4 text-[#6b7280]">
+              Entre para editar perfil e gerenciar endereços.
+            </p>
+            <Link
+              to="/auth"
+              className="inline-flex px-4 py-2 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold"
+            >
+              Entrar
+            </Link>
+          </div>
+        </div>
+      </div>
     )
   }
 
   return (
-    <AppShell>
-      <Stack spacing={2.2}>
-        <Paper sx={{ p: 2.2, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="h5">Perfil</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+    <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+          <h1 className="text-xl mb-1 text-[#f0ede8] font-bold">Editar perfil</h1>
+          <p className="text-sm mb-4 text-[#6b7280]">
             Atualize seus dados para facilitar checkout, entrega e atendimento.
-          </Typography>
-          <Grid container spacing={1.5}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                label="Nome"
-                fullWidth
-                value={profileName}
-                onChange={(event) => setProfileName(event.target.value)}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                label="Telefone"
-                fullWidth
-                value={profilePhone}
-                onChange={(event) => setProfilePhone(event.target.value)}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                label="CPF/CNPJ"
-                fullWidth
-                value={profileDocument}
-                onChange={(event) => setProfileDocument(event.target.value)}
-              />
-            </Grid>
-          </Grid>
-          <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-            <Button variant="contained" onClick={() => void handleSaveProfile()}>
-              Salvar perfil
-            </Button>
-            <Button component={RouterLink} to="/orders" variant="outlined">
-              Ver meus pedidos
-            </Button>
-          </Stack>
-        </Paper>
+          </p>
 
-        <Paper sx={{ p: 2.2, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            Meus endereços (máx. 10)
-          </Typography>
-          <AssistHintInline tipId="profile-tip-default" routeKey="account-profile">
-            Defina um endereço principal para acelerar o checkout.
-          </AssistHintInline>
-          <Grid container spacing={1.2}>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField label="Rótulo" fullWidth value={draft.label} onChange={(event) => setDraft((prev) => ({ ...prev, label: event.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField label="CEP" fullWidth value={draft.cep} onChange={(event) => setDraft((prev) => ({ ...prev, cep: event.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField label="Logradouro" fullWidth value={draft.street} onChange={(event) => setDraft((prev) => ({ ...prev, street: event.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 2 }}>
-              <TextField label="Número" fullWidth value={draft.number} onChange={(event) => setDraft((prev) => ({ ...prev, number: event.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField label="Complemento" fullWidth value={draft.complement} onChange={(event) => setDraft((prev) => ({ ...prev, complement: event.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField label="Bairro" fullWidth value={draft.district} onChange={(event) => setDraft((prev) => ({ ...prev, district: event.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField label="Cidade" fullWidth value={draft.city} onChange={(event) => setDraft((prev) => ({ ...prev, city: event.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 1 }}>
-              <TextField label="UF" fullWidth value={draft.state} onChange={(event) => setDraft((prev) => ({ ...prev, state: event.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <TextField label="Referência" fullWidth value={draft.reference} onChange={(event) => setDraft((prev) => ({ ...prev, reference: event.target.value }))} />
-            </Grid>
-          </Grid>
-          <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-            <Button variant="contained" onClick={() => createAddressMutation.mutate()} disabled={createAddressMutation.isPending}>
-              Adicionar endereço
-            </Button>
-          </Stack>
+          {feedback ? (
+            <div className="mb-3 p-3 rounded-lg text-sm bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]">
+              {feedback}
+            </div>
+          ) : null}
+          {error ? (
+            <div className="mb-3 p-3 rounded-lg text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">
+              {error}
+            </div>
+          ) : null}
 
-          <Divider sx={{ my: 2 }} />
-          <Stack spacing={1}>
-            {addresses.map((item) => (
-              <AddressCard key={item.id} item={item} onSetDefault={handleSetDefault} onDelete={(id) => setDeleteAddressId(id)} />
-            ))}
-            {addresses.length === 0 ? (
-              <TaskEmptyStateGuide
-                title="Nenhum endereço cadastrado"
-                description="Adicione um endereço para liberar entrega no checkout."
-                ctaLabel="Preencher endereço acima"
-                onCtaClick={() => {
-                  trackAssistEvent('assist_empty_state_cta', { routeKey: 'account-profile', target: 'address-form' })
-                }}
-              />
-            ) : null}
-          </Stack>
-        </Paper>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { label: 'Nome', value: profileName, onChange: setProfileName },
+              { label: 'Telefone', value: profilePhone, onChange: setProfilePhone },
+              { label: 'Documento', value: profileDocument, onChange: setProfileDocument },
+            ].map((field) => {
+              const fieldId = `account-profile-${field.label.toLowerCase().replace(/\s+/g, '-')}`
+              return (
+                <div key={field.label}>
+                  <label
+                    htmlFor={fieldId}
+                    className="text-xs uppercase tracking-widest text-[#d4a843]"
+                  >
+                    {field.label}
+                  </label>
+                  <input
+                    id={fieldId}
+                    aria-label={field.label}
+                    title={field.label}
+                    value={field.value}
+                    onChange={(event) => field.onChange(event.target.value)}
+                    className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  />
+                </div>
+              )
+            })}
+          </div>
+          <button
+            onClick={() => void handleSaveProfile()}
+            className="mt-4 px-4 py-2 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold"
+          >
+            Salvar perfil
+          </button>
+        </div>
 
-        {feedback ? <Alert severity="success">{feedback}</Alert> : null}
-        {error ? <Alert severity="error">{error}</Alert> : null}
-      </Stack>
+        <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg text-[#f0ede8] font-bold">Endereços de entrega</h2>
+              <p className="text-sm text-[#6b7280]">
+                Cadastre, edite e organize até 10 locais de entrega.
+              </p>
+            </div>
+            <span className="inline-flex items-center rounded-full border border-[#d4a843]/20 bg-[#d4a843]/10 px-3 py-1 text-xs font-semibold text-[#d4a843]">
+              {addresses.length}/{ADDRESS_LIMIT} cadastrados
+            </span>
+          </div>
 
-      <ActionGuardDialog
-        open={Boolean(deleteAddressId)}
-        title="Remover endereço?"
-        description="Essa ação pode impactar entregas em pedidos futuros."
-        impacts={[
-          'Se este endereço for principal, você precisará definir outro.',
-          'Pedidos antigos continuam com snapshot salvo.',
-        ]}
-        confirmLabel="Sim, remover endereço"
-        confirmColor="error"
-        onCancel={() => setDeleteAddressId(null)}
-        onConfirm={() => {
-          if (!deleteAddressId) return
-          void handleDelete(deleteAddressId)
-        }}
-      />
-    </AppShell>
+          {addressesQuery.isLoading ? (
+            <p className="mt-4 text-sm text-[#6b7280]">Carregando endereços...</p>
+          ) : addresses.length === 0 ? (
+            <p className="mt-4 text-sm text-[#6b7280]">Nenhum endereço cadastrado ainda.</p>
+          ) : (
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {addresses.map((address) => (
+                <AddressCard
+                  key={address.id}
+                  item={address}
+                  onEdit={handleEditAddress}
+                  onSetDefault={handleSetDefault}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6 pt-6 border-t border-white/[0.06]">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="text-sm text-[#f0ede8] font-semibold">
+                  {editingAddressId != null ? 'Editar endereço' : 'Adicionar endereço'}
+                </h3>
+                <p className="text-xs text-[#6b7280]">
+                  {editingAddressId != null
+                    ? 'Atualize este endereço e salve as alterações.'
+                    : 'Você pode cadastrar até 10 endereços de entrega.'}
+                </p>
+              </div>
+              {addressLimitReached ? (
+                <p className="text-xs text-[#d4a843]">
+                  Limite atingido. Edite ou remova um endereço para cadastrar outro.
+                </p>
+              ) : null}
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+              {ADDRESS_FIELDS.map((field) => (
+                <div key={field.key}>
+                  <label
+                    htmlFor={`account-address-${field.key}`}
+                    className="text-xs uppercase tracking-widest text-[#d4a843]"
+                  >
+                    {field.label}
+                  </label>
+                  <input
+                    id={`account-address-${field.key}`}
+                    aria-label={field.label}
+                    title={field.label}
+                    value={draft[field.key]}
+                    onChange={(event) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        [field.key]: event.target.value,
+                      }))
+                    }
+                    className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                onClick={handleSaveAddress}
+                className={`px-4 py-2 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold ${
+                  saveAddressMutation.isPending || addressLimitReached
+                    ? 'opacity-70'
+                    : 'opacity-100'
+                }`}
+                disabled={saveAddressMutation.isPending || addressLimitReached}
+              >
+                {saveAddressMutation.isPending
+                  ? 'Salvando...'
+                  : editingAddressId != null
+                    ? 'Salvar endereço'
+                    : 'Adicionar endereço'}
+              </button>
+
+              {!isAddressDraftEmpty || editingAddressId != null ? (
+                <button
+                  type="button"
+                  onClick={resetAddressForm}
+                  className="px-4 py-2 rounded-xl text-sm border border-white/[0.12] text-[#f0ede8]"
+                >
+                  {editingAddressId != null ? 'Cancelar edição' : 'Limpar formulário'}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

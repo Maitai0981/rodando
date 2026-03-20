@@ -1,910 +1,761 @@
-import { CloseRoundedIcon, FilterListRoundedIcon, NavigateNextRoundedIcon } from '@/ui/primitives/Icon'
-import { useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { AnimatePresence, m, useInView } from 'framer-motion'
 import {
-  Alert,
-  Box,
-  Breadcrumbs,
-  Button,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Drawer,
-  FormControl,
-  Grid,
-  IconButton,
-  InputLabel,
-  MenuItem,
-  Pagination,
-  Paper,
-  Rating,
-  Select,
-  Skeleton,
-  Slider,
-  Snackbar,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AppShell } from '../layouts/AppShell'
-import { api, ApiError, buildProductUrl, type Product, type ProductListParams } from '../lib/api'
-import { formatCurrency } from '../lib'
-import { useCart } from '../context/CartContext'
-import { useAuth } from '../context/AuthContext'
-import { useAssist } from '../context/AssistContext'
-import { AssistHintInline } from '../components/assist'
-import { MotionReveal, ResponsiveImage } from '../ui'
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Search,
+  ShoppingCart,
+  X,
+} from 'lucide-react'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { ImageWithFallback } from '../shared/common/ImageWithFallback'
+import { api, buildProductUrl } from '../shared/lib/api'
+import { formatCurrency } from '../shared/lib'
+import { useCart } from '../shared/context/CartContext'
 
-const PAGE_SIZE = 12
-const PRICE_MIN = 0
-const PRICE_MAX = 1200
+const SEARCH_DEBOUNCE_MS = 300
 
-type SortOption = NonNullable<ProductListParams['sort']>
-type AvailabilityFilter = 'all' | 'in-stock' | 'out-of-stock'
-type PromoFilter = 'all' | 'promo'
+const partsImage =
+  'https://images.unsplash.com/photo-1675247911627-0fb610250598?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3RvcmN5Y2xlJTIwZW5naW5lJTIwcGFydHMlMjBjbG9zZSUyMHVwJTIwbHV4dXJ5fGVufDF8fHx8MTc3MzA2OTA0OHww&ixlib=rb-4.1.0&q=80&w=1080'
+const partsImage2 =
+  'https://images.unsplash.com/photo-1663342850009-d85dc9329916?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3RvcmN5Y2xlJTIwYWNjZXNzb3JpZXMlMjBwcmVtaXVtJTIwYmxhY2slMjBnb2xkfGVufDF8fHx8MTc3MzA2OTA1Mnww&ixlib=rb-4.1.0&q=80&w=1080'
 
-function buildSearchParamsPatch(
-  current: URLSearchParams,
-  patch: Record<string, string | number | null | undefined>,
-) {
-  const next = new URLSearchParams(current)
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === undefined || value === null || value === '') {
-      next.delete(key)
-      continue
-    }
-    next.set(key, String(value))
-  }
-  if (!next.get('page')) {
-    next.set('page', '1')
-  }
-  return next
+const SORT_OPTIONS = [
+  { label: 'Mais vendidos', value: 'best-sellers' },
+  { label: 'Menor preço', value: 'price-asc' },
+  { label: 'Maior preço', value: 'price-desc' },
+  { label: 'Mais recentes', value: 'newest' },
+] as const
+
+type SortValue = (typeof SORT_OPTIONS)[number]['value']
+
+interface Filters {
+  search: string
+  category: string
+  brand: string
+  availability: 'Todos' | 'Disponível' | 'Indisponível'
+  promo: 'Todas' | 'Em promoção'
+  sort: SortValue
+  priceMin: number
+  priceMax: number
+}
+
+const DEFAULT_FILTERS: Filters = {
+  search: '',
+  category: 'Todas',
+  brand: 'Todas',
+  availability: 'Todos',
+  promo: 'Todas',
+  sort: 'best-sellers',
+  priceMin: 0,
+  priceMax: 1200,
+}
+
+function buildPageRange(current: number, total: number): Array<number | '...'> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const pages: Array<number | '...'> = [1]
+  if (current > 3) pages.push('...')
+  for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) pages.push(p)
+  if (current < total - 2) pages.push('...')
+  pages.push(total)
+  return pages
 }
 
 function ProductCard({
-  item,
-  onRequestReview,
-  onOpenDetails,
-  onPrefetchDetails,
+  product,
+  onAddToCart,
+  delay,
 }: {
-  item: Product
-  onRequestReview: (product: Product) => void
-  onOpenDetails: (product: Product) => void
-  onPrefetchDetails: (product: Product) => void
+  product: { id: number; name: string; seoSlug?: string | null; manufacturer?: string | null; category?: string | null; price?: number | null; compareAtPrice?: number | null; stock?: number | null; imageUrl?: string | null }
+  onAddToCart: (id: number) => void
+  delay: number
 }) {
-  const urgency = Number(item.stock || 0) <= 3 ? 'Ultimas unidades' : null
+  const ref = useRef<HTMLDivElement | null>(null)
+  const isInView = useInView(ref, { once: true, margin: '-40px' })
+  const available = Number(product.stock || 0) > 0
+
+  const handleAdd = () => {
+    if (!available) return
+    onAddToCart(product.id)
+  }
 
   return (
-    <Paper
-      className="store-surface ds-hover-lift ds-action-glint"
-      elevation={0}
-      sx={{
-        p: { xs: 1.6, md: 2 },
-        borderRadius: 2.5,
-        border: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        transition: 'transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          borderColor: 'primary.main',
-          boxShadow: '0 8px 24px rgba(15,23,42,0.14)',
-        },
-      }}
+    <m.div
+      ref={ref}
+      initial={{ opacity: 0, y: 30 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.5, delay }}
+      whileHover={{ y: -6 }}
+      className="group relative rounded-2xl overflow-hidden flex flex-col bg-white/[0.03] border border-white/[0.06]"
     >
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1} sx={{ mb: 1 }}>
-        <Box>
-          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-            {item.category}
-          </Typography>
-          <Typography component="button" onClick={() => onOpenDetails(item)} variant="h6" sx={{ color: 'text.primary', lineHeight: 1.1, letterSpacing: '-0.02em', p: 0, border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}>
-            {item.name}
-          </Typography>
-        </Box>
-        <Chip size="small" label={`${item.stock} un.`} variant={Number(item.stock) > 0 ? 'filled' : 'outlined'} color={Number(item.stock) > 0 ? 'success' : 'default'} />
-      </Stack>
-
-      <Box
-        onClick={() => onOpenDetails(item)}
-        onMouseEnter={() => onPrefetchDetails(item)}
-        onFocus={() => onPrefetchDetails(item)}
-        sx={{
-          mb: 1.4,
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'grey.100',
-          height: { xs: 160, md: 180 },
-          overflow: 'hidden',
-          position: 'relative',
-          cursor: 'pointer',
-        }}
-      >
-        <ResponsiveImage
-          src={item.imageUrl}
-          alt={item.name}
-          className="ds-image-pan"
-          sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          sx={{
-            transition: 'transform 250ms ease, opacity 220ms ease',
-            '.MuiPaper-root:hover &': {
-              transform: item.hoverImageUrl ? 'scale(1.03)' : 'scale(1.05)',
-              opacity: item.hoverImageUrl ? 0 : 1,
-            },
-          }}
+      <div className="relative h-44 overflow-hidden flex-shrink-0 bg-white/[0.02]">
+        <ImageWithFallback
+          src={product.imageUrl || (product.id % 2 === 0 ? partsImage2 : partsImage)}
+          alt={product.name}
+          className="w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity duration-500"
         />
-        {item.hoverImageUrl ? (
-          <ResponsiveImage
-            src={item.hoverImageUrl}
-            alt={`${item.name} detalhe`}
-            sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              opacity: 0,
-              transition: 'opacity 220ms ease',
-              '.MuiPaper-root:hover &': {
-                opacity: 1,
-              },
-            }}
-          />
-        ) : null}
-      </Box>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f]/80 to-transparent" />
+        <div className="absolute top-3 left-3 flex gap-1.5">
+          {product.compareAtPrice ? (
+            <span className="px-2 py-0.5 rounded-full text-xs text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold">
+              Oferta
+            </span>
+          ) : null}
+          {!available ? (
+            <span className="px-2 py-0.5 rounded-full text-xs bg-[#ef4444]/20 border border-[#ef4444]/30 text-[#f87171]">
+              Indisponível
+            </span>
+          ) : null}
+        </div>
+      </div>
 
-      <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mb: 0.8 }}>
-        {item.discountPercent ? <Chip size="small" label={`${item.discountPercent}% OFF`} color="warning" /> : null}
-        {urgency ? <Chip size="small" label={urgency} color="error" variant="outlined" /> : null}
-      </Stack>
+      <div className="p-4 flex flex-col flex-1">
+        <p className="text-xs mb-1.5 text-[#d4a843]">
+          {(product.manufacturer || 'Rodando')} · {(product.category || 'Peças')}
+        </p>
+        <h3 className="text-sm mb-3 leading-snug flex-1 text-[#f0ede8] font-semibold">
+          {product.name}
+        </h3>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.8 }}>
-        {item.manufacturer} • {item.bikeModel}
-      </Typography>
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          minHeight: 34,
-          mb: 1.2,
-        }}
-      >
-        {item.description}
-      </Typography>
+        <div className="mt-auto space-y-3">
+          <div>
+            {product.compareAtPrice ? (
+              <p className="text-xs line-through text-[#374151]">
+                {formatCurrency(Number(product.compareAtPrice))}
+              </p>
+            ) : null}
+            <p className="text-lg text-[#d4a843] font-bold leading-none">
+              {formatCurrency(Number(product.price || 0))}
+            </p>
+          </div>
 
-      <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mt: 'auto' }}>
-        <Typography variant="h5" sx={{ color: 'info.main', fontWeight: 700 }}>
-          {formatCurrency(Number(item.price))}
-        </Typography>
-        {item.compareAtPrice && Number(item.compareAtPrice) > Number(item.price) ? (
-          <Typography variant="body2" color="text.secondary" sx={{ textDecoration: 'line-through' }}>
-            {formatCurrency(Number(item.compareAtPrice))}
-          </Typography>
-        ) : null}
-      </Stack>
-      <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
-        SKU: {item.sku}
-      </Typography>
-      <Stack direction="row" spacing={0.8}>
-        <AddToCartButton product={item} />
-        <Button
-          className="ds-pressable ds-link-slide"
-          variant="outlined"
-          color="primary"
-          onMouseEnter={() => onPrefetchDetails(item)}
-          onFocus={() => onPrefetchDetails(item)}
-          onClick={() => onOpenDetails(item)}
-        >
-          Ver detalhes
-        </Button>
-        <Button className="ds-pressable ds-link-slide" variant="outlined" color="primary" onClick={() => onRequestReview(item)}>
-          Avaliar
-        </Button>
-      </Stack>
-    </Paper>
-  )
-}
-
-function AddToCartButton({ product }: { product: Product }) {
-  const { addProduct } = useCart()
-  const { completeStep } = useAssist()
-  return (
-    <Button
-      className="ds-pressable ds-action-glint"
-      data-testid={`catalog-add-${product.id}`}
-      variant="contained"
-      color="primary"
-      disabled={Number(product.stock) <= 0}
-      onClick={() => {
-        completeStep('add-to-bag', 'catalog')
-        void addProduct(product, 1)
-      }}
-      sx={{ flex: 1 }}
-    >
-      {Number(product.stock) > 0 ? 'Adicionar' : 'Sem estoque'}
-    </Button>
-  )
-}
-
-function FiltersPanel(props: {
-  search: string
-  onSearchChange: (value: string) => void
-  category: string
-  onCategoryChange: (value: string) => void
-  categories: string[]
-  manufacturer: string
-  onManufacturerChange: (value: string) => void
-  manufacturers: string[]
-  availability: AvailabilityFilter
-  onAvailabilityChange: (value: AvailabilityFilter) => void
-  promo: PromoFilter
-  onPromoChange: (value: PromoFilter) => void
-  sort: SortOption
-  onSortChange: (value: SortOption) => void
-  priceRange: [number, number]
-  onPriceRangeChange: (value: [number, number]) => void
-  onApply: () => void
-  onClear: () => void
-}) {
-  const {
-    search,
-    onSearchChange,
-    category,
-    onCategoryChange,
-    categories,
-    manufacturer,
-    onManufacturerChange,
-    manufacturers,
-    availability,
-    onAvailabilityChange,
-    promo,
-    onPromoChange,
-    sort,
-    onSortChange,
-    priceRange,
-    onPriceRangeChange,
-    onApply,
-    onClear,
-  } = props
-
-  return (
-    <Stack spacing={2}>
-      <TextField
-        inputProps={{ 'data-testid': 'catalog-search-input' }}
-        label="Buscar produto"
-        placeholder="Nome, SKU, fabricante..."
-        value={search}
-        onChange={(event) => onSearchChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') onApply()
-        }}
-      />
-      <FormControl fullWidth size="small">
-        <InputLabel id="catalog-category-label">Categoria</InputLabel>
-        <Select
-          labelId="catalog-category-label"
-          value={category}
-          label="Categoria"
-          onChange={(event) => onCategoryChange(String(event.target.value))}
-        >
-          <MenuItem value="">Todas</MenuItem>
-          {categories.map((item) => (
-            <MenuItem key={item} value={item}>
-              {item}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth size="small">
-        <InputLabel id="catalog-manufacturer-label">Fabricante</InputLabel>
-        <Select
-          labelId="catalog-manufacturer-label"
-          value={manufacturer}
-          label="Fabricante"
-          onChange={(event) => onManufacturerChange(String(event.target.value))}
-        >
-          <MenuItem value="">Todos</MenuItem>
-          {manufacturers.map((item) => (
-            <MenuItem key={item} value={item}>
-              {item}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth size="small">
-        <InputLabel id="catalog-availability-label">Disponibilidade</InputLabel>
-        <Select
-          labelId="catalog-availability-label"
-          value={availability}
-          label="Disponibilidade"
-          onChange={(event) => onAvailabilityChange(event.target.value as AvailabilityFilter)}
-        >
-          <MenuItem value="all">Todos</MenuItem>
-          <MenuItem value="in-stock">Com estoque</MenuItem>
-          <MenuItem value="out-of-stock">Sem estoque</MenuItem>
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth size="small">
-        <InputLabel id="catalog-promo-label">Promocoes</InputLabel>
-        <Select
-          labelId="catalog-promo-label"
-          value={promo}
-          label="Promocoes"
-          onChange={(event) => onPromoChange(event.target.value as PromoFilter)}
-        >
-          <MenuItem value="all">Todas</MenuItem>
-          <MenuItem value="promo">Apenas em promocao</MenuItem>
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth size="small">
-        <InputLabel id="catalog-sort-label">Ordenar por</InputLabel>
-        <Select
-          labelId="catalog-sort-label"
-          value={sort}
-          label="Ordenar por"
-          onChange={(event) => onSortChange(event.target.value as SortOption)}
-        >
-          <MenuItem value="best-sellers">Mais vendidos</MenuItem>
-          <MenuItem value="discount-desc">Maior desconto</MenuItem>
-          <MenuItem value="newest">Mais recentes</MenuItem>
-          <MenuItem value="price-asc">Menor preco</MenuItem>
-          <MenuItem value="price-desc">Maior preco</MenuItem>
-          <MenuItem value="name-asc">Nome (A-Z)</MenuItem>
-          <MenuItem value="name-desc">Nome (Z-A)</MenuItem>
-        </Select>
-      </FormControl>
-
-      <Box>
-        <Typography component="p" variant="subtitle2" sx={{ mb: 0.7, color: 'text.secondary' }}>
-          Faixa de preco
-        </Typography>
-        <Slider
-          value={priceRange}
-          onChange={(_event, value) => onPriceRangeChange(value as [number, number])}
-          getAriaLabel={(index) => (index === 0 ? 'Preco minimo' : 'Preco maximo')}
-          getAriaValueText={(value) => formatCurrency(value)}
-          min={PRICE_MIN}
-          max={PRICE_MAX}
-          step={10}
-          valueLabelDisplay="auto"
-        />
-        <Typography variant="caption" color="text.secondary">
-          {formatCurrency(priceRange[0])} - {formatCurrency(priceRange[1])}
-        </Typography>
-      </Box>
-
-      <Stack direction="row" spacing={1}>
-        <Button className="ds-pressable ds-action-glint" data-testid="catalog-apply-filters" variant="contained" color="primary" onClick={onApply} fullWidth>
-          Aplicar filtros
-        </Button>
-        <Button className="ds-pressable ds-link-slide" data-testid="catalog-clear-filters" variant="outlined" color="primary" onClick={onClear} fullWidth>
-          Limpar
-        </Button>
-      </Stack>
-    </Stack>
+          <div className="flex gap-2">
+            <Link
+              to={buildProductUrl(product)}
+              className="flex-1 px-3 py-2 rounded-xl text-xs border border-white/[0.1] text-[#f0ede8] text-center font-semibold transition-colors hover:border-[#d4a843]/40 hover:text-[#d4a843]"
+            >
+              Ver produto
+            </Link>
+            <m.button
+              onClick={handleAdd}
+              disabled={!available}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold min-w-[110px] justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              whileHover={available ? { scale: 1.05, boxShadow: '0 0 15px rgba(212,168,67,0.4)' } : {}}
+              whileTap={available ? { scale: 0.95 } : {}}
+            >
+              <ShoppingCart className="w-3.5 h-3.5" />
+              Adicionar
+            </m.button>
+          </div>
+        </div>
+      </div>
+    </m.div>
   )
 }
 
 export default function CatalogPage() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { status } = useAuth()
-  const { completeStep } = useAssist()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [reviewRating, setReviewRating] = useState<number>(5)
-  const [reviewMessage, setReviewMessage] = useState('')
-  const [reviewFeedback, setReviewFeedback] = useState<string | null>(null)
+  const querySearch = searchParams.get('q') || ''
+  const [filters, setFilters] = useState<Filters>(() => ({ ...DEFAULT_FILTERS, search: querySearch }))
+  const [searchInputValue, setSearchInputValue] = useState(querySearch)
+  const [page, setPage] = useState(1)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const perPage = 12
+  const { addProduct } = useCart()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const search = searchParams.get('q') || ''
-  const category = searchParams.get('category') || ''
-  const manufacturer = searchParams.get('manufacturer') || ''
-  const availability = (searchParams.get('availability') || 'all') as AvailabilityFilter
-  const promo = searchParams.get('promo') === 'true' ? 'promo' : 'all'
-  const sort = (searchParams.get('sort') || 'best-sellers') as SortOption
-  const page = Math.max(1, Number(searchParams.get('page') || '1'))
-  const minPrice = Number(searchParams.get('minPrice') || String(PRICE_MIN))
-  const maxPrice = Number(searchParams.get('maxPrice') || String(PRICE_MAX))
+  const updateFilter = useCallback((key: keyof Filters, value: string | number) => {
+    setFilters((f) => ({ ...f, [key]: value }))
+    setPage(1)
+    if (key === 'search') {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current)
+        const searchValue = String(value).trim()
+        if (searchValue) next.set('q', searchValue)
+        else next.delete('q')
+        return next
+      }, { replace: true })
+    }
+  }, [setSearchParams])
 
-  const [draftSearch, setDraftSearch] = useState(search)
-  const [draftCategory, setDraftCategory] = useState(category)
-  const [draftManufacturer, setDraftManufacturer] = useState(manufacturer)
-  const [draftAvailability, setDraftAvailability] = useState<AvailabilityFilter>(availability)
-  const [draftPromo, setDraftPromo] = useState<PromoFilter>(promo)
-  const [draftSort, setDraftSort] = useState<SortOption>(sort)
-  const [draftPriceRange, setDraftPriceRange] = useState<[number, number]>([
-    Number.isFinite(minPrice) ? minPrice : PRICE_MIN,
-    Number.isFinite(maxPrice) ? maxPrice : PRICE_MAX,
-  ])
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchInputValue(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      updateFilter('search', value)
+    }, SEARCH_DEBOUNCE_MS)
+  }, [updateFilter])
+
+  const clearFilters = useCallback(() => {
+    setFilters(DEFAULT_FILTERS)
+    setSearchInputValue('')
+    setPage(1)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.delete('q')
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
 
   useEffect(() => {
-    setDraftSearch(search)
-    setDraftCategory(category)
-    setDraftManufacturer(manufacturer)
-    setDraftAvailability(availability)
-    setDraftPromo(promo)
-    setDraftSort(sort)
-    setDraftPriceRange([
-      Number.isFinite(minPrice) ? minPrice : PRICE_MIN,
-      Number.isFinite(maxPrice) ? maxPrice : PRICE_MAX,
-    ])
-  }, [search, category, manufacturer, availability, promo, sort, minPrice, maxPrice])
+    setFilters((current) => {
+      if (current.search === querySearch) return current
+      return { ...current, search: querySearch }
+    })
+    setSearchInputValue(querySearch)
+    setPage(1)
+  }, [querySearch])
 
-  const inStock = availability === 'all' ? undefined : availability === 'in-stock'
+  // cleanup debounce on unmount
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
 
-  const productsQuery = useQuery({
-    queryKey: ['catalog-products', search, category, manufacturer, availability, promo, sort, page, minPrice, maxPrice],
-    queryFn: () =>
-      api.listPublicProducts({
-        q: search || undefined,
-        category: category || undefined,
-        manufacturer: manufacturer || undefined,
-        inStock,
-        promo: promo === 'promo' ? true : undefined,
-        sort,
-        page,
-        pageSize: PAGE_SIZE,
-        minPrice,
-        maxPrice,
-        onlyWithImage: true,
-      }),
+  const handleSearchSubmit = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return
+    event.preventDefault()
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    updateFilter('search', searchInputValue)
+  }, [searchInputValue, updateFilter])
+
+  const hasActiveFilters =
+    filters.category !== 'Todas' ||
+    filters.brand !== 'Todas' ||
+    filters.availability !== 'Todos' ||
+    filters.promo !== 'Todas' ||
+    filters.search !== '' ||
+    filters.priceMin > 0 ||
+    filters.priceMax < 1200
+
+  const productQuery = useQuery({
+    queryKey: ['catalog', filters, page],
+    queryFn: () => api.listPublicProducts({
+      page,
+      pageSize: perPage,
+      q: filters.search || undefined,
+      category: filters.category !== 'Todas' ? filters.category : undefined,
+      manufacturer: filters.brand !== 'Todas' ? filters.brand : undefined,
+      minPrice: filters.priceMin > 0 ? filters.priceMin : undefined,
+      maxPrice: filters.priceMax,
+      inStock: filters.availability === 'Disponível' ? true : filters.availability === 'Indisponível' ? false : undefined,
+      promo: filters.promo === 'Em promoção' ? true : undefined,
+      sort: filters.sort,
+    }),
     placeholderData: keepPreviousData,
+    retry: false,
   })
+  const applyFilters = useCallback(() => {
+    setPage(1)
+    void productQuery.refetch()
+  }, [productQuery.refetch])
 
-  const categoriesQuery = useQuery({
-    queryKey: ['catalog-categories-source'],
-    queryFn: () => api.listPublicProducts({ page: 1, pageSize: 240, sort: 'name-asc', onlyWithImage: true }),
-  })
+  const items = useMemo(() => productQuery.data?.items ?? [], [productQuery.data?.items])
+  const meta = productQuery.data?.meta
 
-  const productReviewsQuery = useQuery({
-    queryKey: ['catalog-product-comments', selectedProduct?.id],
-    enabled: Boolean(selectedProduct?.id),
-    queryFn: () => api.listComments({ limit: 5, productId: Number(selectedProduct?.id) }),
-  })
-
-  const createReviewMutation = useMutation({
-    mutationFn: (payload: { productId: number; rating: number; message: string }) => api.createComment(payload),
-    onSuccess: async () => {
-      setReviewFeedback('Avaliacao publicada com sucesso.')
-      setReviewMessage('')
-      setReviewRating(5)
-      await queryClient.invalidateQueries({ queryKey: ['catalog-product-comments', selectedProduct?.id] })
-      await queryClient.invalidateQueries({ queryKey: ['home-comments'] })
-    },
-  })
-
-  const items = productsQuery.data?.items ?? []
-  const meta = productsQuery.data?.meta
-
-  const categories = useMemo(() => {
-    const set = new Set<string>()
-    for (const item of categoriesQuery.data?.items ?? []) {
-      if (item.category) set.add(item.category)
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  }, [categoriesQuery.data?.items])
-
-  const manufacturers = useMemo(() => {
-    const set = new Set<string>()
-    for (const item of categoriesQuery.data?.items ?? []) {
-      if (item.manufacturer) set.add(item.manufacturer)
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  }, [categoriesQuery.data?.items])
-
-  const errorMessage = productsQuery.error instanceof ApiError ? productsQuery.error.message : null
-  const reviewError = createReviewMutation.error instanceof ApiError ? createReviewMutation.error.message : null
-  const showingStart = (meta?.total ?? 0) === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
-  const showingEnd = (page - 1) * PAGE_SIZE + items.length
-
-  function applyFilters() {
-    const next = buildSearchParamsPatch(searchParams, {
-      q: draftSearch.trim() || null,
-      category: draftCategory || null,
-      manufacturer: draftManufacturer || null,
-      availability: draftAvailability === 'all' ? null : draftAvailability,
-      promo: draftPromo === 'promo' ? 'true' : null,
-      sort: draftSort,
-      minPrice: draftPriceRange[0] === PRICE_MIN ? null : draftPriceRange[0],
-      maxPrice: draftPriceRange[1] === PRICE_MAX ? null : draftPriceRange[1],
-      page: 1,
-    })
-    setSearchParams(next)
-    setMobileFiltersOpen(false)
-    completeStep('filter-applied', 'catalog')
-  }
-
-  function clearFilters() {
-    setDraftSearch('')
-    setDraftCategory('')
-    setDraftManufacturer('')
-    setDraftAvailability('all')
-    setDraftPromo('all')
-    setDraftSort('best-sellers')
-    setDraftPriceRange([PRICE_MIN, PRICE_MAX])
-    setSearchParams(new URLSearchParams({ sort: 'best-sellers', page: '1' }))
-    setMobileFiltersOpen(false)
-  }
-
-  function openReviewModal(product: Product) {
-    if (status !== 'authenticated') {
-      navigate('/auth')
-      return
-    }
-    setSelectedProduct(product)
-    setReviewRating(5)
-    setReviewMessage('')
-    setReviewFeedback(null)
-  }
-
-  async function submitReview() {
-    if (!selectedProduct) return
-    await createReviewMutation.mutateAsync({
-      productId: selectedProduct.id,
-      rating: Math.max(1, Math.min(5, Math.round(reviewRating))),
-      message: reviewMessage.trim(),
-    })
-  }
-
-  const prefetchProductDetails = useMemo(
-    () =>
-      (product: Product) => {
-        if (!Number.isInteger(Number(product.id)) || Number(product.id) <= 0) return
-        void queryClient.prefetchQuery({
-          queryKey: ['product-details', Number(product.id)],
-          queryFn: () => api.getPublicProduct(Number(product.id)),
-          staleTime: 30_000,
-        })
-      },
-    [queryClient],
-  )
+  const categories = useMemo(() => ['Todas', ...Array.from(new Set(items.map((p) => p.category).filter(Boolean)))], [items])
+  const brands = useMemo(() => ['Todas', ...Array.from(new Set(items.map((p) => p.manufacturer).filter(Boolean)))], [items])
 
   return (
-    <AppShell contained={false}>
-      <Stack spacing={{ xs: 2, md: 3 }}>
-        <MotionReveal variant="reveal-fade">
-          <Paper
-          className="store-section"
-          elevation={0}
-          sx={{
-            position: 'relative',
-            overflow: 'hidden',
-            p: { xs: 1.4, md: 2.2 },
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: { xs: 'divider', md: 'divider' },
-            bgcolor: { xs: 'transparent', md: 'background.paper' },
-            background:
-              'linear-gradient(116deg, rgba(31,49,70,0.93) 0%, rgba(51,74,98,0.9) 48%, rgba(90,114,147,0.84) 100%)',
-          }}
-        >
-          <Box
-            aria-hidden
-            sx={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              bottom: 0,
-              border: 'none',
-              width: { xs: '100%', md: '100%' },
-              height: { xs: 100, md: 200 },
-              opacity: 0.2,
-              display: { xs: 'none', md: 'block' },
-              pointerEvents: 'none',
-            }}
-          >
-            <Box component="img"  alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </Box>
-          <Stack spacing={{ xs: 0.6, md: 1 }} sx={{ position: 'relative', zIndex: 1 }}>
-            <Breadcrumbs separator={<NavigateNextRoundedIcon size="sm" />}>
-              <Typography component={RouterLink} to="/" variant="body2" color="text.secondary" sx={{ color: 'rgba(242,247,255,0.88)' }}>
-                Inicio
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ color: 'rgba(242,247,255,0.88)' }}>
-                Catalogo
-              </Typography>
-              {category ? <Typography variant="body2" sx={{ color: '#FFFFFF' }}>{category}</Typography> : null}
-            </Breadcrumbs>
-            <Typography variant="h3" sx={{ color: '#F8FBFF' }}>
-              Catalogo de pecas
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ color: 'rgba(230,237,246,0.92)', maxWidth: 780 }}>
-              Filtros reais por categoria, fabricante, preco, promocao, disponibilidade e ordenacao.
-            </Typography>
-          </Stack>
-          </Paper>
-        </MotionReveal>
+    <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <m.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="mb-10">
+          <div className="flex items-center gap-2 text-xs mb-4 text-[#4b5563]">
+            <Link to="/" className="hover:text-amber-400 transition-colors">Início</Link>
+            <span>/</span>
+            <span className="text-[#d4a843]">Catálogo</span>
+          </div>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-px w-8 bg-[#d4a843]" />
+            <span className="text-xs tracking-widest uppercase text-[#d4a843] font-semibold">Catálogo</span>
+          </div>
+          <h1 className="font-['Rajdhani'] text-[clamp(2rem,5vw,3rem)] font-bold text-[#f0ede8] leading-[1.1]">
+            Catálogo de{' '}
+            <span className="bg-gradient-to-br from-[#d4a843] to-[#f0c040] bg-clip-text text-transparent">
+              Peças
+            </span>
+          </h1>
+          <p className="mt-2 text-sm text-[#6b7280]">
+            Filtre por categoria, fabricante, preço, promoção e disponibilidade.
+          </p>
+        </m.div>
 
-        <Grid container spacing={{ xs: 1.6, md: 2.2 }} alignItems="flex-start">
-          <Grid size={{ xs: 12, lg: 3 }}>
-            <MotionReveal variant="reveal-left" delayMs={60} sx={{ display: { xs: 'none', lg: 'block' } }}>
-              <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'rgba(251,249,244,0.92)', position: { lg: 'sticky' }, top: { lg: 110 } }}>
-              <FiltersPanel
-                search={draftSearch}
-                onSearchChange={setDraftSearch}
-                category={draftCategory}
-                onCategoryChange={setDraftCategory}
-                categories={categories}
-                manufacturer={draftManufacturer}
-                onManufacturerChange={setDraftManufacturer}
-                manufacturers={manufacturers}
-                availability={draftAvailability}
-                onAvailabilityChange={setDraftAvailability}
-                promo={draftPromo}
-                onPromoChange={setDraftPromo}
-                sort={draftSort}
-                onSortChange={setDraftSort}
-                priceRange={draftPriceRange}
-                onPriceRangeChange={setDraftPriceRange}
-                onApply={applyFilters}
-                onClear={clearFilters}
-              />
-              </Paper>
-            </MotionReveal>
-
-            <Button
-              className="ds-pressable ds-action-glint"
-              variant="outlined"
-              color="primary"
-              fullWidth
-              startIcon={<FilterListRoundedIcon size="sm" />}
-              onClick={() => setMobileFiltersOpen(true)}
-              sx={{
-                display: { xs: 'inline-flex', lg: 'none' },
-                minHeight: 44,
-                borderRadius: 2.5,
-                bgcolor: { xs: '#FFFDF7', lg: 'transparent' },
-                color: { xs: 'primary.main', lg: 'primary.main' },
-                borderColor: { xs: 'divider', lg: 'primary.main' },
-              }}
-            >
-              Filtros e ordenacao
-            </Button>
-            <AssistHintInline tipId="catalog-tip-filter" routeKey="catalog">
-              Dica: aplique filtros antes de decidir a compra.
-            </AssistHintInline>
-          </Grid>
-
-          <Grid size={{ xs: 12, lg: 9 }}>
-            <MotionReveal variant="reveal-right" delayMs={80}>
-              <Paper elevation={0} className="store-surface ds-hover-lift" sx={{ p: { xs: 1.2, md: 2 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'rgba(251,249,244,0.9)', mb: { xs: 1.6, md: 2 } }}>
-              <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.2}>
-                <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
-                  <Chip label={`${meta?.total ?? 0} produtos`} size="small" />
-                  {search ? <Chip label={`Busca: ${search}`} size="small" /> : null}
-                  {category ? <Chip label={`Categoria: ${category}`} size="small" /> : null}
-                  {manufacturer ? <Chip label={`Fabricante: ${manufacturer}`} size="small" /> : null}
-                  {promo === 'promo' ? <Chip label="Somente promocao" size="small" color="warning" /> : null}
-                </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  Mostrando {showingStart} - {showingEnd} de {meta?.total ?? 0} produtos
-                </Typography>
-              </Stack>
-              </Paper>
-            </MotionReveal>
-
-            {errorMessage ? (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {errorMessage}
-              </Alert>
-            ) : null}
-
-            {productsQuery.isLoading ? (
-              <Grid container spacing={2}>
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <Grid key={`catalog-skeleton-${index}`} size={{ xs: 12, md: 6, xl: 4 }}>
-                    <Paper elevation={0} sx={{ p: 2, borderRadius: 2.5, border: '1px solid', borderColor: 'divider' }}>
-                      <Stack spacing={1.1}>
-                        <Skeleton variant="text" width={140} />
-                        <Skeleton variant="rounded" sx={{ width: '100%', height: 170 }} />
-                        <Skeleton variant="text" width={100} />
-                        <Skeleton variant="rounded" height={44} />
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-            ) : items.length === 0 ? (
-              <MotionReveal variant="reveal-pop" delayMs={120}>
-                <Paper elevation={0} sx={{ p: { xs: 2.6, md: 4 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
-                <Typography component="h4" variant="h6" sx={{ color: 'text.primary', mb: 0.8 }}>
-                  Nenhum produto encontrado
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Ajuste os filtros ou limpe a busca para ver outros itens.
-                </Typography>
-                <Button variant="outlined" color="primary" onClick={clearFilters}>
-                  Limpar filtros
-                </Button>
-                </Paper>
-              </MotionReveal>
-            ) : (
-              <Grid container spacing={2}>
-                {items.map((item) => (
-                  <Grid key={item.id} size={{ xs: 12, md: 6, xl: 4 }}>
-                    <MotionReveal variant="reveal-up" delayMs={Math.min(140 + (Number(item.id) % 6) * 24, 280)}>
-                      <ProductCard
-                        item={item}
-                        onRequestReview={openReviewModal}
-                        onOpenDetails={(product) => navigate(buildProductUrl(product))}
-                        onPrefetchDetails={prefetchProductDetails}
-                      />
-                    </MotionReveal>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-
-            <Stack alignItems="center" sx={{ mt: { xs: 1.6, md: 2.5 } }}>
-              <Pagination
-                data-testid="catalog-pagination"
-                count={Math.max(meta?.totalPages || 1, 1)}
-                page={page}
-                color="primary"
-                shape="rounded"
-                onChange={(_event, nextPage) => {
-                  setSearchParams(buildSearchParamsPatch(searchParams, { page: nextPage }))
-                }}
-              />
-            </Stack>
-          </Grid>
-        </Grid>
-      </Stack>
-
-      <Drawer
-        anchor="right"
-        open={mobileFiltersOpen}
-        onClose={() => setMobileFiltersOpen(false)}
-        PaperProps={{
-          sx: {
-            width: 'min(88vw, 360px)',
-            p: 2,
-            bgcolor: 'background.default',
-            color: 'text.primary',
-          },
-        }}
-      >
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-          <Typography component="h4" variant="h6" sx={{ color: 'text.primary' }}>
-            Filtros
-          </Typography>
-          <IconButton onClick={() => setMobileFiltersOpen(false)}>
-            <CloseRoundedIcon size="md" />
-          </IconButton>
-        </Stack>
-        <FiltersPanel
-          search={draftSearch}
-          onSearchChange={setDraftSearch}
-          category={draftCategory}
-          onCategoryChange={setDraftCategory}
-          categories={categories}
-          manufacturer={draftManufacturer}
-          onManufacturerChange={setDraftManufacturer}
-          manufacturers={manufacturers}
-          availability={draftAvailability}
-          onAvailabilityChange={setDraftAvailability}
-          promo={draftPromo}
-          onPromoChange={setDraftPromo}
-          sort={draftSort}
-          onSortChange={setDraftSort}
-          priceRange={draftPriceRange}
-          onPriceRangeChange={setDraftPriceRange}
-          onApply={applyFilters}
-          onClear={clearFilters}
-        />
-      </Drawer>
-
-      <Dialog
-        open={Boolean(selectedProduct)}
-        onClose={() => setSelectedProduct(null)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Avaliar produto</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.4} sx={{ pt: 0.5 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              {selectedProduct?.name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Comentario real vinculado ao usuario e ao produto.
-            </Typography>
-
-            {productReviewsQuery.data?.summaryByProduct ? (
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Rating value={productReviewsQuery.data.summaryByProduct.averageRating} readOnly precision={0.1} />
-                <Typography variant="caption" color="text.secondary">
-                  {productReviewsQuery.data.summaryByProduct.averageRating.toFixed(1)} ({productReviewsQuery.data.summaryByProduct.totalReviews} avaliacoes)
-                </Typography>
-              </Stack>
-            ) : null}
-
-            <Stack spacing={0.4}>
-              <Typography variant="caption" color="text.secondary">Nota</Typography>
-              <Rating value={reviewRating} onChange={(_, value) => setReviewRating(value || 5)} precision={1} />
-            </Stack>
-
-            <TextField
-              inputProps={{ 'data-testid': 'catalog-review-message-input' }}
-              label="Comentario"
-              multiline
-              minRows={3}
-              value={reviewMessage}
-              onChange={(event) => setReviewMessage(event.target.value)}
-              helperText="Minimo de 8 caracteres."
+        <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4">
+          <label htmlFor="catalog-main-search" className="text-xs tracking-wider uppercase mb-2 block text-[#d4a843] font-semibold">
+            Busca no catálogo
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+            <input
+              id="catalog-main-search"
+              data-testid="catalog-search-input"
+              aria-label="Buscar produtos"
+              type="text"
+              placeholder="Produto, marca ou categoria..."
+              value={searchInputValue}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyDown={handleSearchSubmit}
+              className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
             />
+          </div>
+        </div>
 
-            {reviewError ? <Alert severity="error">{reviewError}</Alert> : null}
-            {reviewFeedback ? <Alert severity="success">{reviewFeedback}</Alert> : null}
-
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 0.8 }}>
-                Comentarios recentes do produto
-              </Typography>
-              {productReviewsQuery.isLoading ? (
-                <Stack spacing={0.8}>
-                  <Skeleton variant="text" width="80%" />
-                  <Skeleton variant="text" width="70%" />
-                  <Skeleton variant="text" width="65%" />
-                </Stack>
-              ) : (productReviewsQuery.data?.items || []).length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  Este produto ainda nao possui avaliacoes publicadas.
-                </Typography>
-              ) : (
-                <Stack spacing={1}>
-                  {productReviewsQuery.data?.items.map((review) => (
-                    <Paper key={review.id} elevation={0} sx={{ p: 1.2, border: '1px solid', borderColor: 'divider' }}>
-                      <Stack spacing={0.4}>
-                        <Rating value={review.rating} readOnly size="small" />
-                        <Typography variant="body2" color="text.secondary">
-                          "{review.message}"
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {review.authorName}
-                        </Typography>
-                      </Stack>
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
-            </Box>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSelectedProduct(null)} variant="text" color="inherit">
-            Fechar
-          </Button>
-          <Button
-            data-testid="catalog-review-submit-button"
-            onClick={() => void submitReview()}
-            variant="contained"
-            color="primary"
-            disabled={createReviewMutation.isPending || reviewMessage.trim().length < 8}
+        <div className="lg:hidden flex items-center gap-3 mb-6">
+          <m.button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Filtros e ordenacao"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm bg-[#d4a843]/10 border border-[#d4a843]/25 text-[#d4a843] font-semibold"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
           >
-            {createReviewMutation.isPending ? 'Publicando...' : 'Publicar avaliacao'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <Filter className="w-4 h-4" />
+            Filtros
+            {hasActiveFilters ? <span className="w-2 h-2 rounded-full bg-[#d4a843]" /> : null}
+          </m.button>
+          <select
+            aria-label="Ordenação"
+            value={filters.sort}
+            onChange={(e) => updateFilter('sort', e.target.value)}
+            className="flex-1 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+          >
+            {SORT_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value} className="bg-[#111118]">
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <Snackbar open={Boolean(reviewFeedback)} autoHideDuration={2600} onClose={() => setReviewFeedback(null)}>
-        <Alert severity="success" variant="filled" onClose={() => setReviewFeedback(null)}>
-          {reviewFeedback}
-        </Alert>
-      </Snackbar>
-    </AppShell>
+        <div className="flex gap-6">
+          <m.aside
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="hidden lg:block w-64 flex-shrink-0"
+          >
+            <div className="sticky top-20 p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-[#d4a843]" />
+                  <span className="text-sm text-[#f0ede8] font-semibold">Filtros</span>
+                </div>
+                {hasActiveFilters ? (
+                  <button onClick={clearFilters} className="text-xs flex items-center gap-1 text-[#d4a843]">
+                    <X className="w-3 h-3" />
+                    Limpar
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="text-xs tracking-wider uppercase mb-2 block text-[#d4a843] font-semibold">Categoria</label>
+                  <select
+                    aria-label="Filtrar categoria"
+                    value={filters.category}
+                    onChange={(e) => updateFilter('category', e.target.value)}
+                    className="w-full py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  >
+                    {categories.map((c) => (
+                      <option key={c} value={c} className="bg-[#111118]">{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs tracking-wider uppercase mb-2 block text-[#d4a843] font-semibold">Fabricante</label>
+                  <select
+                    aria-label="Filtrar fabricante"
+                    value={filters.brand}
+                    onChange={(e) => updateFilter('brand', e.target.value)}
+                    className="w-full py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  >
+                    {brands.map((b) => (
+                      <option key={b} value={b} className="bg-[#111118]">{b}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs tracking-wider uppercase mb-2 block text-[#d4a843] font-semibold">Disponibilidade</label>
+                  {['Todos', 'Disponível', 'Indisponível'].map((a) => (
+                    <label key={a} className="flex items-center gap-2 py-1.5 cursor-pointer">
+                      <button
+                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          filters.availability === a ? 'border-[#d4a843]' : 'border-[#374151]'
+                        }`}
+                        onClick={() => updateFilter('availability', a)}
+                        aria-label={`Disponibilidade ${a}`}
+                      >
+                        {filters.availability === a ? <div className="w-2 h-2 rounded-full bg-[#d4a843]" /> : null}
+                      </button>
+                      <span className={`text-sm ${filters.availability === a ? 'text-[#d4a843]' : 'text-[#6b7280]'}`}>{a}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="text-xs tracking-wider uppercase mb-2 block text-[#d4a843] font-semibold">Promoções</label>
+                  {['Todas', 'Em promoção'].map((p) => (
+                    <label key={p} className="flex items-center gap-2 py-1.5 cursor-pointer">
+                      <button
+                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          filters.promo === p ? 'border-[#d4a843]' : 'border-[#374151]'
+                        }`}
+                        onClick={() => updateFilter('promo', p)}
+                        aria-label={`Promoção ${p}`}
+                      >
+                        {filters.promo === p ? <div className="w-2 h-2 rounded-full bg-[#d4a843]" /> : null}
+                      </button>
+                      <span className={`text-sm ${filters.promo === p ? 'text-[#d4a843]' : 'text-[#6b7280]'}`}>{p}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="text-xs tracking-wider uppercase mb-2 block text-[#d4a843] font-semibold">Faixa de preço</label>
+                  <p className="text-sm mb-2 text-[#f0ede8] font-semibold">
+                    {formatCurrency(filters.priceMin)} – {formatCurrency(filters.priceMax)}
+                  </p>
+                  <div className="space-y-2">
+                    <input
+                      type="range"
+                      min={0}
+                      max={1200}
+                      step={50}
+                      value={filters.priceMin}
+                      onChange={(e) => updateFilter('priceMin', Math.min(Number(e.target.value), filters.priceMax - 50))}
+                      aria-label="Preço mínimo"
+                      className="w-full accent-amber-400"
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={1200}
+                      step={50}
+                      value={filters.priceMax}
+                      onChange={(e) => updateFilter('priceMax', Math.max(Number(e.target.value), filters.priceMin + 50))}
+                      aria-label="Preço máximo"
+                      className="w-full accent-amber-400"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </m.aside>
+
+          <AnimatePresence>
+            {sidebarOpen ? (
+              <>
+                <m.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-40 lg:hidden bg-black/70"
+                  onClick={() => setSidebarOpen(false)}
+                />
+                <m.div
+                  initial={{ x: '-100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '-100%' }}
+                  transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                  className="fixed left-0 top-0 bottom-0 z-50 w-80 overflow-y-auto p-5 lg:hidden bg-[#111118] border-r border-[#d4a843]/15"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4 text-[#d4a843]" />
+                      <span className="text-[#f0ede8] font-semibold">Filtros</span>
+                    </div>
+                    <button onClick={() => setSidebarOpen(false)} className="text-[#6b7280]" aria-label="Fechar filtros">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="space-y-5">
+                    <div>
+                      <label className="text-xs tracking-wider uppercase mb-2 block text-[#d4a843] font-semibold">Categoria</label>
+                      <select
+                        aria-label="Filtrar categoria"
+                        value={filters.category}
+                        onChange={(e) => updateFilter('category', e.target.value)}
+                        className="w-full py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                      >
+                        {categories.map((c) => (
+                          <option key={c} value={c} className="bg-[#111118]">{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs tracking-wider uppercase mb-2 block text-[#d4a843] font-semibold">Fabricante</label>
+                      <select
+                        aria-label="Filtrar fabricante"
+                        value={filters.brand}
+                        onChange={(e) => updateFilter('brand', e.target.value)}
+                        className="w-full py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                      >
+                        {brands.map((b) => (
+                          <option key={b} value={b} className="bg-[#111118]">{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs tracking-wider uppercase mb-2 block text-[#d4a843] font-semibold">Faixa de preço</label>
+                      <p className="text-sm mb-2 text-[#f0ede8] font-semibold">
+                        {formatCurrency(filters.priceMin)} – {formatCurrency(filters.priceMax)}
+                      </p>
+                      <div className="space-y-2">
+                        <input
+                          type="range"
+                          min={0}
+                          max={1200}
+                          step={50}
+                          value={filters.priceMin}
+                          onChange={(e) => updateFilter('priceMin', Math.min(Number(e.target.value), filters.priceMax - 50))}
+                          aria-label="Preço mínimo"
+                          className="w-full accent-amber-400"
+                        />
+                        <input
+                          type="range"
+                          min={0}
+                          max={1200}
+                          step={50}
+                          value={filters.priceMax}
+                          onChange={(e) => updateFilter('priceMax', Math.max(Number(e.target.value), filters.priceMin + 50))}
+                          aria-label="Preço máximo"
+                          className="w-full accent-amber-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      {hasActiveFilters ? (
+                        <button
+                          onClick={clearFilters}
+                          className="flex-1 py-2.5 rounded-xl text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171] font-semibold"
+                        >
+                          Limpar tudo
+                        </button>
+                      ) : null}
+                      <button
+                        onClick={() => setSidebarOpen(false)}
+                        className="flex-1 py-2.5 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold"
+                      >
+                        Aplicar
+                      </button>
+                    </div>
+                  </div>
+                </m.div>
+              </>
+            ) : null}
+          </AnimatePresence>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1 rounded-full text-xs bg-[#d4a843]/10 text-[#d4a843] font-semibold border border-[#d4a843]/20">
+                  {meta?.total ?? items.length} produto{(meta?.total ?? items.length) !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="hidden lg:flex items-center gap-2">
+                <ArrowUpDown className="w-3.5 h-3.5 text-[#6b7280]" />
+                <select
+                  aria-label="Ordenação"
+                  value={filters.sort}
+                  onChange={(e) => updateFilter('sort', e.target.value)}
+                  className="py-1.5 px-3 rounded-lg text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                >
+                  {SORT_OPTIONS.map((s) => (
+                    <option key={s.value} value={s.value} className="bg-[#111118]">{s.label}</option>
+                  ))}
+                </select>
+                <button
+                  data-testid="catalog-apply-filters"
+                  onClick={applyFilters}
+                  className="py-1.5 px-3 rounded-lg text-xs border border-[#d4a843]/30 text-[#d4a843] bg-[#d4a843]/5 font-semibold"
+                >
+                  Aplicar filtros
+                </button>
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {hasActiveFilters ? (
+                <m.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex flex-wrap gap-2 mb-4"
+                >
+                  {filters.category !== 'Todas' ? (
+                    <m.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-[#d4a843]/10 text-[#d4a843] border border-[#d4a843]/20"
+                    >
+                      {filters.category}
+                      <button onClick={() => updateFilter('category', 'Todas')} aria-label="Remover filtro de categoria">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </m.span>
+                  ) : null}
+                  {filters.brand !== 'Todas' ? (
+                    <m.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-[#d4a843]/10 text-[#d4a843] border border-[#d4a843]/20"
+                    >
+                      {filters.brand}
+                      <button onClick={() => updateFilter('brand', 'Todas')} aria-label="Remover filtro de fabricante">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </m.span>
+                  ) : null}
+                  {filters.search ? (
+                    <m.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-[#d4a843]/10 text-[#d4a843] border border-[#d4a843]/20"
+                    >
+                      "{filters.search}"
+                      <button onClick={() => updateFilter('search', '')} aria-label="Remover filtro de busca">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </m.span>
+                  ) : null}
+                </m.div>
+              ) : null}
+            </AnimatePresence>
+
+            <AnimatePresence mode="wait">
+              {productQuery.isError ? (
+                <m.div
+                  key="error"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center justify-center py-20 text-center"
+                >
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-[#ef4444]/10 border border-[#ef4444]/20">
+                    <X className="w-7 h-7 text-[#f87171]" />
+                  </div>
+                  <h3 className="mb-2 text-[#f0ede8] font-semibold">Não foi possível carregar o catálogo</h3>
+                  <p className="text-sm mb-6 text-[#6b7280]">O backend respondeu com erro. Tente novamente em instantes.</p>
+                  <m.button
+                    onClick={() => void productQuery.refetch()}
+                    className="px-5 py-2.5 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold"
+                    whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(212,168,67,0.4)' }}
+                  >
+                    Tentar novamente
+                  </m.button>
+                </m.div>
+              ) : items.length === 0 ? (
+                <m.div
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center justify-center py-20 text-center"
+                >
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-[#d4a843]/[0.08] border border-[#d4a843]/15">
+                    <Search className="w-7 h-7 text-[#d4a843]" />
+                  </div>
+                  <h3 className="mb-2 text-[#f0ede8] font-semibold">Nenhum produto encontrado</h3>
+                  <p className="text-sm mb-6 text-[#6b7280]">Ajuste os filtros ou limpe a busca para ver outros itens.</p>
+                  <m.button
+                    onClick={clearFilters}
+                    className="px-5 py-2.5 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold"
+                    whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(212,168,67,0.4)' }}
+                  >
+                    Limpar filtros
+                  </m.button>
+                </m.div>
+              ) : (
+                <m.div
+                  key="grid"
+                  className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  {items.map((p, i) => (
+                    <ProductCard
+                      key={p.id}
+                      product={{
+                        id: p.id,
+                        name: p.name,
+                        manufacturer: p.manufacturer,
+                        category: p.category,
+                        price: p.price,
+                        compareAtPrice: p.compareAtPrice,
+                        stock: p.stock,
+                        imageUrl: p.imageUrl,
+                      }}
+                      onAddToCart={(id) => {
+                        const match = items.find((item) => item.id === id)
+                        if (match) {
+                          void addProduct(match, 1)
+                        }
+                      }}
+                      delay={i * 0.05}
+                    />
+                  ))}
+                </m.div>
+              )}
+            </AnimatePresence>
+
+            {meta && meta.totalPages > 1 ? (
+              <m.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center justify-center gap-2 mt-10"
+              >
+                <m.button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-30 bg-white/[0.05] border border-white/[0.08] text-[#f0ede8]"
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.92 }}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </m.button>
+
+                {buildPageRange(page, meta.totalPages).map((p, i) =>
+                  p === '...' ? (
+                    <span key={`ellipsis-${i}`} className="w-9 text-center text-sm text-[#4b5563]">…</span>
+                  ) : (
+                    <m.button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm ${
+                        page === p
+                          ? 'bg-gradient-to-br from-[#d4a843] to-[#f0c040] text-black font-bold'
+                          : 'bg-white/[0.05] border border-white/[0.08] text-[#f0ede8] font-normal'
+                      }`}
+                      whileHover={{ scale: 1.08 }}
+                      whileTap={{ scale: 0.92 }}
+                    >
+                      {p}
+                    </m.button>
+                  )
+                )}
+
+                <m.button
+                  onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+                  disabled={page === meta.totalPages}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-30 bg-white/[0.05] border border-white/[0.08] text-[#f0ede8]"
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.92 }}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </m.button>
+              </m.div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

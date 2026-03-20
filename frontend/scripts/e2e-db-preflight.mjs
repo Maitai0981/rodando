@@ -1,5 +1,28 @@
 import process from 'node:process'
+import { readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Client } from 'pg'
+
+// Carrega .env.e2e automaticamente (se existir) sem sobrescrever variáveis já definidas no ambiente
+const __dir = dirname(fileURLToPath(import.meta.url))
+const envFile = resolve(__dir, '../.env.e2e')
+try {
+  const lines = readFileSync(envFile, 'utf8').split('\n')
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const eqIdx = trimmed.indexOf('=')
+    if (eqIdx === -1) continue
+    const key = trimmed.slice(0, eqIdx).trim()
+    const value = trimmed.slice(eqIdx + 1).trim()
+    if (key && !(key in process.env)) {
+      process.env[key] = value
+    }
+  }
+} catch {
+  // .env.e2e não existe — continua sem ele
+}
 
 const FALLBACK_E2E_DATABASE_URL = 'postgres://postgres:postgres@127.0.0.1:5432/rodando_e2e'
 

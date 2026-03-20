@@ -11,7 +11,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test:unit": "vitest run --coverage=false --maxWorkers=1",
-    "test:a11y": "vitest run src/a11y",
+    "test:a11y": "node --max-old-space-size=1024 node_modules/.bin/vitest run --pool=forks src/a11y",
     "test:e2e": "node ./scripts/e2e-db-preflight.mjs && playwright test",
     "test:e2e:headed": "node ./scripts/e2e-db-preflight.mjs && playwright test --headed",
     "test:e2e:local": "node ./scripts/e2e-db-preflight.mjs && playwright test",
@@ -26,11 +26,18 @@
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
     "@mui/material": "^7.3.8",
+    "@tailwindcss/vite": "^4.1.12",
     "@tanstack/react-query": "^5.90.21",
+    "framer-motion": "^11.18.2",
+    "lucide-react": "^0.487.0",
     "material-symbols": "^0.40.2",
+    "mercadopago": "^2.12.0",
     "react": "^18.3.1",
+    "react-bootstrap-icons": "^1.11.6",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2"
+    "react-router-dom": "^6.26.2",
+    "tailwindcss": "^4.1.12",
+    "tw-animate-css": "^1.3.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

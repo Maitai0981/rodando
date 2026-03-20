@@ -1,116 +1,36 @@
-import { EmailOutlinedIcon, FlagOutlinedIcon, HomeOutlinedIcon, LocationCityOutlinedIcon, LockOutlinedIcon, PersonOutlinedIcon, PinDropOutlinedIcon, VisibilityIcon, VisibilityOffIcon } from '@/ui/primitives/Icon'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  IconButton,
-  InputAdornment,
-  Link,
-  TextField,
-  Typography,
-} from '@mui/material'
-import AuthSplitLayout from '../components/auth/AuthSplitLayout'
-import { useAuth } from '../context/AuthContext'
-import { useAssist } from '../context/AssistContext'
-import { ApiError } from '../lib/api'
-import { isStrongPassword, isValidCep, isValidEmail, maskCep, normalizeCep } from '../lib'
-import { AssistHintInline } from '../components/assist'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react'
+import { useAuth } from '../shared/context/AuthContext'
+import { ApiError } from '../shared/lib/api'
+import { isStrongPassword, isValidEmail } from '../shared/lib'
 
 interface FormErrors {
   name?: string
   email?: string
-  password?: string
   cep?: string
+  password?: string
 }
 
 export default function SignUpPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { signUp } = useAuth()
-  const { completeStep } = useAssist()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [cep, setCep] = useState('')
-  const [street, setStreet] = useState('')
-  const [city, setCity] = useState('')
-  const [stateValue, setStateValue] = useState('')
-  const [cepLoading, setCepLoading] = useState(false)
-  const [cepLoaded, setCepLoaded] = useState(false)
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
 
-  function clearAddress() {
-    setStreet('')
-    setCity('')
-    setStateValue('')
-    setCepLoaded(false)
-  }
-
-  async function lookupCepAddress(currentCep: string) {
-    const digits = normalizeCep(currentCep)
-    if (digits.length !== 8) return
-
-    setCepLoading(true)
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 4000)
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`, {
-        method: 'GET',
-        signal: controller.signal,
-        headers: {
-          Accept: 'application/json',
-        },
-      })
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        throw new Error(`CEP lookup falhou: ${response.status}`)
-      }
-
-      const payload = await response.json()
-      if (payload?.erro) {
-        setErrors((prev) => ({ ...prev, cep: 'CEP nao encontrado' }))
-        clearAddress()
-        return
-      }
-
-      const resolvedStreet = String(payload?.logradouro || '').trim()
-      const resolvedCity = String(payload?.localidade || '').trim()
-      const resolvedState = String(payload?.uf || '').trim().toUpperCase()
-      if (!resolvedCity || !resolvedState) {
-        setErrors((prev) => ({ ...prev, cep: 'CEP sem cidade/UF validos' }))
-        clearAddress()
-        return
-      }
-
-      setStreet(resolvedStreet)
-      setCity(resolvedCity)
-      setStateValue(resolvedState)
-      setCepLoaded(true)
-      completeStep('cep-validated', 'auth-signup')
-      setErrors((prev) => ({ ...prev, cep: undefined }))
-    } catch {
-      setErrors((prev) => ({
-        ...prev,
-        cep: 'Nao foi possivel consultar o CEP agora. Tente novamente.',
-      }))
-      clearAddress()
-    } finally {
-      setCepLoading(false)
-    }
-  }
-
   function validateForm(): boolean {
     const newErrors: FormErrors = {}
 
-    if (!name || name.trim().length < 2) {
-      newErrors.name = 'Nome deve ter pelo menos 2 caracteres'
+    if (!name) {
+      newErrors.name = 'Nome e obrigatorio'
     }
 
     if (!email) {
@@ -124,13 +44,8 @@ export default function SignUpPage() {
     } else if (!isStrongPassword(password)) {
       newErrors.password = 'Senha deve ter pelo menos 6 caracteres'
     }
-
     if (!cep) {
       newErrors.cep = 'CEP e obrigatorio'
-    } else if (!isValidCep(cep)) {
-      newErrors.cep = 'Informe um CEP valido'
-    } else if (!cepLoaded || !city || !stateValue) {
-      newErrors.cep = 'Valide o CEP para preencher o endereco'
     }
 
     setErrors(newErrors)
@@ -146,228 +61,150 @@ export default function SignUpPage() {
     setError(null)
 
     try {
-      await signUp({
-        name,
-        email,
-        password,
-        cep,
-        addressStreet: street,
-        addressCity: city,
-        addressState: stateValue,
-      })
-      completeStep('form-filled', 'auth-signup')
-      completeStep('signup-complete', 'auth-signup')
-      navigate('/')
+      await signUp({ name, email, password, cep })
+      const returnTo = searchParams.get('returnTo')
+      navigate(returnTo || '/')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao cadastrar.')
+      setError(err instanceof ApiError ? err.message : 'Falha ao criar conta.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <AuthSplitLayout
-      eyebrow="Sign Up"
-      title="Criar conta"
-      description="Cadastro rapido com login automatico."
-      heroTitle="SIGN UP"
-      heroDescription="Crie sua conta."
-      informativePaneVariant="amber"
-      informativeTextTone="dark"
-      heroBackground="linear-gradient(180deg, #FFF6DA 0%, #FFF1CC 100%)"
-      heroPanelTitle="Primeiro acesso"
-      heroPanelText="Cadastro exclusivo para cliente. Acesso owner e separado."
-      form={(
-        <>
-          {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
-          <Box component="form" onSubmit={handleSubmit} noValidate>
-            <TextField
-              inputProps={{
-                'data-testid': 'signup-name-input',
-                autoComplete: 'name',
-              }}
-              fullWidth
-              label="Nome"
-              margin="normal"
-              value={name}
-              onChange={(event) => {
-                setName(event.target.value)
-                if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }))
-              }}
-              error={Boolean(errors.name)}
-              helperText={errors.name}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <PersonOutlinedIcon tone="muted" size="md" />
-                  </InputAdornment>
-                ),
-              }}
-              required
-            />
+    <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
+      <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="rounded-2xl p-6 bg-white/[0.03] border border-white/[0.06]">
+          <h1 className="text-2xl mb-2 text-[#f0ede8] font-bold">Criar conta</h1>
+          <p className="text-sm mb-6 text-[#6b7280]">Cadastre-se para acompanhar seus pedidos.</p>
 
-            <TextField
-              inputProps={{
-                'data-testid': 'signup-email-input',
-                autoComplete: 'email',
-              }}
-              fullWidth
-              label="Email"
-              margin="normal"
-              type="email"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value)
-                if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
-              }}
-              error={Boolean(errors.email)}
-              helperText={errors.email}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <EmailOutlinedIcon tone="muted" size="md" />
-                  </InputAdornment>
-                ),
-              }}
-              required
-            />
+          {error ? (
+            <div className="mb-4 p-3 rounded-lg text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">
+              {error}
+            </div>
+          ) : null}
 
-            <TextField
-              inputProps={{
-                'data-testid': 'signup-password-input',
-                autoComplete: 'new-password',
-              }}
-              fullWidth
-              label="Senha"
-              type={showPassword ? 'text' : 'password'}
-              margin="normal"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value)
-                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
-              }}
-              error={Boolean(errors.password)}
-              helperText={errors.password || 'Minimo de 6 caracteres'}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockOutlinedIcon tone="muted" size="md" />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                    >
-                      {showPassword ? <VisibilityOffIcon tone="muted" size="md" /> : <VisibilityIcon tone="muted" size="md" />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              required
-            />
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            <div>
+              <label htmlFor="signup-name" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                Nome
+              </label>
+              <div className="relative mt-2">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+                <input
+                  id="signup-name"
+                  aria-label="Nome"
+                  title="Nome"
+                  data-testid="signup-name-input"
+                  type="text"
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value)
+                    if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }))
+                  }}
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  required
+                />
+              </div>
+              {errors.name ? <p className="text-xs mt-1 text-[#f87171]">{errors.name}</p> : null}
+            </div>
 
-            <TextField
-              inputProps={{ 'data-testid': 'signup-cep-input' }}
-              fullWidth
-              label="CEP"
-              margin="normal"
-              value={cep}
-              onChange={(event) => {
-                const masked = maskCep(event.target.value)
-                setCep(masked)
-                if (errors.cep) setErrors((prev) => ({ ...prev, cep: undefined }))
-                if (normalizeCep(masked).length < 8) clearAddress()
-                if (normalizeCep(masked).length === 8) {
-                  void lookupCepAddress(masked)
-                }
-              }}
-              onBlur={() => {
-                if (normalizeCep(cep).length === 8 && !cepLoaded) {
-                  void lookupCepAddress(cep)
-                }
-              }}
-              error={Boolean(errors.cep)}
-              helperText={errors.cep || 'Informe 8 digitos'}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <PinDropOutlinedIcon tone="muted" size="md" />
-                  </InputAdornment>
-                ),
-                endAdornment: cepLoading ? (
-                  <InputAdornment position="end">
-                    <CircularProgress size={16} />
-                  </InputAdornment>
-                ) : null,
-              }}
-              required
-            />
+            <div>
+              <label htmlFor="signup-email" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                Email
+              </label>
+              <div className="relative mt-2">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+                <input
+                  id="signup-email"
+                  aria-label="Email"
+                  title="Email"
+                  data-testid="signup-email-input"
+                  type="email"
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value)
+                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
+                  }}
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  required
+                />
+              </div>
+              {errors.email ? <p className="text-xs mt-1 text-[#f87171]">{errors.email}</p> : null}
+            </div>
 
-            <TextField
-              inputProps={{ 'data-testid': 'signup-address-street-input' }}
-              fullWidth
-              label="Logradouro"
-              margin="normal"
-              value={street}
-              InputProps={{
-                readOnly: true,
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <HomeOutlinedIcon tone="muted" size="md" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <div>
+              <label htmlFor="signup-cep" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                CEP
+              </label>
+              <div className="relative mt-2">
+                <input
+                  id="signup-cep"
+                  aria-label="CEP"
+                  title="CEP"
+                  data-testid="signup-cep-input"
+                  type="text"
+                  value={cep}
+                  onChange={(event) => {
+                    setCep(event.target.value)
+                    if (errors.cep) setErrors((prev) => ({ ...prev, cep: undefined }))
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  required
+                />
+              </div>
+              {errors.cep ? <p className="text-xs mt-1 text-[#f87171]">{errors.cep}</p> : null}
+            </div>
 
-            <TextField
-              inputProps={{ 'data-testid': 'signup-address-city-input' }}
-              fullWidth
-              label="Cidade"
-              margin="normal"
-              value={city}
-              InputProps={{
-                readOnly: true,
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LocationCityOutlinedIcon tone="muted" size="md" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <div>
+              <label htmlFor="signup-password" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                Senha
+              </label>
+              <div className="relative mt-2">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+                <input
+                  id="signup-password"
+                  aria-label="Senha"
+                  title="Senha"
+                  data-testid="signup-password-input"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value)
+                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
+                  }}
+                  className="w-full pl-9 pr-10 py-2.5 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  required
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7280]"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {errors.password ? <p className="text-xs mt-1 text-[#f87171]">{errors.password}</p> : null}
+            </div>
 
-            <TextField
-              inputProps={{ 'data-testid': 'signup-address-state-input' }}
-              fullWidth
-              label="UF"
-              margin="normal"
-              value={stateValue}
-              InputProps={{
-                readOnly: true,
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <FlagOutlinedIcon tone="muted" size="md" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <button
+              data-testid="signup-submit-button"
+              type="submit"
+              className={`w-full py-3 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold ${
+                loading ? 'opacity-70' : 'opacity-100'
+              }`}
+              disabled={loading}
+            >
+              {loading ? 'Criando...' : 'Criar conta'}
+            </button>
+          </form>
 
-            <Button data-testid="signup-submit-button" fullWidth type="submit" variant="contained" color="primary" sx={{ mt: 2 }} disabled={loading || cepLoading}>
-              {loading ? 'Criando conta...' : 'Criar conta'}
-            </Button>
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            Ja tem conta? <Link component={RouterLink} to="/auth">Entrar</Link>
-          </Typography>
-          <Box sx={{ mt: 1.5 }}>
-            <AssistHintInline tipId="signup-tip-cep" routeKey="auth-signup">
-              Dica: valide o CEP para preencher cidade e UF automaticamente.
-            </AssistHintInline>
-          </Box>
-        </>
-      )}
-    />
+          <p className="text-sm mt-4 text-[#9ca3af]">
+            Já tem conta? <Link to="/auth" className="text-[#d4a843]">Entrar</Link>
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }

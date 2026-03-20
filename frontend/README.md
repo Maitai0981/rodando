@@ -9,6 +9,16 @@
 
 - O frontend não depende mais de `tailwind/postcss` nesta base.
 - O chunking do Vite está configurado para separar `react`, `mui`, `react-query` e `motion/lucide`.
+- Para producao, configure `VITE_API_URL` com a URL publica do backend (sem `/` final).
+
+## Variaveis de ambiente
+
+- `VITE_API_URL=https://api.example.com`
+- `VITE_WEB_VITALS=0|1`
+- `VITE_SOURCEMAP=0|1`
+- `VITE_DISABLE_ROUTE_MOTION=0|1`
+
+Em desenvolvimento local, se `VITE_API_URL` estiver vazio, o frontend usa o proxy do Vite para `http://localhost:4000`.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

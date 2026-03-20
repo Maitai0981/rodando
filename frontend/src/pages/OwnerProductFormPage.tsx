@@ -1,25 +1,11 @@
-import { ArrowBackRoundedIcon, Inventory2RoundedIcon, NavigateNextRoundedIcon, SaveRoundedIcon } from '@/ui/primitives/Icon'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router-dom'
-import {
-  Alert,
-  Box,
-  Breadcrumbs,
-  Button,
-  FormControlLabel,
-  Grid,
-  Paper,
-  Skeleton,
-  Stack,
-  Switch,
-  TextField,
-  Typography,
-} from '@mui/material'
-import OwnerLayout from '../layouts/OwnerLayout'
-import { api, ApiError, type Product } from '../lib/api'
-import { useAssist } from '../context/AssistContext'
-import { AssistHintInline } from '../components/assist'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { ChevronRight } from 'lucide-react'
+import OwnerLayout from '../shared/layout/OwnerLayout'
+import { api, ApiError, type Product } from '../shared/lib/api'
+import { useAssist } from '../shared/context/AssistContext'
+import { AssistHintInline } from '../features/assist'
 
 type ProductForm = {
   name: string
@@ -206,388 +192,455 @@ export default function OwnerProductFormPage() {
 
   return (
     <OwnerLayout>
-      <Stack spacing={3}>
-        <Stack spacing={1.5}>
-          <Breadcrumbs separator={<NavigateNextRoundedIcon size="sm" />} aria-label="breadcrumb">
-            <Typography component={RouterLink} to="/owner/dashboard" variant="body2" color="text.secondary">
-              Dashboard
-            </Typography>
-            <Typography component={RouterLink} to="/owner/products" variant="body2" color="text.secondary">
-              Produtos
-            </Typography>
-            <Typography variant="body2" color="text.primary">
-              {pageTitle}
-            </Typography>
-          </Breadcrumbs>
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <nav className="flex items-center gap-2 text-xs text-[#6b7280]">
+            <Link to="/owner/dashboard" className="hover:text-amber-400 transition-colors">Dashboard</Link>
+            <ChevronRight className="w-3 h-3" />
+            <Link to="/owner/products" className="hover:text-amber-400 transition-colors">Produtos</Link>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-[#d4a843]">{pageTitle}</span>
+          </nav>
 
-          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
-            <Box>
-              <Typography variant="h3">{pageTitle}</Typography>
-              <Typography variant="body2" color="text.secondary">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h1 className="text-xl text-[#f0ede8] font-bold">{pageTitle}</h1>
+              <p className="text-sm text-[#6b7280]">
                 {isCreate
                   ? 'Cadastre um novo item de moto no catalogo.'
                   : 'Atualize dados tecnicos, estoque e status do produto.'}
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1.25}>
-              <Button component={RouterLink} to="/owner/products" variant="outlined" startIcon={<ArrowBackRoundedIcon size="sm" />}>
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/owner/products"
+                className="px-4 py-2 rounded-xl text-sm border border-white/[0.15] text-[#e5e7eb]"
+              >
                 Voltar
-              </Button>
-              <Button
+              </Link>
+              <button
                 data-testid="owner-product-save-button"
                 type="submit"
                 form="owner-product-form"
-                variant="contained"
-                color="primary"
-                startIcon={<SaveRoundedIcon size="sm" />}
+                className={`px-4 py-2 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold ${saving || loading ? 'opacity-70' : ''}`}
                 disabled={saving || loading}
               >
                 {saving ? 'Salvando...' : isCreate ? 'Criar produto' : 'Salvar alteracoes'}
-              </Button>
-            </Stack>
-          </Stack>
-        </Stack>
+              </button>
+            </div>
+          </div>
+        </div>
 
-        {error ? <Alert severity="error">{error}</Alert> : null}
+        {error ? (
+          <div className="p-3 rounded-lg text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">
+            {error}
+          </div>
+        ) : null}
 
-        <Grid container spacing={3} alignItems="stretch">
-          <Grid size={{ xs: 12, lg: 8 }}>
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
-              {loading ? (
-                <Stack spacing={2}>
-                  <Skeleton variant="rounded" height={56} />
-                  <Skeleton variant="rounded" height={56} />
-                  <Skeleton variant="rounded" height={56} />
-                  <Skeleton variant="rounded" height={120} />
-                </Stack>
-              ) : (
-                <Box component="form" id="owner-product-form" onSubmit={handleSubmit}>
-                  <Stack spacing={2}>
-                    <AssistHintInline tipId="owner-product-form-tip-image" routeKey="owner-products">
-                      Produto ativo sem imagem principal não entra na vitrine pública.
-                    </AssistHintInline>
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                      <TextField
-                        inputProps={{ 'data-testid': 'owner-product-name' }}
-                        label="Nome do produto"
-                        fullWidth
-                        required
-                        value={form.name}
-                        onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                      />
-                      <TextField
-                        inputProps={{ 'data-testid': 'owner-product-sku' }}
-                        label="SKU"
-                        fullWidth
-                        required
-                        value={form.sku}
-                        onChange={(e) => setForm((prev) => ({ ...prev, sku: e.target.value.toUpperCase() }))}
-                      />
-                    </Stack>
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+          <div className="rounded-2xl p-5 bg-white/[0.03] border border-white/[0.06]">
+            {loading ? (
+              <div className="space-y-3 animate-pulse">
+                <div className="h-12 rounded-xl bg-white/[0.06]" />
+                <div className="h-12 rounded-xl bg-white/[0.06]" />
+                <div className="h-12 rounded-xl bg-white/[0.06]" />
+                <div className="h-32 rounded-xl bg-white/[0.06]" />
+              </div>
+            ) : (
+              <form id="owner-product-form" onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex items-center gap-2 text-xs text-[#6b7280]">
+                  <AssistHintInline tipId="owner-product-form-tip-image" routeKey="owner-products">
+                    Produto ativo sem imagem principal nao entra na vitrine publica.
+                  </AssistHintInline>
+                  <span>Imagem principal e necessaria para aparecer na vitrine.</span>
+                </div>
 
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                      <TextField
-                        inputProps={{ 'data-testid': 'owner-product-manufacturer' }}
-                        label="Fabricante"
-                        fullWidth
-                        required
-                        value={form.manufacturer}
-                        onChange={(e) => setForm((prev) => ({ ...prev, manufacturer: e.target.value }))}
-                      />
-                      <TextField
-                        inputProps={{ 'data-testid': 'owner-product-category' }}
-                        label="Categoria"
-                        fullWidth
-                        required
-                        value={form.category}
-                        onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-                      />
-                    </Stack>
-
-                    <TextField
-                      inputProps={{ 'data-testid': 'owner-product-bike-model' }}
-                      label="Modelo / Aplicacao"
-                      fullWidth
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="owner-product-name" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                      Nome do produto
+                    </label>
+                    <input
+                      id="owner-product-name"
+                      aria-label="Nome do produto"
+                      title="Nome do produto"
+                      data-testid="owner-product-name"
                       required
-                      value={form.bikeModel}
-                      onChange={(e) => setForm((prev) => ({ ...prev, bikeModel: e.target.value }))}
+                      value={form.name}
+                      onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                      className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
                     />
-
-                    <TextField
-                      inputProps={{ 'data-testid': 'owner-product-image-url' }}
-                      label="URL da imagem"
-                      fullWidth
-                      placeholder="https://... ou upload local"
-                      value={form.imageUrl}
-                      onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                      helperText="Obrigatoria para produto ativo na vitrine publica."
+                  </div>
+                  <div>
+                    <label htmlFor="owner-product-sku" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                      SKU
+                    </label>
+                    <input
+                      id="owner-product-sku"
+                      aria-label="SKU"
+                      title="SKU"
+                      data-testid="owner-product-sku"
+                      required
+                      value={form.sku}
+                      onChange={(e) => setForm((prev) => ({ ...prev, sku: e.target.value.toUpperCase() }))}
+                      className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
                     />
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <Button
-                        component="label"
-                        variant="outlined"
-                        disabled={uploadingMain}
-                        data-testid="owner-product-main-upload-button"
-                      >
-                        {uploadingMain ? 'Enviando imagem...' : 'Enviar imagem local'}
-                        <input
-                          hidden
-                          accept="image/*"
-                          type="file"
-                          data-testid="owner-product-main-upload-input"
-                          onChange={(event) => {
-                            const file = event.currentTarget.files?.[0]
-                            void handleLocalImageUpload('main', file)
-                            event.currentTarget.value = ''
-                          }}
-                        />
-                      </Button>
-                      {form.imageUrl ? (
-                        <Button
-                          variant="text"
-                          color="inherit"
-                          onClick={() => setForm((prev) => ({ ...prev, imageUrl: '' }))}
-                        >
-                          Limpar imagem
-                        </Button>
-                      ) : null}
-                    </Stack>
+                  </div>
+                </div>
 
-                    <TextField
-                      inputProps={{ 'data-testid': 'owner-product-hover-image-url' }}
-                      label="URL da imagem hover (opcional)"
-                      fullWidth
-                      placeholder="https://... ou upload local"
-                      value={form.hoverImageUrl}
-                      onChange={(e) => setForm((prev) => ({ ...prev, hoverImageUrl: e.target.value }))}
-                      helperText="Quando preenchida, substitui a imagem principal no hover dos cards."
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="owner-product-manufacturer" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                      Fabricante
+                    </label>
+                    <input
+                      id="owner-product-manufacturer"
+                      aria-label="Fabricante"
+                      title="Fabricante"
+                      data-testid="owner-product-manufacturer"
+                      required
+                      value={form.manufacturer}
+                      onChange={(e) => setForm((prev) => ({ ...prev, manufacturer: e.target.value }))}
+                      className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
                     />
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <Button
-                        component="label"
-                        variant="outlined"
-                        disabled={uploadingHover}
-                        data-testid="owner-product-hover-upload-button"
-                      >
-                        {uploadingHover ? 'Enviando imagem hover...' : 'Enviar imagem hover local'}
-                        <input
-                          hidden
-                          accept="image/*"
-                          type="file"
-                          data-testid="owner-product-hover-upload-input"
-                          onChange={(event) => {
-                            const file = event.currentTarget.files?.[0]
-                            void handleLocalImageUpload('hover', file)
-                            event.currentTarget.value = ''
-                          }}
-                        />
-                      </Button>
-                      {form.hoverImageUrl ? (
-                        <Button
-                          variant="text"
-                          color="inherit"
-                          onClick={() => setForm((prev) => ({ ...prev, hoverImageUrl: '' }))}
-                        >
-                          Limpar hover
-                        </Button>
-                      ) : null}
-                    </Stack>
-
-                    {uploadError ? <Alert severity="error">{uploadError}</Alert> : null}
-
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                      <TextField
-                        label="Preco"
-                        type="number"
-                        inputProps={{ min: 0, step: '0.01', 'data-testid': 'owner-product-price' }}
-                        fullWidth
-                        required
-                        value={form.price}
-                        onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
-                      />
-                      <TextField
-                        label="Custo"
-                        type="number"
-                        inputProps={{ min: 0, step: '0.01', 'data-testid': 'owner-product-cost' }}
-                        fullWidth
-                        required
-                        value={form.cost}
-                        onChange={(e) => setForm((prev) => ({ ...prev, cost: e.target.value }))}
-                      />
-                      <TextField
-                        label="Estoque"
-                        type="number"
-                        inputProps={{ min: 0, step: '1', 'data-testid': 'owner-product-stock' }}
-                        fullWidth
-                        required
-                        value={form.stock}
-                        onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))}
-                      />
-                    </Stack>
-
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                      <TextField
-                        label="Estoque minimo"
-                        type="number"
-                        inputProps={{ min: 0, step: '1', 'data-testid': 'owner-product-minimum-stock' }}
-                        fullWidth
-                        required
-                        value={form.minimumStock}
-                        onChange={(e) => setForm((prev) => ({ ...prev, minimumStock: e.target.value }))}
-                      />
-                      <TextField
-                        label="Ponto de reposicao"
-                        type="number"
-                        inputProps={{ min: 0, step: '1', 'data-testid': 'owner-product-reorder-point' }}
-                        fullWidth
-                        required
-                        value={form.reorderPoint}
-                        onChange={(e) => setForm((prev) => ({ ...prev, reorderPoint: e.target.value }))}
-                      />
-                    </Stack>
-
-                    <TextField
-                      inputProps={{ 'data-testid': 'owner-product-description' }}
-                      label="Descricao"
-                      multiline
-                      minRows={4}
-                      fullWidth
-                      value={form.description}
-                      onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                  </div>
+                  <div>
+                    <label htmlFor="owner-product-category" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                      Categoria
+                    </label>
+                    <input
+                      id="owner-product-category"
+                      aria-label="Categoria"
+                      title="Categoria"
+                      data-testid="owner-product-category"
+                      required
+                      value={form.category}
+                      onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+                      className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
                     />
+                  </div>
+                </div>
 
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={form.isActive}
-                          onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
-                        />
-                      }
-                      label="Produto ativo no catalogo publico"
-                    />
-                  </Stack>
-                </Box>
-              )}
-            </Paper>
-          </Grid>
+                <div>
+                  <label htmlFor="owner-product-bike-model" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                    Modelo / Aplicacao
+                  </label>
+                  <input
+                    id="owner-product-bike-model"
+                    aria-label="Modelo ou aplicacao"
+                    title="Modelo ou aplicacao"
+                    data-testid="owner-product-bike-model"
+                    required
+                    value={form.bikeModel}
+                    onChange={(e) => setForm((prev) => ({ ...prev, bikeModel: e.target.value }))}
+                    className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  />
+                </div>
 
-          <Grid size={{ xs: 12, lg: 4 }}>
-            <Stack spacing={3}>
-              <Paper elevation={0} sx={{ p: 3, borderRadius: 3 }}>
-                <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 1.5 }}>
-                  <Box
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 2,
-                      display: 'grid',
-                      placeItems: 'center',
-                      bgcolor: 'rgba(44,209,100,0.1)',
-                      color: 'primary.main',
-                    }}
+                <div>
+                  <label htmlFor="owner-product-image-url" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                    URL da imagem
+                  </label>
+                  <input
+                    id="owner-product-image-url"
+                    aria-label="URL da imagem"
+                    title="URL da imagem"
+                    data-testid="owner-product-image-url"
+                    placeholder="https://... ou upload local"
+                    value={form.imageUrl}
+                    onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                    className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  />
+                  <p className="text-xs mt-1 text-[#6b7280]">Obrigatoria para produto ativo na vitrine publica.</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <label
+                    data-testid="owner-product-main-upload-button"
+                    className={`px-3 py-2 rounded-xl text-xs cursor-pointer border border-white/[0.12] text-[#e5e7eb] ${uploadingMain ? 'opacity-60' : ''}`}
                   >
-                    <Inventory2RoundedIcon size="sm" />
-                  </Box>
-                  <Typography variant="h6">Resumo</Typography>
-                </Stack>
-
-                {loading ? (
-                  <Stack spacing={1.2}>
-                    <Skeleton height={22} />
-                    <Skeleton height={22} />
-                    <Skeleton height={22} />
-                  </Stack>
-                ) : (
-                  <Stack spacing={1.1}>
-                    <Line label="Status" value={form.isActive ? 'Ativo' : 'Inativo'} />
-                    <Line label="SKU" value={form.sku || '-'} />
-                    <Line label="Preco" value={form.price ? `R$ ${Number(form.price || 0).toFixed(2)}` : '-'} />
-                    <Line label="Custo" value={form.cost ? `R$ ${Number(form.cost || 0).toFixed(2)}` : '-'} />
-                    <Line
-                      label="Margem"
-                      value={Number(form.price || 0) > 0 ? `${(((Number(form.price || 0) - Number(form.cost || 0)) / Number(form.price || 0)) * 100).toFixed(1)}%` : '-'}
-                    />
-                    <Line label="Estoque" value={form.stock || '-'} />
-                    <Line label="Estoque minimo" value={form.minimumStock || '-'} />
-                    <Line label="Reposicao" value={form.reorderPoint || '-'} />
-                    <Line label="Imagem" value={form.imageUrl ? 'Configurada' : 'Sem imagem'} />
-                    <Line label="Imagem hover" value={form.hoverImageUrl ? 'Configurada' : 'Nao informada'} />
-                  </Stack>
-                )}
-              </Paper>
-
-              <Paper elevation={0} sx={{ p: 3, borderRadius: 3 }}>
-                <Typography variant="subtitle2" color="primary" gutterBottom>
-                  Preview da imagem
-                </Typography>
-                <Box
-                  sx={{
-                    borderRadius: 2.5,
-                    border: '1px solid rgba(0,0,0,0.08)',
-                    bgcolor: 'rgba(247,250,248,0.95)',
-                    minHeight: 180,
-                    display: 'grid',
-                    placeItems: 'center',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {form.imageUrl ? (
-                    <Box
-                      component="img"
-                      key={form.imageUrl}
-                      src={form.imageUrl}
-                      alt={form.name || 'Preview do produto'}
-                      sx={{ width: '100%', height: 180, objectFit: 'contain', p: 1.25 }}
-                      onError={(event) => {
-                        ;(event.currentTarget as HTMLImageElement).style.display = 'none'
+                    {uploadingMain ? 'Enviando imagem...' : 'Enviar imagem local'}
+                    <input
+                      hidden
+                      accept="image/*"
+                      type="file"
+                      aria-label="Enviar imagem local"
+                      title="Enviar imagem local"
+                      data-testid="owner-product-main-upload-input"
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0]
+                        void handleLocalImageUpload('main', file)
+                        event.currentTarget.value = ''
                       }}
                     />
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Informe uma URL para visualizar.
-                    </Typography>
-                  )}
-                </Box>
-              </Paper>
+                  </label>
+                  {form.imageUrl ? (
+                    <button
+                      type="button"
+                      className="px-3 py-2 rounded-xl text-xs border border-white/[0.12] text-[#e5e7eb]"
+                      onClick={() => setForm((prev) => ({ ...prev, imageUrl: '' }))}
+                    >
+                      Limpar imagem
+                    </button>
+                  ) : null}
+                </div>
 
-              {form.isActive && !form.imageUrl.trim() ? (
-                <Alert severity="warning">
-                  Produto ativo sem imagem nao pode ser publicado na vitrine.
-                </Alert>
-              ) : null}
+                <div>
+                  <label htmlFor="owner-product-hover-image-url" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                    URL da imagem hover (opcional)
+                  </label>
+                  <input
+                    id="owner-product-hover-image-url"
+                    aria-label="URL da imagem hover"
+                    title="URL da imagem hover"
+                    data-testid="owner-product-hover-image-url"
+                    placeholder="https://... ou upload local"
+                    value={form.hoverImageUrl}
+                    onChange={(e) => setForm((prev) => ({ ...prev, hoverImageUrl: e.target.value }))}
+                    className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  />
+                  <p className="text-xs mt-1 text-[#6b7280]">Quando preenchida, substitui a imagem principal no hover dos cards.</p>
+                </div>
 
-              {!isCreate && loadedProduct ? (
-                <Paper elevation={0} sx={{ p: 3, borderRadius: 3 }}>
-                  <Typography variant="subtitle2" color="primary" gutterBottom>
-                    Metadados
-                  </Typography>
-                  <Stack spacing={1}>
-                    <Typography variant="body2" color="text.secondary">
-                      Criado em: {new Date(loadedProduct.createdAt).toLocaleString('pt-BR')}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Ultima atualizacao: {new Date(loadedProduct.updatedAt).toLocaleString('pt-BR')}
-                    </Typography>
-                  </Stack>
-                </Paper>
-              ) : null}
-            </Stack>
-          </Grid>
-        </Grid>
-      </Stack>
+                <div className="flex flex-wrap gap-2">
+                  <label
+                    data-testid="owner-product-hover-upload-button"
+                    className={`px-3 py-2 rounded-xl text-xs cursor-pointer border border-white/[0.12] text-[#e5e7eb] ${uploadingHover ? 'opacity-60' : ''}`}
+                  >
+                    {uploadingHover ? 'Enviando imagem hover...' : 'Enviar imagem hover local'}
+                    <input
+                      hidden
+                      accept="image/*"
+                      type="file"
+                      aria-label="Enviar imagem hover local"
+                      title="Enviar imagem hover local"
+                      data-testid="owner-product-hover-upload-input"
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0]
+                        void handleLocalImageUpload('hover', file)
+                        event.currentTarget.value = ''
+                      }}
+                    />
+                  </label>
+                  {form.hoverImageUrl ? (
+                    <button
+                      type="button"
+                      className="px-3 py-2 rounded-xl text-xs border border-white/[0.12] text-[#e5e7eb]"
+                      onClick={() => setForm((prev) => ({ ...prev, hoverImageUrl: '' }))}
+                    >
+                      Limpar hover
+                    </button>
+                  ) : null}
+                </div>
+
+                {uploadError ? (
+                  <div className="p-3 rounded-lg text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">
+                    {uploadError}
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label htmlFor="owner-product-price" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                      Preco
+                    </label>
+                    <input
+                      id="owner-product-price"
+                      aria-label="Preco"
+                      title="Preco"
+                      data-testid="owner-product-price"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      required
+                      value={form.price}
+                      onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
+                      className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="owner-product-cost" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                      Custo
+                    </label>
+                    <input
+                      id="owner-product-cost"
+                      aria-label="Custo"
+                      title="Custo"
+                      data-testid="owner-product-cost"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      required
+                      value={form.cost}
+                      onChange={(e) => setForm((prev) => ({ ...prev, cost: e.target.value }))}
+                      className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="owner-product-stock" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                      Estoque
+                    </label>
+                    <input
+                      id="owner-product-stock"
+                      aria-label="Estoque"
+                      title="Estoque"
+                      data-testid="owner-product-stock"
+                      type="number"
+                      min={0}
+                      step="1"
+                      required
+                      value={form.stock}
+                      onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))}
+                      className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="owner-product-minimum-stock" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                      Estoque minimo
+                    </label>
+                    <input
+                      id="owner-product-minimum-stock"
+                      aria-label="Estoque minimo"
+                      title="Estoque minimo"
+                      data-testid="owner-product-minimum-stock"
+                      type="number"
+                      min={0}
+                      step="1"
+                      required
+                      value={form.minimumStock}
+                      onChange={(e) => setForm((prev) => ({ ...prev, minimumStock: e.target.value }))}
+                      className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="owner-product-reorder-point" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                      Ponto de reposicao
+                    </label>
+                    <input
+                      id="owner-product-reorder-point"
+                      aria-label="Ponto de reposicao"
+                      title="Ponto de reposicao"
+                      data-testid="owner-product-reorder-point"
+                      type="number"
+                      min={0}
+                      step="1"
+                      required
+                      value={form.reorderPoint}
+                      onChange={(e) => setForm((prev) => ({ ...prev, reorderPoint: e.target.value }))}
+                      className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="owner-product-description" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                    Descricao
+                  </label>
+                  <textarea
+                    id="owner-product-description"
+                    aria-label="Descricao"
+                    title="Descricao"
+                    data-testid="owner-product-description"
+                    rows={4}
+                    value={form.description}
+                    onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                    className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 text-sm text-[#f0ede8]">
+                  <input
+                    type="checkbox"
+                    aria-label="Produto ativo no catalogo publico"
+                    title="Produto ativo no catalogo publico"
+                    checked={form.isActive}
+                    onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                  />
+                  Produto ativo no catalogo publico
+                </label>
+              </form>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-2xl p-5 bg-white/[0.03] border border-white/[0.06]">
+              <p className="text-sm mb-3 text-[#f0ede8] font-semibold">Resumo</p>
+              {loading ? (
+                <div className="space-y-2 animate-pulse">
+                  <div className="h-4 rounded bg-white/[0.06]" />
+                  <div className="h-4 rounded bg-white/[0.06]" />
+                  <div className="h-4 rounded bg-white/[0.06]" />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Line label="Status" value={form.isActive ? 'Ativo' : 'Inativo'} />
+                  <Line label="SKU" value={form.sku || '-'} />
+                  <Line label="Preco" value={form.price ? `R$ ${Number(form.price || 0).toFixed(2)}` : '-'} />
+                  <Line label="Custo" value={form.cost ? `R$ ${Number(form.cost || 0).toFixed(2)}` : '-'} />
+                  <Line
+                    label="Margem"
+                    value={Number(form.price || 0) > 0 ? `${(((Number(form.price || 0) - Number(form.cost || 0)) / Number(form.price || 0)) * 100).toFixed(1)}%` : '-'}
+                  />
+                  <Line label="Estoque" value={form.stock || '-'} />
+                  <Line label="Estoque minimo" value={form.minimumStock || '-'} />
+                  <Line label="Reposicao" value={form.reorderPoint || '-'} />
+                  <Line label="Imagem" value={form.imageUrl ? 'Configurada' : 'Sem imagem'} />
+                  <Line label="Imagem hover" value={form.hoverImageUrl ? 'Configurada' : 'Nao informada'} />
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl p-5 bg-white/[0.03] border border-white/[0.06]">
+              <p className="text-xs uppercase tracking-widest text-[#d4a843]">Preview da imagem</p>
+              <div
+                className="mt-3 rounded-xl flex items-center justify-center overflow-hidden border border-white/[0.08] bg-[#111118]/60 min-h-[180px]"
+              >
+                {form.imageUrl ? (
+                  <img
+                    key={form.imageUrl}
+                    src={form.imageUrl}
+                    alt={form.name || 'Preview do produto'}
+                    className="w-full h-[180px] object-contain p-4"
+                    onError={(event) => {
+                      ;(event.currentTarget as HTMLImageElement).style.display = 'none'
+                    }}
+                  />
+                ) : (
+                  <span className="text-sm text-[#6b7280]">Informe uma URL para visualizar.</span>
+                )}
+              </div>
+            </div>
+
+            {form.isActive && !form.imageUrl.trim() ? (
+              <div className="p-3 rounded-lg text-sm bg-[#eab308]/[0.12] border border-[#eab308]/20 text-[#facc15]">
+                Produto ativo sem imagem nao pode ser publicado na vitrine.
+              </div>
+            ) : null}
+
+            {!isCreate && loadedProduct ? (
+              <div className="rounded-2xl p-5 bg-white/[0.03] border border-white/[0.06]">
+                <p className="text-xs uppercase tracking-widest text-[#d4a843]">Metadados</p>
+                <div className="mt-2 space-y-2 text-sm text-[#9ca3af]">
+                  <p>Criado em: {new Date(loadedProduct.createdAt).toLocaleString('pt-BR')}</p>
+                  <p>Ultima atualizacao: {new Date(loadedProduct.updatedAt).toLocaleString('pt-BR')}</p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
     </OwnerLayout>
   )
 }
 
 function Line({ label, value }: { label: string; value: string }) {
   return (
-    <Stack direction="row" justifyContent="space-between" spacing={2}>
-      <Typography variant="body2" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600, textAlign: 'right' }}>
-        {value}
-      </Typography>
-    </Stack>
+    <div className="flex items-center justify-between gap-2 text-xs text-[#9ca3af]">
+      <span>{label}</span>
+      <span className="text-[#f0ede8] font-semibold text-right">{value}</span>
+    </div>
   )
 }

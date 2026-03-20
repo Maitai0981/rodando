@@ -1,7 +1,48 @@
-node_modules/
+# ── Build (Maven) ─────────────────────────────────────────────
+target/
+build/
+*.jar
+*.war
+*.class
+HELP.md
+
+# ── Gradle (caso utilizado) ────────────────────────────────────
+.gradle/
+
+# ── Maven wrapper (binário — scripts são rastreados) ──────────
+.mvn/wrapper/maven-wrapper.jar
+
+# ── Variáveis de ambiente ─────────────────────────────────────
+.env
+.env.*
+# .env.example é rastreado intencionalmente
+
+# ── Logs ─────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Perf / benchmarks ─────────────────────────────────────────
+perf/
+
+# ── Banco de dados local (SQLite legado) ──────────────────────
 data/**/*.sqlite
 data/**/*.sqlite-*
-.env
-legacy/trash/
+
+# ── Uploads (preservar placeholder) ──────────────────────────
 uploads/*
 !uploads/.gitkeep
+
+# ── Legado ────────────────────────────────────────────────────
+legacy/trash/
+
+# ── Editores ──────────────────────────────────────────────────
+.idea/
+!.idea/.gitignore
+*.iml
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+.DS_Store
+Thumbs.db

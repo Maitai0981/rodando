@@ -1,94 +1,113 @@
-# Backend Structure
+# Backend
 
-This backend is organized by responsibility to keep data, scripts, and runtime code separated.
+O backend roda oficialmente como uma aplicacao `Java 21 + Spring Boot + Gradle`.
+Nao existe mais runtime Node dentro de `backend/` para API, regras de negocio, testes ou scripts operacionais.
 
-## Folders
+## Estrutura
 
-- `src/`: API source code (`server.js`, auth, and DB module in `src/db/`).
-- `src/db/`: PostgreSQL access layer, schema, and SQL migrations.
-- `scripts/db/`: database utility scripts (`db:migrate`, seeds, and legacy migration tool).
-- `test/`: backend automated tests (integration, domain, and non-functional checks).
-- `data/`: local SQLite artifacts used by legacy and some test flows.
-- `legacy/`: archived files kept for migration history (`sqlite/` and `trash/`).
+- `src/main/java/`: aplicacao Spring Boot organizada na mesma linha do `api_supabase-main`.
+- `src/main/java/com/rodando/backend/controller`: controllers HTTP.
+- `src/main/java/com/rodando/backend/models`: entidades e modelos de apoio.
+- `src/main/java/com/rodando/backend/repository`: repositories JPA.
+- `src/main/java/com/rodando/backend/service`: regras de negocio e servicos de aplicacao.
+- `src/main/resources/`: configuracao Spring, migracoes Flyway e assets do painel `/ops`.
+- `src/test/java/`: testes Java.
+- `uploads/`: arquivos enviados em ambiente local.
 
-## Script Usage
-
-- `npm run db:migrate`
-- `npm run db:seed`
-- `npm run db:seed:owner -- <email> <senha> [nome]`
-- `npm run db:reset:non-user` (sem reseed de catalogo por padrao)
-- `npm run db:reset:non-user -- --reseed-base` (somente para ambiente de teste/demonstracao)
-- `npm run db:purge:test-comments` (remove reviews de usuarios de teste/e2e sem tocar em dados reais)
-- `npm run db:purge:demo-users`
-- `npm run db:clean:real`
-- `npm run db:migrate:legacy -- <sqlite-file-path>`
-- `npm run perf:api` (benchmark curto de endpoints públicos e geração de `backend/perf/backend-api.json`)
+Observacao:
+- Os unicos arquivos nao-Java mantidos no backend sao recursos estaticos do `/ops` e SQL de migracao. A logica da API fica em Java.
 
 ## Runtime
 
-- Node.js oficial do projeto: `20.x` (`.nvmrc` e `engines` definidos).
-- Variável obrigatória de ambiente: `APP_ENV` (`local|test|e2e|staging|production`).
-- Em `staging/production`, `DATABASE_URL` é obrigatório.
-- Em `staging/production`, flags destrutivas (`DB_RESET`, `SEED_*`, `E2E_ALLOW_RESET`) são bloqueadas no boot.
-- Operações destrutivas em ambiente real exigem `ALLOW_DESTRUCTIVE=1`.
+- Java: `21`
+- Spring Boot: `3.5.0`
+- Banco: `PostgreSQL`
+- Build tool: `Gradle Wrapper`
 
-## Performance/Observability
+## Comandos
 
-- Compressão HTTP ativa (`compression`) para respostas text/json.
-- Cache público em memória (LRU com TTL curto) para endpoints de leitura:
-  - `/api/products*`
-  - `/api/offers*`
-  - `/api/comments*`
-  - `/api/catalog/*`
-- Invalidação de cache ocorre após mutações de produtos/ofertas/comentários.
-- Métricas em `GET /api/metrics` (requests, latência p95/p99 por rota, cache hit/miss, métricas de query).
-- Healthcheck em `GET /api/health` com status de DB/pool.
-- Readiness em `GET /api/ready` com checks de ambiente, DB e worker de outbox.
+Windows PowerShell:
 
-### Painel Ops (owner-only)
+```powershell
+cd C:\Users\mathe\rodando\backend
+.\gradlew.bat bootRun
+```
 
-- Página operacional servida pelo backend em `GET /ops`.
-- Acesso restrito a sessão autenticada com role `owner`.
-- Recursos principais:
-  - monitor de requisições (buffer em memória das últimas 5.000),
-  - explorer de tabelas (`public`) com preview paginado,
-  - console SQL para diagnóstico/operação.
-- Endpoints do painel:
-  - `GET /api/owner/ops/requests`
-  - `GET /api/owner/ops/db/tables`
-  - `GET /api/owner/ops/db/table/:table`
-  - `POST /api/owner/ops/db/sql/challenge`
-  - `POST /api/owner/ops/db/sql`
-- Segurança:
-  - payloads do monitor são mascarados para campos sensíveis,
-  - em `staging/production`, SQL exige confirmação dupla via challenge de curta duração.
-- Auditoria:
-  - execuções SQL registradas em `owner_audit_logs` com `action_type = ops_sql_execute`.
+Linux/macOS:
 
-## Confiabilidade (Checkout/Pagamento)
+```bash
+cd backend
+./gradlew bootRun
+```
 
-- `POST /api/orders/checkout` aceita header opcional `Idempotency-Key`.
-- Requisição repetida com mesma chave+payload retorna o mesmo resultado (`Idempotent-Replay: true`) sem duplicar pedido.
-- Requisição repetida com mesma chave e payload diferente retorna `409`.
-- Webhook do Mercado Pago é deduplicado por `event_id` em `payment_webhook_events`.
-- Notificações de venda usam outbox (`outbox_jobs`) com retry exponencial e dead-letter lógico.
+Comandos uteis:
 
-## Notes
+- subir a API: `./gradlew bootRun`
+- rodar testes: `./gradlew test`
+- gerar build: `./gradlew build`
+- benchmark curto da API: `./gradlew apiPerf`
 
-- Runtime DB is PostgreSQL (`DATABASE_URL`).
-- Para ambiente real, use:
-  - `SEED_BASE_CATALOG=0`
-  - `SEED_DEMO_DATA=0`
-- Public API code should remain under `src/`.
-- Historical/temporary files should go under `legacy/`, not `src/`.
+## Configuracao
 
-## Runbook: limpar para dados reais
+- Variavel principal: `APP_ENV`
+- Arquivos locais suportados:
+  - `.env.local`
+  - `.env.test.local`
+- O Spring importa automaticamente o arquivo correspondente ao ambiente.
+- O fluxo local padrao assume banco limpo:
+  - mantenha `FLYWAY_BASELINE_ON_MIGRATE=false`
+  - se o schema `public` estiver herdado e sem `flyway_schema_history`, resete o banco `rodando`
+- Baseline permanece como escape para schema legado:
+  - `FLYWAY_BASELINE_ON_MIGRATE=true`
+  - `FLYWAY_BASELINE_VERSION=0`
+- `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` e `SPRING_DATASOURCE_PASSWORD` tem precedencia sobre `DATABASE_URL`
 
-1. (Opcional) gerar backup:
-   - `pg_dump --dbname "$env:DATABASE_URL" --file backup-before-clean.sql`
-2. Garantir seeds desativados no ambiente:
-   - `SEED_BASE_CATALOG=0`
-   - `SEED_DEMO_DATA=0`
-3. Rodar limpeza:
-   - `npm run db:clean:real`
-4. Reiniciar backend e validar contagens (produtos/ofertas/reviews = 0, usuarios preservados).
+Exemplo local:
+
+```env
+APP_ENV=local
+DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/rodando
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+PUBLIC_APP_BASE_URL=http://localhost:5173
+COOKIE_SECURE=0
+TRUST_PROXY=0
+RATE_LIMIT_ENABLED=1
+PAYMENT_CARD_PROVIDER=mercado_pago
+PAYMENT_PIX_PROVIDER=mercado_pago
+MERCADOPAGO_PUBLIC_KEY=APP_USR-xxxxxxxx
+MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxxxxxx
+MERCADOPAGO_NOTIFICATION_URL=http://127.0.0.1:4000/api/payments/webhooks/mercadopago
+MOCK_PAYMENT_PROVIDERS=0
+```
+
+## Banco local
+
+Se o banco local estiver descartavel, prefira resetar antes de subir a API:
+
+Windows PowerShell:
+
+```powershell
+$env:PGPASSWORD="SUA_SENHA"
+& "C:\Program Files\PostgreSQL\16\bin\dropdb.exe" -h 127.0.0.1 -U postgres rodando
+& "C:\Program Files\PostgreSQL\16\bin\createdb.exe" -h 127.0.0.1 -U postgres rodando
+.\gradlew.bat bootRun
+```
+
+Depois do reset, o backend deve criar `flyway_schema_history`, aplicar `V1__baseline.sql` e responder em `http://127.0.0.1:4000/api/health`.
+
+## Endpoints operacionais
+
+- `GET /api/health`
+- `GET /api/ready`
+- `GET /api/metrics`
+- `GET /ops`
+
+O `/ops` continua protegido por sessao owner e agora e servido a partir de resources do Spring.
+
+## Performance
+
+O task `apiPerf` gera:
+
+- `backend/perf/backend-api.json`
+
+Ele depende de a API estar rodando no `API_BASE` configurado, ou usa `http://127.0.0.1:4000` por padrao.

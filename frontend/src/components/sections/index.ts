@@ -1,7 +1,0 @@
-export { BestSellers } from './BestSellers'
-export { Categories } from './Categories'
-export { Footer } from './Footer'
-export { Header } from './Header'
-export { Hero } from './Hero'
-export { Newsletter } from './Newsletter'
-export { TrustBar } from './TrustBar'

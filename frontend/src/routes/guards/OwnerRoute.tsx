@@ -1,21 +1,16 @@
-import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
-import Typography from '@mui/material/Typography'
 import type { PropsWithChildren } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../shared/context/AuthContext'
 
 export function OwnerRoute({ children }: PropsWithChildren) {
   const { status, user } = useAuth()
 
   if (status === 'loading') {
     return (
-      <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', gap: 1.2 }}>
-        <CircularProgress size={22} />
-        <Typography variant="body2" color="text.secondary">
-          Validando acesso...
-        </Typography>
-      </Box>
+      <div className="min-h-screen grid place-items-center gap-3 bg-[#0a0a0f] text-[#9ca3af]">
+        <div className="w-6 h-6 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+        <span className="text-sm">Validando acesso...</span>
+      </div>
     )
   }
 
@@ -27,5 +22,5 @@ export function OwnerRoute({ children }: PropsWithChildren) {
     return <Navigate to="/" replace />
   }
 
-  return children ? <>{children}</> : <Outlet />
+  return children != null ? <>{children}</> : <Outlet />
 }

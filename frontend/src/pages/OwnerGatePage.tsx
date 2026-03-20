@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { Alert, Box, Button, Paper, Stack, Typography } from '@mui/material'
-import { useAuth } from '../context/AuthContext'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../shared/context/AuthContext'
 
 export default function OwnerGatePage() {
   const navigate = useNavigate()
@@ -17,28 +16,27 @@ export default function OwnerGatePage() {
   const checking = status === 'loading'
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', px: 2 }}>
-      <Paper elevation={0} sx={{ p: { xs: 2, sm: 3, md: 4 }, borderRadius: { xs: 3, md: 4 }, width: '100%', maxWidth: 540 }}>
-        <Stack spacing={2}>
-          <Typography variant="subtitle2" color="primary">Owner Access</Typography>
-          <Typography variant="h3">
-            Area administrativa de produtos
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            O acesso ao painel e feito em rota dedicada para owner.
-          </Typography>
+    <div className="min-h-screen grid place-items-center px-4 bg-[#0a0a0f]">
+      <div className="p-6 rounded-2xl w-full max-w-lg bg-white/[0.03] border border-white/[0.06]">
+        <p className="text-xs uppercase tracking-widest text-[#d4a843] font-semibold">Owner Access</p>
+        <h1 className="text-2xl mt-2 text-[#f0ede8] font-bold">Area administrativa de produtos</h1>
+        <p className="text-sm mt-2 text-[#6b7280]">O acesso ao painel e feito em rota dedicada para owner.</p>
 
-          {checking ? <Alert severity="info">Verificando sessao atual...</Alert> : null}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ pt: 1 }}>
-            <Button component={RouterLink} to="/owner/login" variant="contained" color="primary">
-              Entrar como owner
-            </Button>
-            <Button component={RouterLink} to="/auth" variant="outlined" color="primary">
-              Area de cliente
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
-    </Box>
+        {checking ? (
+          <div className="mt-4 p-3 rounded-lg text-sm bg-[#d4a843]/[0.08] border border-[#d4a843]/20 text-[#d4a843]">
+            Verificando sessao atual...
+          </div>
+        ) : null}
+
+        <div className="flex flex-col sm:flex-row gap-3 mt-6">
+          <Link to="/owner/login" className="flex-1 px-4 py-2 rounded-xl text-sm text-black text-center bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold">
+            Entrar como owner
+          </Link>
+          <Link to="/auth" className="flex-1 px-4 py-2 rounded-xl text-sm text-center border border-[#d4a843]/40 text-[#d4a843]">
+            Area de cliente
+          </Link>
+        </div>
+      </div>
+    </div>
   )
 }

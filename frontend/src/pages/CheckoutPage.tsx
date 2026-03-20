@@ -1,34 +1,49 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import Box from '@mui/material/Box'
-import Grid from '@mui/material/Grid'
-import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
-import Divider from '@mui/material/Divider'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { AppShell } from '../layouts/AppShell'
-import { useAuth } from '../context/AuthContext'
-import { useCart } from '../context/CartContext'
-import { api, ApiError, type CheckoutDeliveryMethod } from '../lib/api'
-import { formatCurrency } from '../lib'
-import { Alert, Button, Card, Input, MotionReveal, Select, Toast } from '../ui'
+import { api, ApiError, type CheckoutDeliveryMethod, type PaymentMethod } from '../shared/lib/api'
+import { useAuth } from '../shared/context/AuthContext'
+import { useCart } from '../shared/context/CartContext'
+import { copyTextToClipboard, formatCurrency } from '../shared/lib'
 
-const checkoutHeaderBackdropUrl =
-  'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1400&q=80'
+type CheckoutPayment = {
+  provider?: string
+  status?: string
+  externalId?: string
+  paymentIntentId?: string
+  clientSecret?: string
+  checkoutUrl?: string | null
+  qrCode?: string | null
+  pix?: string | null
+  simulated?: boolean
+  simulationReason?: string | null
+}
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { status, user } = useAuth()
-  const { items, total, itemCount, clear } = useCart()
+  const { items, total, itemCount, refresh } = useCart()
 
   const [deliveryMethod, setDeliveryMethod] = useState<CheckoutDeliveryMethod>('pickup')
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const [recipientName, setRecipientName] = useState('')
   const [recipientDocument, setRecipientDocument] = useState('')
   const [recipientPhone, setRecipientPhone] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card_credit')
+  const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [syncingPayment, setSyncingPayment] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingOrderId, setPendingOrderId] = useState<number | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [pixFeedback, setPixFeedback] = useState<string | null>(null)
+  const [checkoutOrderId, setCheckoutOrderId] = useState<number | null>(null)
+  const [checkoutPayment, setCheckoutPayment] = useState<CheckoutPayment | null>(null)
+  const handledMercadoPagoTokenRef = useRef<string | null>(null)
+  const completingMercadoPagoRef = useRef(false)
+  const mercadoPagoStatus = searchParams.get('mpStatus') || searchParams.get('status')
+  const mercadoPagoToken = searchParams.get('token') || searchParams.get('payment_id') || searchParams.get('collection_id')
 
   const addressesQuery = useQuery({
     queryKey: ['checkout-addresses'],
@@ -38,22 +53,16 @@ export default function CheckoutPage() {
 
   const quoteQuery = useQuery({
     queryKey: ['checkout-quote', deliveryMethod, selectedAddressId, total, itemCount],
-    queryFn: () =>
-      api.quoteOrder({
-        deliveryMethod,
-        addressId: selectedAddressId,
-      }),
-    enabled:
-      status === 'authenticated' &&
-      items.length > 0 &&
-      (deliveryMethod === 'pickup' || Number.isInteger(selectedAddressId)),
+    queryFn: () => api.quoteOrder({ deliveryMethod, addressId: selectedAddressId }),
+    enabled: status === 'authenticated' && items.length > 0 && (deliveryMethod === 'pickup' || Number.isInteger(selectedAddressId)),
   })
 
   useEffect(() => {
     if (status === 'anonymous') {
-      navigate('/auth?returnTo=/checkout', { replace: true })
+      const returnPath = searchParams.toString() ? `/checkout?${searchParams.toString()}` : '/checkout'
+      navigate(`/auth?returnTo=${encodeURIComponent(returnPath)}`, { replace: true })
     }
-  }, [navigate, status])
+  }, [navigate, status, searchParams])
 
   useEffect(() => {
     setRecipientName(user?.name || '')
@@ -71,11 +80,58 @@ export default function CheckoutPage() {
     setSelectedAddressId((current) => current || preferred.id)
   }, [addressesQuery.data?.items])
 
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    const canCompleteFromReturn =
+      Boolean(mercadoPagoToken) &&
+      mercadoPagoStatus !== 'cancelled' &&
+      mercadoPagoStatus !== 'failure'
+    if (!canCompleteFromReturn || !mercadoPagoToken || completingMercadoPagoRef.current) return
+    if (handledMercadoPagoTokenRef.current === mercadoPagoToken) return
+
+    handledMercadoPagoTokenRef.current = mercadoPagoToken
+    completingMercadoPagoRef.current = true
+    setError(null)
+    setSuccessMessage('Confirmando pagamento Mercado Pago...')
+
+    void (async () => {
+      try {
+        const result = await api.completeMercadoPagoOrder(mercadoPagoToken)
+        setCheckoutOrderId(result.order.id)
+        setCheckoutPayment((result.payment || {}) as CheckoutPayment)
+        if (result.order.paymentStatus === 'authorized' || result.order.paymentStatus === 'paid') {
+          await refresh()
+          navigate(`/orders/${result.order.id}`, { replace: true })
+        } else {
+          setStep(1)
+          setSuccessMessage(`Pedido #${result.order.id} ainda esta aguardando confirmacao do pagamento.`)
+          setSearchParams({}, { replace: true })
+        }
+      } catch (err) {
+        handledMercadoPagoTokenRef.current = null
+        setError(err instanceof ApiError ? err.message : 'Falha ao concluir pagamento Mercado Pago.')
+      } finally {
+        completingMercadoPagoRef.current = false
+      }
+    })()
+  }, [mercadoPagoStatus, mercadoPagoToken, navigate, refresh, setSearchParams, status])
+
+  useEffect(() => {
+    if (mercadoPagoStatus !== 'cancelled') return
+    setError('Pagamento Mercado Pago cancelado pelo cliente.')
+    setSearchParams({}, { replace: true })
+  }, [mercadoPagoStatus, setSearchParams])
+
   const addresses = addressesQuery.data?.items ?? []
   const shippingCost = Number(quoteQuery.data?.quote?.shippingCost || 0)
   const finalTotal = total + shippingCost
+  const pixQrImageSrc = checkoutPayment?.pix
+    ? checkoutPayment.pix.startsWith('data:')
+      ? checkoutPayment.pix
+      : `data:image/png;base64,${checkoutPayment.pix}`
+    : null
 
-  const blockers = useMemo(() => {
+  const deliveryBlockers = useMemo(() => {
     const missing: string[] = []
     if (items.length === 0) missing.push('Carrinho vazio')
     if (!recipientName.trim()) missing.push('Informar nome do destinatario')
@@ -84,10 +140,17 @@ export default function CheckoutPage() {
     return missing
   }, [addresses.length, deliveryMethod, items.length, recipientName, selectedAddressId])
 
-  async function handleCheckout() {
-    if (blockers.length > 0 || loading) return
+  const paymentBlockers = useMemo(() => {
+    const missing: string[] = []
+    if (!paymentMethod) missing.push('Selecionar metodo de pagamento')
+    return missing
+  }, [paymentMethod])
+
+  async function createCheckout() {
+    if (loading || checkoutOrderId) return
     setLoading(true)
     setError(null)
+    setSuccessMessage(null)
     try {
       const result = await api.checkoutOrder({
         deliveryMethod,
@@ -95,179 +158,421 @@ export default function CheckoutPage() {
         recipientName,
         recipientDocument,
         recipientPhone,
+        paymentMethod,
       })
-      await clear()
-      setSuccessMessage(`Pedido #${result.order.id} criado com sucesso.`)
-      navigate(`/orders/${result.order.id}`)
+      setCheckoutOrderId(result.order.id)
+      const payment = (result.payment || {}) as CheckoutPayment
+      setCheckoutPayment(payment)
+      setPixFeedback(null)
+      if (!(result.order.paymentStatus === 'authorized' || result.order.paymentStatus === 'paid')) {
+        const waitingMessage =
+          paymentMethod === 'pix'
+            ? `Pedido #${result.order.id} aguardando pagamento via Pix.`
+            : `Pedido #${result.order.id} aguardando aprovacao do pagamento com cartao.`
+        setSuccessMessage(waitingMessage)
+      } else {
+        await refresh()
+        setStep(2)
+        setSuccessMessage(`Pedido #${result.order.id} confirmado com sucesso.`)
+      }
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && err.code) {
+        setPendingOrderId(Number(err.code))
+      } else {
+        setPendingOrderId(null)
+      }
       setError(err instanceof ApiError ? err.message : 'Falha ao finalizar pedido.')
     } finally {
       setLoading(false)
     }
   }
 
+  async function cancelPendingAndRetry() {
+    if (!pendingOrderId || loading) return
+    setLoading(true)
+    setError(null)
+    try {
+      await api.cancelOrder(pendingOrderId)
+      setPendingOrderId(null)
+      await createCheckout()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Falha ao cancelar pedido pendente.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleCopyPixCode() {
+    const pixCode = String(checkoutPayment?.qrCode || '').trim()
+    if (!pixCode) return
+    try {
+      await copyTextToClipboard(pixCode)
+      setPixFeedback('Codigo Pix copiado.')
+    } catch (err) {
+      setPixFeedback(err instanceof Error ? err.message : 'Nao foi possivel copiar o codigo Pix.')
+    }
+  }
+
+  async function handleSyncPayment() {
+    if (!checkoutOrderId || syncingPayment) return
+    setSyncingPayment(true)
+    setError(null)
+    setSuccessMessage(null)
+    try {
+      const result = await api.syncOrderPayment(checkoutOrderId)
+      setCheckoutPayment((result.payment || {}) as CheckoutPayment)
+      if (result.order.paymentStatus === 'authorized' || result.order.paymentStatus === 'paid') {
+        await refresh()
+        setStep(2)
+        setSuccessMessage(`Pedido #${result.order.id} confirmado com sucesso.`)
+      } else {
+        setSuccessMessage(`Pedido #${result.order.id} ainda aguarda confirmacao do gateway.`)
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Nao foi possivel atualizar o status do pagamento.')
+    } finally {
+      setSyncingPayment(false)
+    }
+  }
+
+  const steps = ['Entrega', 'Pagamento', 'Revisao']
+  const canAdvanceDelivery = deliveryBlockers.length === 0
+  const canAdvancePayment = paymentBlockers.length === 0
+
   return (
-    <AppShell contained={false}>
-      <Stack spacing={{ xs: 2, md: 3 }}>
-        <MotionReveal variant="reveal-fade">
-          <Card variant="feature" className="ds-hover-lift" sx={{ position: 'relative', overflow: 'hidden' }}>
-            <Box
-              aria-hidden
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                opacity: 0.14,
-                pointerEvents: 'none',
-              }}
-            >
-              <Box component="img" src={checkoutHeaderBackdropUrl} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </Box>
-            <Stack spacing={0.6} sx={{ position: 'relative', zIndex: 1 }}>
-              <Typography variant="overline" color="secondary.main">Checkout</Typography>
-              <Typography variant="h3">Finalizacao de compra</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Fluxo rapido de 1 etapa para confirmar entrega, destinatario e pagamento.
-              </Typography>
-            </Stack>
-          </Card>
-        </MotionReveal>
+    <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <h1 className="text-2xl text-[#f0ede8] font-bold">Checkout</h1>
+          <p className="text-sm text-[#6b7280]">Finalize sua compra em etapas rápidas.</p>
+        </div>
 
-        {items.length === 0 ? (
-          <MotionReveal variant="reveal-pop" delayMs={80}>
-            <Card className="ds-hover-lift">
-            <Stack spacing={1.2}>
-              <Typography variant="h6">Sua mochila esta vazia</Typography>
-              <Typography variant="body2" color="text.secondary">Adicione produtos no catalogo para seguir ao checkout.</Typography>
-              <Button className="ds-pressable" component={RouterLink} to="/catalog" variant="primary" sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                Voltar ao catalogo
-              </Button>
-            </Stack>
-            </Card>
-          </MotionReveal>
-        ) : (
-          <Grid container spacing={2.2}>
-            <Grid size={{ xs: 12, md: 7 }}>
-              <MotionReveal variant="reveal-left" delayMs={80}>
-                <Card className="ds-hover-lift">
-                <Stack spacing={1.2}>
-                  <Typography variant="h6">Dados de entrega</Typography>
-                  <Select
-                    label="Metodo de entrega"
-                    value={deliveryMethod}
-                    onChange={(event) => setDeliveryMethod(event.target.value as CheckoutDeliveryMethod)}
-                    options={[
-                      { label: 'Retirada na loja', value: 'pickup' },
-                      { label: 'Entrega', value: 'delivery' },
-                    ]}
-                  />
+        <div className="flex items-center gap-3 mb-6">
+          {steps.map((label, index) => (
+            <div key={label} className="flex items-center gap-2">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                  step >= index
+                    ? 'bg-gradient-to-br from-[#d4a843] to-[#f0c040] text-black'
+                    : 'bg-white/[0.08] text-[#6b7280]'
+                }`}
+              >
+                {index + 1}
+              </div>
+              <span className={`text-xs ${step >= index ? 'text-[#d4a843]' : 'text-[#6b7280]'}`}>{label}</span>
+              {index < steps.length - 1 ? <span className="text-xs text-[#4b5563]">•</span> : null}
+            </div>
+          ))}
+        </div>
 
-                  {deliveryMethod === 'delivery' ? (
-                    <Select
-                      label="Endereco"
-                      value={selectedAddressId ? String(selectedAddressId) : ''}
-                      onChange={(event) => setSelectedAddressId(Number(event.target.value))}
-                      hint={addresses.length === 0 ? 'Cadastre um endereco em Minha conta.' : undefined}
-                      options={addresses.map((address) => ({
-                        value: String(address.id),
-                        label: `${address.label} • ${address.street}, ${address.number || 's/n'} - ${address.city}/${address.state}`,
-                      }))}
-                    />
-                  ) : null}
+        {error ? (
+          <div className="mb-4 p-3 rounded-lg text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">
+            {error}
+            {pendingOrderId ? (
+              <button
+                onClick={cancelPendingAndRetry}
+                disabled={loading}
+                className="mt-2 block w-full text-center py-1.5 px-3 rounded bg-[#ef4444]/20 hover:bg-[#ef4444]/30 text-[#f87171] font-medium transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Cancelando...' : 'Cancelar pedido pendente e tentar novamente'}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {successMessage ? (
+          <div className="mb-4 p-3 rounded-lg text-sm bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]">
+            {successMessage}
+          </div>
+        ) : null}
 
-                  <Input
-                    label="Destinatario"
-                    value={recipientName}
-                    onChange={(event) => setRecipientName(event.target.value)}
-                  />
-                  <Grid container spacing={1}>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <Input
-                        label="CPF/CNPJ"
-                        value={recipientDocument}
-                        onChange={(event) => setRecipientDocument(event.target.value)}
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <Input
-                        label="Telefone"
-                        value={recipientPhone}
-                        onChange={(event) => setRecipientPhone(event.target.value)}
-                      />
-                    </Grid>
-                  </Grid>
-
-                  {blockers.length > 0 ? (
-                    <Alert tone="warning" title="Ajustes necessarios">
-                      <Stack spacing={0.3}>
-                        {blockers.map((item) => (
-                          <Typography key={item} variant="caption" color="text.secondary">• {item}</Typography>
-                        ))}
-                      </Stack>
-                    </Alert>
-                  ) : null}
-
-                  {error ? <Alert tone="error">{error}</Alert> : null}
-                </Stack>
-                </Card>
-              </MotionReveal>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 5 }}>
-              <MotionReveal variant="reveal-right" delayMs={120}>
-                <Card className="ds-hover-lift">
-                <Stack spacing={1.1}>
-                  <Typography variant="h6">Resumo do pedido</Typography>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">Itens</Typography>
-                    <Typography variant="body2">{itemCount}</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">Subtotal</Typography>
-                    <Typography variant="body2">{formatCurrency(total)}</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">Frete</Typography>
-                    <Typography variant="body2">{formatCurrency(shippingCost)}</Typography>
-                  </Stack>
-                  {quoteQuery.data?.quote ? (
-                    <Typography variant="caption" color="text.secondary">
-                      Regra: {quoteQuery.data.quote.ruleApplied} • ETA: {quoteQuery.data.quote.etaDays} dia(s)
-                    </Typography>
-                  ) : null}
-                  <Divider />
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="subtitle2" color="text.secondary">Total</Typography>
-                    <Typography variant="h4" sx={{ color: 'info.main' }}>{formatCurrency(finalTotal)}</Typography>
-                  </Stack>
-                  <Button
-                    className="ds-pressable ds-action-glint"
-                    data-testid="checkout-submit-button"
-                    variant="primary"
-                    fullWidth
-                    loading={loading}
-                    disabled={blockers.length > 0}
-                    onClick={() => void handleCheckout()}
+        {step === 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+              <h2 className="text-sm mb-3 text-[#f0ede8] font-semibold">Entrega</h2>
+              <div className="flex gap-2 mb-4">
+                {['pickup', 'delivery'].map((method) => (
+                  <button
+                    type="button"
+                    key={method}
+                    onClick={() => setDeliveryMethod(method as CheckoutDeliveryMethod)}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold ${
+                      deliveryMethod === method
+                        ? 'bg-gradient-to-br from-[#d4a843] to-[#f0c040] text-black'
+                        : 'bg-white/[0.05] text-[#9ca3af]'
+                    }`}
                   >
-                    Finalizar pedido
-                  </Button>
-                  <Button className="ds-pressable" component={RouterLink} to="/cart" variant="outline" fullWidth>
-                    Voltar para mochila
-                  </Button>
-                </Stack>
-                </Card>
-              </MotionReveal>
-            </Grid>
-          </Grid>
-        )}
+                    {method === 'pickup' ? 'Retirada' : 'Entrega'}
+                  </button>
+                ))}
+              </div>
 
-        <Toast
-          open={Boolean(successMessage)}
-          tone="success"
-          message={successMessage || ''}
-          onClose={() => setSuccessMessage(null)}
-          durationMs={2200}
-        />
-      </Stack>
-    </AppShell>
+              {deliveryMethod === 'delivery' ? (
+                <div className="space-y-3 mb-4">
+                  <label htmlFor="checkout-address" className="text-xs uppercase tracking-widest text-[#d4a843]">
+                    Endereco
+                  </label>
+                  <select
+                    id="checkout-address"
+                    aria-label="Endereco"
+                    title="Endereco"
+                    value={selectedAddressId ?? ''}
+                    onChange={(e) => setSelectedAddressId(Number(e.target.value) || null)}
+                    className="w-full py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  >
+                    <option value="" className="bg-[#111118]">Selecione</option>
+                    {addresses.map((address) => (
+                      <option key={address.id} value={address.id} className="bg-[#111118]">
+                        {address.label || address.street} - {address.city}
+                      </option>
+                    ))}
+                  </select>
+                  {addresses.length === 0 ? (
+                    <p className="text-xs text-[#f87171]">Cadastre um endereco no perfil.</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  { label: 'Nome do destinatario', value: recipientName, onChange: setRecipientName },
+                  { label: 'Documento', value: recipientDocument, onChange: setRecipientDocument },
+                  { label: 'Telefone', value: recipientPhone, onChange: setRecipientPhone },
+                ].map((field) => {
+                  const fieldId = `checkout-${field.label.toLowerCase().replace(/\s+/g, '-')}`
+                  return (
+                    <div key={field.label}>
+                      <label htmlFor={fieldId} className="text-xs uppercase tracking-widest text-[#d4a843]">
+                        {field.label}
+                      </label>
+                      <input
+                        id={fieldId}
+                        aria-label={field.label}
+                        title={field.label}
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+              <h2 className="text-sm mb-3 text-[#f0ede8] font-semibold">Resumo</h2>
+              <div className="space-y-2 text-sm text-[#9ca3af]">
+                <div className="flex justify-between"><span>Itens</span><span>{itemCount}</span></div>
+                <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(total)}</span></div>
+                <div className="flex justify-between"><span>Frete</span><span>{formatCurrency(shippingCost)}</span></div>
+                <div className="flex justify-between text-[#d4a843] font-bold"><span>Total</span><span>{formatCurrency(finalTotal)}</span></div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {step === 1 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+              <h2 className="text-sm mb-3 text-[#f0ede8] font-semibold">Metodo de pagamento</h2>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {[
+                  { label: 'Cartao', value: 'card_credit' },
+                  { label: 'Pix', value: 'pix' },
+                ].map((method) => (
+                  <button
+                    type="button"
+                    key={method.value}
+                    onClick={() => !checkoutOrderId && setPaymentMethod(method.value as PaymentMethod)}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold ${
+                      paymentMethod === method.value
+                        ? 'bg-gradient-to-br from-[#d4a843] to-[#f0c040] text-black'
+                        : 'bg-white/[0.05] text-[#9ca3af]'
+                    } ${checkoutOrderId && paymentMethod !== method.value ? 'opacity-50' : ''}`}
+                  >
+                    {method.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mb-4 text-xs text-[#6b7280]">
+                {paymentMethod === 'pix'
+                  ? 'O Pix gera QR Code e codigo copiavel. O pedido so avanca quando o pagamento for confirmado pelo gateway.'
+                  : 'O pagamento com cartao sera finalizado no checkout hospedado do Mercado Pago. Cartoes seguem as configuracoes habilitadas na sua conta.'}
+              </p>
+
+              {!checkoutOrderId ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void createCheckout()}
+                    className={`w-full py-3 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold ${loading || !canAdvancePayment ? 'opacity-60' : ''}`}
+                    disabled={loading || !canAdvancePayment}
+                  >
+                    {loading ? 'Gerando pagamento...' : 'Gerar pagamento'}
+                  </button>
+                  {paymentBlockers.length > 0 ? (
+                    <ul className="mt-2 space-y-1">
+                      {paymentBlockers.map((msg) => (
+                        <li key={msg} className="text-xs text-[#f87171]">• {msg}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
+              ) : null}
+
+              {checkoutOrderId && checkoutPayment ? (
+                <div className="mt-6 space-y-3">
+                  <h3 className="text-sm mb-2 text-[#f0ede8] font-semibold">
+                    {paymentMethod === 'pix' ? 'Pix gerado' : 'Checkout Mercado Pago gerado'}
+                  </h3>
+                  <div className="rounded-xl border border-[#d4a843]/20 bg-[#d4a843]/10 p-3 text-xs text-[#d4a843]">
+                    {paymentMethod === 'pix'
+                      ? 'O pedido fica pendente ate o Pix ser pago e confirmado pelo gateway.'
+                      : 'O pagamento sera finalizado em uma nova aba do Mercado Pago. Apos concluir, o status sera confirmado automaticamente. Se nao redirecionar, clique em Atualizar status.'}
+                  </div>
+                  {checkoutPayment.simulated ? (
+                    <div className="rounded-xl border border-[#38bdf8]/20 bg-[#38bdf8]/10 p-3 text-xs text-[#7dd3fc]">
+                      Pix em modo de desenvolvimento. Esse QR nao liquida no gateway real.
+                    </div>
+                  ) : null}
+                  {paymentMethod === 'pix' ? (
+                    <div className="rounded-xl border border-white/[0.08] bg-white/[0.04] p-4">
+                      <div className="flex flex-col items-center gap-4">
+                        {pixQrImageSrc ? (
+                          <img
+                            src={pixQrImageSrc}
+                            alt="QR Code Pix do pedido"
+                            className="h-52 w-52 rounded-xl border border-white/[0.08] bg-white p-3 object-contain"
+                          />
+                        ) : (
+                          <div className="flex h-52 w-52 items-center justify-center rounded-xl border border-dashed border-white/[0.12] text-center text-xs text-[#6b7280]">
+                            QR Code indisponivel neste momento.
+                          </div>
+                        )}
+                        <div className="w-full space-y-2">
+                          <p className="text-xs uppercase tracking-widest text-[#d4a843]">Codigo Pix</p>
+                          <div className="rounded-xl border border-white/[0.08] bg-[#0f1118] p-3 text-xs leading-relaxed text-[#f0ede8] break-all">
+                            {checkoutPayment.qrCode || 'Codigo Pix indisponivel.'}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void handleCopyPixCode()}
+                              disabled={!checkoutPayment.qrCode}
+                              className="px-3 py-2 rounded-lg text-xs text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold disabled:opacity-60"
+                            >
+                              Copiar codigo Pix
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleSyncPayment()}
+                              disabled={syncingPayment}
+                              className="px-3 py-2 rounded-lg text-xs border border-white/[0.12] text-[#f0ede8] disabled:opacity-60"
+                            >
+                              {syncingPayment ? 'Atualizando...' : 'Atualizar status'}
+                            </button>
+                            {checkoutPayment.checkoutUrl ? (
+                              <a
+                                href={checkoutPayment.checkoutUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-2 rounded-lg text-xs border border-[#d4a843]/40 text-[#d4a843]"
+                              >
+                                Abrir no gateway
+                              </a>
+                            ) : null}
+                          </div>
+                          {pixFeedback ? <p className="text-xs text-[#22c55e]">{pixFeedback}</p> : null}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      to={`/orders/${checkoutOrderId}`}
+                      className="px-3 py-2 rounded-lg text-xs border border-[#d4a843]/40 text-[#d4a843]"
+                    >
+                      Ver pedido pendente
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => void handleSyncPayment()}
+                      disabled={syncingPayment}
+                      className="px-3 py-2 rounded-lg text-xs border border-white/[0.12] text-[#f0ede8] disabled:opacity-60"
+                    >
+                      {syncingPayment ? 'Atualizando...' : 'Atualizar status'}
+                    </button>
+                    {paymentMethod !== 'pix' && checkoutPayment.checkoutUrl ? (
+                      <a
+                        href={checkoutPayment.checkoutUrl}
+                        {...(import.meta.env.VITE_MOCK_PAYMENT_PROVIDERS !== '1' && { target: '_blank', rel: 'noreferrer' })}
+                        className="px-3 py-2 rounded-lg text-xs text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold"
+                      >
+                        Ir para o Mercado Pago
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+              <h2 className="text-sm mb-3 text-[#f0ede8] font-semibold">Resumo</h2>
+              <div className="space-y-2 text-sm text-[#9ca3af]">
+                <div className="flex justify-between"><span>Itens</span><span>{itemCount}</span></div>
+                <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(total)}</span></div>
+                <div className="flex justify-between"><span>Frete</span><span>{formatCurrency(shippingCost)}</span></div>
+                <div className="flex justify-between text-[#d4a843] font-bold"><span>Total</span><span>{formatCurrency(finalTotal)}</span></div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {step === 2 ? (
+          <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+            <h2 className="text-lg mb-2 text-[#f0ede8] font-bold">Pedido confirmado</h2>
+            <p className="text-sm text-[#6b7280]">Pagamento confirmado. Acompanhe os detalhes na sua area de pedidos.</p>
+            <div className="mt-4 flex gap-2">
+              <Link to={checkoutOrderId ? `/orders/${checkoutOrderId}` : '/orders'} className="px-4 py-2 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold">
+                Ver pedido
+              </Link>
+              <Link to="/catalog" className="px-4 py-2 rounded-xl text-sm border border-[#d4a843]/40 text-[#d4a843]">
+                Voltar ao catalogo
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-6 flex items-center justify-between">
+          {step > 0 ? (
+            <button
+              type="button"
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              className="px-3 py-2 rounded-xl text-sm border border-[#d4a843]/40 text-[#d4a843]"
+            >
+              Voltar
+            </button>
+          ) : (
+            <div />
+          )}
+          {step === 0 ? (
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className={`px-4 py-2 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold ${canAdvanceDelivery ? '' : 'opacity-60'}`}
+              disabled={!canAdvanceDelivery}
+            >
+              Continuar
+            </button>
+          ) : null}
+          {step === 1 && checkoutOrderId ? (
+            <span className="text-xs text-[#6b7280]">
+              {paymentMethod === 'pix'
+                ? 'Aguardando a confirmacao do Pix. Se voce ja pagou, use Atualizar status.'
+                : 'Aguardando aprovacao do Mercado Pago. Se o retorno automatico falhar, use Atualizar status.'}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
   )
 }
