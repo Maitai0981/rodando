@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { BackButton } from '../shared/ui/primitives/BackButton'
+import { AccountSidebar } from '../shared/ui/primitives/AccountSidebar'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../shared/lib/api'
 import { useAuth } from '../shared/context/AuthContext'
@@ -111,6 +113,10 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <BackButton />
+        <div className="flex gap-8 items-start">
+        <div className="hidden md:block sticky top-28"><AccountSidebar /></div>
+        <div className="flex-1">
         <div className="mb-6">
           <h1 className="text-2xl text-[#f0ede8] font-bold">Meus pedidos</h1>
           <p className="text-sm text-[#6b7280]">Histórico completo com status, método de entrega e total.</p>
@@ -183,6 +189,8 @@ export default function OrdersPage() {
             </div>
           ))}
         </div>
+        </div>{/* flex-1 */}
+        </div>{/* flex row */}
       </div>
     </div>
   )

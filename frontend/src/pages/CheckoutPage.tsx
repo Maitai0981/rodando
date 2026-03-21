@@ -5,6 +5,8 @@ import { api, ApiError, type CheckoutDeliveryMethod, type PaymentMethod } from '
 import { useAuth } from '../shared/context/AuthContext'
 import { useCart } from '../shared/context/CartContext'
 import { copyTextToClipboard, formatCurrency } from '../shared/lib'
+import { CheckCircle } from 'lucide-react'
+import { BackButton } from '../shared/ui/primitives/BackButton'
 
 type CheckoutPayment = {
   provider?: string
@@ -242,25 +244,32 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <BackButton label="Voltar ao carrinho" />
         <div className="mb-6">
           <h1 className="text-2xl text-[#f0ede8] font-bold">Checkout</h1>
           <p className="text-sm text-[#6b7280]">Finalize sua compra em etapas rápidas.</p>
         </div>
 
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-1 mb-8">
           {steps.map((label, index) => (
-            <div key={label} className="flex items-center gap-2">
-              <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                  step >= index
-                    ? 'bg-gradient-to-br from-[#d4a843] to-[#f0c040] text-black'
-                    : 'bg-white/[0.08] text-[#6b7280]'
-                }`}
-              >
-                {index + 1}
+            <div key={label} className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                    step > index
+                      ? 'bg-[#22c55e] text-white'
+                      : step === index
+                      ? 'bg-gradient-to-br from-[#d4a843] to-[#f0c040] text-black'
+                      : 'bg-white/[0.08] text-[#6b7280]'
+                  }`}
+                >
+                  {step > index ? <CheckCircle className="w-4 h-4" /> : index + 1}
+                </div>
+                <span className={`text-xs font-medium hidden sm:block ${step >= index ? 'text-[#d4a843]' : 'text-[#6b7280]'}`}>{label}</span>
               </div>
-              <span className={`text-xs ${step >= index ? 'text-[#d4a843]' : 'text-[#6b7280]'}`}>{label}</span>
-              {index < steps.length - 1 ? <span className="text-xs text-[#4b5563]">•</span> : null}
+              {index < steps.length - 1 ? (
+                <div className={`h-px w-8 mx-1 transition-colors duration-300 ${step > index ? 'bg-[#22c55e]' : 'bg-white/[0.1]'}`} />
+              ) : null}
             </div>
           ))}
         </div>

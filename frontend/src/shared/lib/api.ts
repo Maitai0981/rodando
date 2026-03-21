@@ -9,6 +9,7 @@ export type AuthUser = {
   addressStreet: string | null
   addressCity: string | null
   addressState: string | null
+  avatarUrl?: string | null
   addresses?: AddressItem[]
   defaultAddressId?: number | null
   createdAt: string
@@ -617,11 +618,13 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
+  // Não definir Content-Type para FormData — o browser define automaticamente com boundary
+  const isFormData = init?.body instanceof FormData
   let response: Response
   try {
     response = await fetch(`${API_BASE}${path}`, {
       credentials: 'include',
-      headers: {
+      headers: isFormData ? { ...(init?.headers ?? {}) } : {
         'Content-Type': 'application/json',
         ...(init?.headers ?? {}),
       },
@@ -705,6 +708,16 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    apiRequest<{ ok: boolean }>('/api/auth/profile/password', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+  uploadAvatar: (file: File) => {
+    const form = new FormData()
+    form.append('image', file)
+    return apiRequest<{ user: AuthUser }>('/api/auth/profile/avatar', { method: 'POST', body: form })
+  },
   listAddresses: () =>
     apiRequest<{ items: AddressItem[]; defaultAddressId: number | null }>('/api/auth/addresses'),
   createAddress: (payload: Omit<AddressItem, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) =>

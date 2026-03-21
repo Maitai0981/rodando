@@ -1,6 +1,7 @@
 # ── Claude Code ───────────────────────────────────────────────
+# .claude/ contém configurações locais (não rastrear)
 .claude/
-CLAUDE.md
+# CLAUDE.md é rastreado intencionalmente (instruções do projeto)
 
 # MCP servers locais (contêm tokens sensíveis)
 .mcp.json
@@ -27,12 +28,17 @@ dist-ssr/
 frontend/dist/
 frontend/.vite/
 
-# Variáveis de ambiente
+# Variáveis de ambiente — apenas arquivos com valores reais
 .env
 .env.local
 .env.*.local
 .env.e2e
-# .env.example é rastreado intencionalmente
+.env.e2e.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+# .env.example e .env.docker.example são rastreados (são templates)
 
 # Testes & cobertura
 coverage/
@@ -67,6 +73,11 @@ backend/.gradle/
 # Logs e perf
 backend/*.log
 backend/perf/
+
+# Variáveis de ambiente do backend (contêm credenciais reais)
+backend/.env
+backend/.env.local
+backend/.env.*.local
 
 # Banco de dados local (SQLite legado)
 backend/data/**/*.sqlite

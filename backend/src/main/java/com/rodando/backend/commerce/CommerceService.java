@@ -28,7 +28,7 @@ import java.util.UUID;
 import javax.imageio.ImageIO;
 import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.payment.PaymentCreateRequest;
-import com.mercadopago.client.payment.PaymentPayerIdentificationRequest;
+import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.client.payment.PaymentPayerRequest;
 import com.mercadopago.client.preference.PreferenceBackUrlsRequest;
 import com.mercadopago.client.preference.PreferenceClient;
@@ -38,7 +38,7 @@ import com.mercadopago.client.preference.PreferenceRequest;
 import com.mercadopago.client.preference.PreferenceShipmentsRequest;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
-import com.mercadopago.net.MPRequestOptions;
+import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import org.springframework.core.ParameterizedTypeReference;
@@ -1620,12 +1620,16 @@ public class CommerceService {
     if (shippingCost.compareTo(BigDecimal.ZERO) > 0) {
       requestBody.put("shipment_cost", shippingCost);
     }
-    if (canUseMercadoPagoReturnUrls()) {
+    String baseUrl = properties.publicAppBaseUrl();
+    if (isHttpsUrl(baseUrl) || isLocalhostUrl(baseUrl)) {
       requestBody.put("back_urls", service.orderedMap(
-          "success", properties.publicAppBaseUrl() + "/checkout?mpStatus=success",
-          "pending", properties.publicAppBaseUrl() + "/checkout?mpStatus=pending",
-          "failure", properties.publicAppBaseUrl() + "/checkout?mpStatus=cancelled"));
-      requestBody.put("auto_return", "approved");
+          "success", baseUrl + "/checkout?mpStatus=success",
+          "pending", baseUrl + "/checkout?mpStatus=pending",
+          "failure", baseUrl + "/checkout?mpStatus=cancelled"));
+      // auto_return requer back_url acessível publicamente (HTTPS); em localhost omitir
+      if (isHttpsUrl(baseUrl)) {
+        requestBody.put("auto_return", "approved");
+      }
     }
     if (!properties.mercadoPagoNotificationUrl().isBlank() && isHttpsUrl(properties.mercadoPagoNotificationUrl())) {
       requestBody.put("notification_url", properties.mercadoPagoNotificationUrl());
@@ -1858,7 +1862,7 @@ public class CommerceService {
       var payerBuilder = PaymentPayerRequest.builder()
           .email(service.stringValue(payerMap.get("email")));
       if (!identMap.isEmpty()) {
-        payerBuilder.identification(PaymentPayerIdentificationRequest.builder()
+        payerBuilder.identification(IdentificationRequest.builder()
             .type(service.stringValue(identMap.get("type")))
             .number(service.stringValue(identMap.get("number")))
             .build());

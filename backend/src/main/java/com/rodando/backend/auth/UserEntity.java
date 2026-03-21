@@ -50,6 +50,9 @@ public class UserEntity {
   @Column(name = "address_state")
   private String addressState;
 
+  @Column(name = "avatar_url")
+  private String avatarUrl;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 

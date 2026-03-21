@@ -33,12 +33,13 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
             .requestMatchers("/error", "/actuator/**", "/api/health", "/api/ready", "/api/metrics").permitAll()
+            .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
             .requestMatchers("/api/auth/me", "/api/auth/signin", "/api/auth/signup", "/api/auth/owner/signin", "/api/auth/logout").permitAll()
             .requestMatchers("/api/test/reset-non-user", "/api/payments/webhooks/**").permitAll()
             .requestMatchers("/api/bag", "/api/bag/**").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/comments", "/api/products/**", "/api/catalog/**", "/api/offers").permitAll()
             .requestMatchers("/ops", "/ops/assets/**", "/api/owner/**").hasRole("OWNER")
-            .requestMatchers("/api/auth/profile", "/api/auth/addresses", "/api/auth/addresses/**", "/api/orders", "/api/orders/**",
+            .requestMatchers("/api/auth/profile", "/api/auth/profile/avatar", "/api/auth/profile/password", "/api/auth/addresses", "/api/auth/addresses/**", "/api/orders", "/api/orders/**",
                 "/api/payments/mercadopago/complete",
                 "/api/comments", "/api/ux/assist/**").authenticated()
             .anyRequest().denyAll())

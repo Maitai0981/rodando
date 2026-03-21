@@ -1,5 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { BackButton } from '../shared/ui/primitives/BackButton'
+import { AccountSidebar } from '../shared/ui/primitives/AccountSidebar'
+
+function AvatarImg({ src, initial, size = 96 }: { src: string; initial: string; size?: number }) {
+  const [broken, setBroken] = useState(false)
+  const cls = `w-full h-full rounded-full bg-gradient-to-br from-[#d4a843] to-[#f0c040] flex items-center justify-center text-black font-black select-none`
+  const fontSize = size >= 80 ? 'text-3xl' : 'text-sm'
+  if (broken) return <div className={`${cls} ${fontSize}`}>{initial}</div>
+  return <img src={src} alt="" className="w-full h-full rounded-full object-cover" onError={() => setBroken(true)} />
+}
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, type AddressItem } from '../shared/lib/api'
 import { useAuth } from '../shared/context/AuthContext'
@@ -118,6 +128,14 @@ export default function AccountProfilePage() {
   const [profileName, setProfileName] = useState('')
   const [profilePhone, setProfilePhone] = useState('')
   const [profileDocument, setProfileDocument] = useState('')
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [pwCurrent, setPwCurrent] = useState('')
+  const [pwNew, setPwNew] = useState('')
+  const [pwConfirm, setPwConfirm] = useState('')
+  const [pwFeedback, setPwFeedback] = useState<string | null>(null)
+  const [pwError, setPwError] = useState<string | null>(null)
+  const [pwLoading, setPwLoading] = useState(false)
   const [draft, setDraft] = useState<AddressDraft>(EMPTY_ADDRESS)
   const [editingAddressId, setEditingAddressId] = useState<number | null>(null)
 
@@ -176,6 +194,41 @@ export default function AccountProfilePage() {
   function resetAddressForm() {
     setDraft(EMPTY_ADDRESS)
     setEditingAddressId(null)
+  }
+
+  async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+    setError(null)
+    setFeedback(null)
+    try {
+      await api.uploadAvatar(file)
+      await refreshSession()
+      setFeedback('Foto de perfil atualizada.')
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Falha ao enviar foto.')
+    } finally {
+      setAvatarUploading(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ''
+    }
+  }
+
+  async function handleChangePassword() {
+    setPwError(null)
+    setPwFeedback(null)
+    if (pwNew !== pwConfirm) { setPwError('As senhas não coincidem.'); return }
+    if (pwNew.length < 6) { setPwError('A nova senha deve ter pelo menos 6 caracteres.'); return }
+    setPwLoading(true)
+    try {
+      await api.changePassword(pwCurrent, pwNew)
+      setPwFeedback('Senha alterada com sucesso.')
+      setPwCurrent(''); setPwNew(''); setPwConfirm('')
+    } catch (err) {
+      setPwError(err instanceof ApiError ? err.message : 'Falha ao alterar senha.')
+    } finally {
+      setPwLoading(false)
+    }
   }
 
   async function handleSaveProfile() {
@@ -274,7 +327,66 @@ export default function AccountProfilePage() {
 
   return (
     <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <BackButton />
+        <div className="flex gap-8 items-start">
+        <div className="hidden md:block sticky top-28"><AccountSidebar /></div>
+        <div className="flex-1 space-y-6">
+
+        {/* Avatar + atalhos rápidos */}
+        <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col sm:flex-row items-center sm:items-start gap-6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative group">
+              <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#d4a843]/40">
+                {user?.avatarUrl ? (
+                  <AvatarImg src={user.avatarUrl} initial={(user?.name ?? 'U')[0].toUpperCase()} size={96} />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-[#d4a843] to-[#f0c040] flex items-center justify-center text-black font-black text-3xl select-none">
+                    {(user?.name ?? 'U')[0].toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-white font-semibold"
+              >
+                {avatarUploading ? '...' : 'Trocar'}
+              </button>
+            </div>
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="text-xs text-[#d4a843] underline underline-offset-2"
+            >
+              {avatarUploading ? 'Enviando...' : 'Alterar foto'}
+            </button>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-lg font-bold text-[#f0ede8]">{user?.name}</p>
+            <p className="text-sm text-[#6b7280] mb-4">{user?.email}</p>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                to="/orders"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-[#d4a843]/30 text-[#d4a843] hover:bg-[#d4a843]/10 transition-colors"
+              >
+                Meus Pedidos
+              </Link>
+              {user?.role === 'owner' ? (
+                <Link
+                  to="/owner/dashboard"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-white/[0.12] text-[#f0ede8] hover:bg-white/[0.06] transition-colors"
+                >
+                  Painel Admin
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
         <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
           <h1 className="text-xl mb-1 text-[#f0ede8] font-bold">Editar perfil</h1>
           <p className="text-sm mb-4 text-[#6b7280]">
@@ -432,6 +544,45 @@ export default function AccountProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Trocar senha */}
+        <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+          <h2 className="text-lg text-[#f0ede8] font-bold mb-1">Segurança</h2>
+          <p className="text-sm text-[#6b7280] mb-4">Altere sua senha de acesso.</p>
+          {pwFeedback ? (
+            <div className="mb-3 p-3 rounded-lg text-sm bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]">{pwFeedback}</div>
+          ) : null}
+          {pwError ? (
+            <div className="mb-3 p-3 rounded-lg text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">{pwError}</div>
+          ) : null}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { label: 'Senha atual', value: pwCurrent, onChange: setPwCurrent },
+              { label: 'Nova senha', value: pwNew, onChange: setPwNew },
+              { label: 'Confirmar nova senha', value: pwConfirm, onChange: setPwConfirm },
+            ].map((f) => (
+              <div key={f.label}>
+                <label className="text-xs uppercase tracking-widest text-[#d4a843]">{f.label}</label>
+                <input
+                  type="password"
+                  value={f.value}
+                  onChange={(e) => f.onChange(e.target.value)}
+                  className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                />
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => void handleChangePassword()}
+            disabled={pwLoading}
+            className="mt-4 px-4 py-2 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold disabled:opacity-60"
+          >
+            {pwLoading ? 'Salvando...' : 'Alterar senha'}
+          </button>
+        </div>
+
+        </div>{/* flex-1 */}
+        </div>{/* flex row */}
       </div>
     </div>
   )

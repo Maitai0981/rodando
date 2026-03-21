@@ -24,7 +24,7 @@ export function StoreFooter({ quickLinks = DEFAULT_LINKS }: Partial<FooterProps>
         mt: { xs: 5, md: 7 },
         bgcolor: 'transparent',
         background:
-          'radial-gradient(circle at 16% 100%, rgba(216,154,42,0.14) 0%, rgba(216,154,42,0) 46%), radial-gradient(circle at 92% 0%, rgba(19,42,72,0.16) 0%, rgba(19,42,72,0) 40%), linear-gradient(180deg, rgba(247,250,247,0) 0%, rgba(247,250,247,0.96) 26%, rgba(247,250,247,1) 100%)',
+          'radial-gradient(circle at 16% 100%, rgba(212,168,67,0.08) 0%, transparent 46%), linear-gradient(180deg, rgba(10,10,15,0) 0%, rgba(10,10,15,0.97) 20%, rgba(10,10,15,1) 100%)',
         boxShadow: 'none',
       }}
     >
@@ -33,15 +33,15 @@ export function StoreFooter({ quickLinks = DEFAULT_LINKS }: Partial<FooterProps>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between">
             <Stack spacing={0.8} sx={{ maxWidth: 420 }}>
               <Typography variant="overline" color="secondary.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.7, flexWrap: 'wrap' }}>
-                <BrandWordmark variant="compact" tone="dark" text="RODANDO" sx={{ fontSize: '0.95rem' }} />
+                <BrandWordmark variant="compact" tone="light" text="RODANDO" sx={{ fontSize: '0.95rem' }} />
                 Moto Center
               </Typography>
-              <Typography variant="h5">Pecas para sua moto, com suporte tecnico local.</Typography>
-              <Typography variant="caption" className="brand-slogan">
+              <Typography variant="h5" sx={{ color: '#f0ede8' }}>Peças para sua moto, com suporte técnico local.</Typography>
+              <Typography variant="caption" className="brand-slogan" sx={{ color: 'rgba(255,255,255,0.55)' }}>
                 {BRAND_SLOGAN}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Av. Brasil, 8708 - Cascavel/PR • Segunda a sexta, 08h as 18h.
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                Av. Brasil, 8708 - Cascavel/PR • Segunda a sexta, 08h às 18h.
               </Typography>
               <Button
                 className="ds-pressable"
@@ -51,22 +51,22 @@ export function StoreFooter({ quickLinks = DEFAULT_LINKS }: Partial<FooterProps>
                 href="https://wa.me/5545999346779"
                 target="_blank"
                 rel="noreferrer"
-                sx={{ alignSelf: 'flex-start' }}
+                sx={{ alignSelf: 'flex-start', color: '#d4a843', borderColor: 'rgba(212,168,67,0.4)', '&:hover': { borderColor: '#d4a843', bgcolor: 'rgba(212,168,67,0.08)' } }}
               >
                 Falar no WhatsApp
               </Button>
             </Stack>
 
             <Stack spacing={0.6}>
-              <Typography variant="subtitle2" color="text.secondary">Links rapidos</Typography>
+              <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.45)' }}>Links rápidos</Typography>
               {quickLinks.map((link) => (
-                <Typography key={link.href} component={RouterLink} to={link.href} variant="body2" sx={{ '&:hover': { color: 'secondary.dark' } }}>
+                <Typography key={link.href} component={RouterLink} to={link.href} variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', '&:hover': { color: '#d4a843' }, transition: 'color 0.2s' }}>
                   {link.label}
                 </Typography>
               ))}
             </Stack>
           </Stack>
-          <Typography variant="caption" color="text.secondary">© {new Date().getFullYear()} Rodando Moto Center. Todos os direitos reservados.</Typography>
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.35)' }}>© {new Date().getFullYear()} Rodando Moto Center. Todos os direitos reservados.</Typography>
         </Stack>
       </Container>
     </Box>

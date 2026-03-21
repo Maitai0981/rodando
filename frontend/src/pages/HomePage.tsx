@@ -127,6 +127,11 @@ function HomeProductCard({
           alt={product.name}
           className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-[transform,opacity] duration-700 ease-out group-hover:scale-[1.03]"
         />
+        {product.compareAtPrice && product.compareAtPrice > product.price ? (
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040]">
+            -{Math.round((1 - product.price / product.compareAtPrice) * 100)}%
+          </div>
+        ) : null}
         <div
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center bg-black/50"
         >
@@ -521,17 +526,18 @@ export default function HomePage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {categories.map((category) => (
+                <m.div key={category.name} whileHover={{ y: -2, boxShadow: '0 8px 30px rgba(212,168,67,0.1)' }} transition={{ duration: 0.2 }}>
                 <Link
-                  key={category.name}
                   to={`/catalog?category=${encodeURIComponent(category.name)}`}
-                  className="p-5 rounded-2xl flex items-center justify-between bg-white/[0.03] border border-white/[0.06] text-[#f0ede8]"
+                  className="p-5 rounded-2xl flex items-center justify-between bg-white/[0.03] border border-white/[0.06] hover:border-[#d4a843]/30 text-[#f0ede8] transition-colors group/cat"
                 >
                   <div>
                     <p className="text-sm font-semibold">{category.name}</p>
-                    <p className="text-xs text-[#6b7280]">{category.count} itens</p>
+                    <p className="text-xs text-[#6b7280]">{category.count} {category.count === 1 ? 'item' : 'itens'}</p>
                   </div>
-                  <span className="text-xs text-[#d4a843]">Ver</span>
+                  <ChevronRight className="w-4 h-4 text-[#d4a843] transition-transform group-hover/cat:translate-x-1" />
                 </Link>
+              </m.div>
               ))}
             </div>
           )}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, m } from 'framer-motion'
@@ -23,11 +23,11 @@ import {
 import { useCart } from '@/shared/context/CartContext'
 import { useAuth } from '@/shared/context/AuthContext'
 import { useSiteTheme } from '@/shared/context/ThemeContext'
+import { AccountMenu } from '@/shared/ui/primitives/AccountMenu'
 
 const navLinks = [
   { label: 'Início', path: '/' },
   { label: 'Catálogo', path: '/catalog' },
-  { label: 'Carrinho', path: '/cart' },
 ]
 
 export default function SiteLayout() {
@@ -38,21 +38,10 @@ export default function SiteLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { itemCount } = useCart()
-  const { status, logout } = useAuth()
+  const { status, logout, user } = useAuth()
   const { isLightTheme, toggleTheme } = useSiteTheme()
   const isAuthenticated = status === 'authenticated'
   const showHeaderSearch = location.pathname === '/'
-  const visibleNavLinks = useMemo(
-    () =>
-      isAuthenticated
-        ? [
-            ...navLinks,
-            { label: 'Meus pedidos', path: '/orders' },
-            { label: 'Minha conta', path: '/account/profile' },
-          ]
-        : navLinks,
-    [isAuthenticated],
-  )
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30)
@@ -126,7 +115,7 @@ export default function SiteLayout() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
-            {visibleNavLinks.map((link) => (
+            {navLinks.map((link) => (
               <Link key={link.path} to={link.path}>
                 <m.span
                   className={`relative text-sm tracking-[0.1em] uppercase font-medium ${
@@ -147,7 +136,7 @@ export default function SiteLayout() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {showHeaderSearch ? (
               <m.button
                 onClick={() => setSearchOpen(!searchOpen)}
@@ -160,23 +149,12 @@ export default function SiteLayout() {
               </m.button>
             ) : null}
 
-            <m.button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg transition-colors text-[#a0a0a0]"
-              whileHover={{ color: '#d4a843', background: 'rgba(212,168,67,0.1)' }}
-              whileTap={{ scale: 0.9 }}
-              aria-label={isLightTheme ? 'Ativar tema escuro' : 'Ativar tema claro'}
-              title={isLightTheme ? 'Ativar tema escuro' : 'Ativar tema claro'}
-            >
-              {isLightTheme ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </m.button>
-
-            <Link to="/cart">
-              <m.button
+            {/* Carrinho */}
+            <Link to="/cart" aria-label="Ver carrinho">
+              <m.div
                 whileHover={{ background: 'rgba(212,168,67,0.1)' }}
                 whileTap={{ scale: 0.9 }}
-                className="relative p-2 rounded-lg text-[#a0a0a0]"
-                aria-label="Ver carrinho"
+                className="relative p-2 rounded-lg text-[#a0a0a0] cursor-pointer"
               >
                 <ShoppingCart className={`w-5 h-5 ${itemCount > 0 ? 'text-[#d4a843]' : ''}`} />
                 <AnimatePresence>
@@ -191,47 +169,15 @@ export default function SiteLayout() {
                     </m.span>
                   )}
                 </AnimatePresence>
-              </m.button>
+              </m.div>
             </Link>
 
-            {isAuthenticated ? (
-              <m.button
-                onClick={() => void handleLogout()}
-                className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-white/[0.06] text-[#f0ede8] font-semibold"
-                whileHover={{ scale: 1.05, background: 'rgba(255,255,255,0.1)' }}
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                Sair
-              </m.button>
-            ) : (
-              <div className="hidden sm:flex items-center gap-2">
-                <Link to="/auth" className="text-sm text-[#f0ede8]">
-                  <m.span whileHover={{ color: '#d4a843' }} className="flex items-center gap-2">
-                    <LogIn className="w-3.5 h-3.5" />
-                    Entrar
-                  </m.span>
-                </Link>
-                <Link to="/auth/signup" className="text-sm text-[#f0ede8]">
-                  <m.span whileHover={{ color: '#d4a843' }} className="flex items-center gap-2">
-                    <UserRound className="w-3.5 h-3.5" />
-                    Criar conta
-                  </m.span>
-                </Link>
-              </div>
-            )}
+            {/* Avatar / dropdown de conta */}
+            <div className="hidden sm:block">
+              <AccountMenu />
+            </div>
 
-            <m.a
-              href="https://wa.me/5545999634779"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-semibold"
-              whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(212,168,67,0.5)' }}
-              whileTap={{ scale: 0.97 }}
-            >
-              <Phone className="w-3.5 h-3.5" />
-              WhatsApp
-            </m.a>
-
+            {/* Menu mobile */}
             <m.button
               className="md:hidden p-2 text-[#a0a0a0]"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -286,7 +232,7 @@ export default function SiteLayout() {
               className="md:hidden overflow-hidden bg-[#0a0a0f]/95 border-t border-[#d4a843]/15"
             >
               <div className="px-4 py-4 flex flex-col gap-2">
-                {visibleNavLinks.map((link, i) => (
+                {navLinks.map((link, i) => (
                   <m.div
                     key={link.path}
                     initial={{ x: -20, opacity: 0 }}
@@ -321,14 +267,25 @@ export default function SiteLayout() {
                 </button>
 
                 {isAuthenticated ? (
-                  <button
-                    type="button"
-                    onClick={() => void handleLogout()}
-                    className="flex items-center justify-between px-4 py-3 rounded-lg border border-[#d4a843]/20 text-[#d4a843]"
-                  >
-                    <span className="text-sm tracking-wider uppercase font-medium">Sair</span>
-                    <LogOut className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-3 px-2 py-2 rounded-lg border border-[#d4a843]/20 bg-[#d4a843]/05">
+                    <div className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden border-2 border-[#d4a843]/40 bg-gradient-to-br from-[#d4a843] to-[#f0c040] flex items-center justify-center text-black font-black text-sm select-none">
+                      {user?.avatarUrl
+                        ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover rounded-full" />
+                        : (user?.name ?? 'U')[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#f0ede8] truncate">{user?.name ?? 'Usuário'}</p>
+                      <p className="text-xs text-[#a0a0a0]">{user?.role === 'owner' ? 'Administrador' : 'Cliente'}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleLogout()}
+                      className="p-2 rounded-lg text-[#a0a0a0] hover:text-[#d4a843] hover:bg-[#d4a843]/10 transition-colors"
+                      aria-label="Sair da conta"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <Link

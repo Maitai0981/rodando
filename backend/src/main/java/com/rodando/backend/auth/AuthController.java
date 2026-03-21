@@ -20,7 +20,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -112,6 +114,20 @@ public class AuthController extends BaseApiController {
   @PatchMapping("/profile")
   public Map<String, Object> updateProfile(HttpServletRequest request, @RequestBody Map<String, Object> body) {
     return accountService.updateProfile(requireAuth(request).id(), body);
+  }
+
+  @PatchMapping("/profile/password")
+  public Map<String, Object> changePassword(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+    return accountService.changePassword(requireAuth(request).id(), body);
+  }
+
+  @PostMapping("/profile/avatar")
+  public Map<String, Object> uploadAvatar(
+      HttpServletRequest request,
+      @RequestParam("image") MultipartFile image) {
+    // Uploads são servidos pelo próprio backend — usar URL do servidor, não do frontend
+    String baseUrl = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort();
+    return accountService.uploadAvatar(requireAuth(request).id(), image, baseUrl);
   }
 
   @GetMapping("/addresses")

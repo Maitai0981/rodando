@@ -159,11 +159,11 @@ export function StoreHeader() {
         color="inherit"
         elevation={0}
         sx={{
-          borderBottom: 'none',
-          bgcolor: 'rgba(252,247,236,0.88)',
-          backdropFilter: 'blur(14px) saturate(1.04)',
-          WebkitBackdropFilter: 'blur(14px) saturate(1.04)',
-          boxShadow: '0 10px 24px rgba(14,27,46,0.09)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          bgcolor: 'rgba(10,10,15,0.92)',
+          backdropFilter: 'blur(20px) saturate(1.2)',
+          WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
+          boxShadow: 'none',
         }}
       >
         <Container>
@@ -200,8 +200,8 @@ export function StoreHeader() {
                 R
               </Box>
               <Box>
-                <BrandWordmark variant="compact" tone="dark" text="RODANDO" sx={{ fontSize: '1.02rem' }} />
-                <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' }, letterSpacing: '0.04em' }}>
+                <BrandWordmark variant="compact" tone="light" text="RODANDO" sx={{ fontSize: '1.02rem' }} />
+                <Typography variant="caption" sx={{ display: { xs: 'none', sm: 'block' }, letterSpacing: '0.04em', color: 'rgba(255,255,255,0.45)' }}>
                   Moto Center
                 </Typography>
 
@@ -226,15 +226,15 @@ export function StoreHeader() {
                   minHeight: 40,
                   px: 1.6,
                   borderRadius: 999,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  bgcolor: '#FFFFFF',
-                  color: 'text.primary',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  bgcolor: 'rgba(255,255,255,0.06)',
+                  color: '#f0ede8',
                   font: 'inherit',
+                  '&::placeholder': { color: 'rgba(255,255,255,0.35)', opacity: 1 },
                   '&:focus': {
-                    outline: '2px solid',
-                    outlineColor: 'primary.main',
-                    borderColor: 'primary.main',
+                    outline: 'none',
+                    border: '1px solid #d4a843',
+                    boxShadow: '0 0 0 3px rgba(212,168,67,0.15)',
                   },
                 }}
               />
@@ -260,15 +260,17 @@ export function StoreHeader() {
                       }}
                       sx={{
                         border: 'none',
-                        bgcolor: active ? 'rgba(216,154,42,0.16)' : 'transparent',
-                        }}
+                        bgcolor: active ? 'rgba(212,168,67,0.14)' : 'transparent',
+                        color: active ? '#d4a843' : 'rgba(255,255,255,0.75)',
+                        '&:hover': { color: '#f0ede8', bgcolor: 'rgba(255,255,255,0.06)' },
+                      }}
                     />
                   )
                 })}
               </Stack>
             </LayoutGroup>
 
-            <Stack direction="row" spacing={0.5} alignItems="center">
+            <Stack direction="row" spacing={0.75} alignItems="center">
               <IconButton
                 data-testid="header-cart-button"
                 aria-label="Abrir carrinho"
@@ -278,39 +280,58 @@ export function StoreHeader() {
                 onMouseEnter={() => handlePrefetch('/cart')}
                 onFocus={() => handlePrefetch('/cart')}
                 onTouchStart={() => handlePrefetch('/cart')}
+                sx={{ color: 'rgba(255,255,255,0.75)', '&:hover': { color: '#f0ede8' } }}
               >
                 <CounterBadge content={itemCount}>
                   <NavBagIcon size="md" />
                 </CounterBadge>
               </IconButton>
-              <Button
+
+              {/* Avatar / perfil */}
+              <IconButton
                 data-testid="header-account-button"
-                className="ds-pressable ds-action-glint"
+                aria-label={status === 'authenticated' ? `Perfil de ${user?.name ?? 'usuário'}` : 'Entrar'}
                 component={RouterLink}
                 to={accountHref}
-                variant="outlined"
-                startIcon={<NavAccountIcon size="sm" />}
                 onMouseEnter={() => handlePrefetch(accountHref)}
                 onFocus={() => handlePrefetch(accountHref)}
                 onTouchStart={() => handlePrefetch(accountHref)}
-                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                sx={{
+                  p: 0.4,
+                  border: status === 'authenticated' ? '2px solid rgba(212,168,67,0.55)' : '2px solid rgba(255,255,255,0.15)',
+                  borderRadius: '50%',
+                  transition: 'border-color 0.2s, box-shadow 0.2s',
+                  '&:hover': {
+                    borderColor: '#d4a843',
+                    boxShadow: '0 0 0 3px rgba(212,168,67,0.15)',
+                  },
+                }}
               >
-                {accountLabel}
-              </Button>
-              {status === 'authenticated' ? (
-                <Button
-                  data-testid="header-logout-button"
-                  className="ds-pressable ds-action-glint"
-                  variant="text"
-                  color="inherit"
-                  onClick={() => {
-                    void handleLogout()
-                  }}
-                  sx={{ display: { xs: 'none', lg: 'inline-flex' } }}
-                >
-                  Sair
-                </Button>
-              ) : null}
+                {status === 'authenticated' ? (
+                  <Box
+                    sx={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #d4a843 0%, #f0c040 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#000',
+                      fontWeight: 800,
+                      fontSize: '0.78rem',
+                      letterSpacing: '0.01em',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {(user?.name ?? 'U')[0].toUpperCase()}
+                  </Box>
+                ) : (
+                  <Box sx={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.75)' }}>
+                    <NavAccountIcon size="md" />
+                  </Box>
+                )}
+              </IconButton>
             </Stack>
           </Toolbar>
 
@@ -328,10 +349,12 @@ export function StoreHeader() {
                   minHeight: 40,
                   px: 1.5,
                   borderRadius: 999,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  bgcolor: '#FFFFFF',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  bgcolor: 'rgba(255,255,255,0.06)',
+                  color: '#f0ede8',
                   font: 'inherit',
+                  '&::placeholder': { color: 'rgba(255,255,255,0.35)', opacity: 1 },
+                  '&:focus': { outline: 'none', border: '1px solid #d4a843' },
                 }}
               />
             </Box>
@@ -370,10 +393,11 @@ export function StoreHeader() {
               display: { xs: 'flex', md: 'none' },
               position: 'fixed',
               inset: 0,
-              bgcolor: '#F8FBF9',
+              bgcolor: '#0d0d14',
               flexDirection: 'column',
               overflow: 'hidden',
-              boxShadow: '0 20px 40px rgba(14, 27, 46, 0.2)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+              border: '1px solid rgba(255,255,255,0.06)',
             }}
           >
             <Stack
@@ -386,11 +410,11 @@ export function StoreHeader() {
                 <Typography
                   id="mobile-header-menu-title"
                   variant="subtitle1"
-                  sx={{ fontWeight: 700, letterSpacing: '-0.01em' }}
+                  sx={{ fontWeight: 700, letterSpacing: '-0.01em', color: '#f0ede8' }}
                 >
                   Menu
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.45)' }}>
                   Acesso rápido às principais áreas
                 </Typography>
               </Stack>
@@ -410,7 +434,7 @@ export function StoreHeader() {
                 <Box>
                   <Typography
                     variant="caption"
-                    sx={{ textTransform: 'uppercase', letterSpacing: '0.09em', color: 'text.secondary', px: 0.8 }}
+                    sx={{ textTransform: 'uppercase', letterSpacing: '0.09em', color: 'rgba(255,255,255,0.4)', px: 0.8 }}
                   >
                     Navegação
                   </Typography>
@@ -436,12 +460,12 @@ export function StoreHeader() {
                             minHeight: 56,
                             borderRadius: 2.4,
                             border: 'none',
-                            bgcolor: link.active ? 'rgba(51,74,98,0.12)' : 'transparent',
+                            bgcolor: link.active ? 'rgba(212,168,67,0.12)' : 'transparent',
                             '&:hover': {
-                              bgcolor: link.active ? 'rgba(51,74,98,0.16)' : 'rgba(15,23,42,0.04)',
+                              bgcolor: link.active ? 'rgba(212,168,67,0.16)' : 'rgba(255,255,255,0.05)',
                             },
                             '&.Mui-selected': {
-                              bgcolor: 'rgba(51,74,98,0.12)',
+                              bgcolor: 'rgba(212,168,67,0.12)',
                             },
                           }}
                         >
@@ -449,7 +473,7 @@ export function StoreHeader() {
                             <Box sx={{ display: 'grid', placeItems: 'center', color: link.active ? 'primary.main' : 'text.secondary' }}>
                               {link.icon}
                             </Box>
-                            <Typography variant="body2" sx={{ fontWeight: link.active ? 700 : 600 }}>
+                            <Typography variant="body2" sx={{ fontWeight: link.active ? 700 : 600, color: link.active ? '#d4a843' : '#f0ede8' }}>
                               {link.label}
                             </Typography>
                           </Stack>
@@ -462,7 +486,7 @@ export function StoreHeader() {
                 <Box>
                   <Typography
                     variant="caption"
-                    sx={{ textTransform: 'uppercase', letterSpacing: '0.09em', color: 'text.secondary', px: 0.8 }}
+                    sx={{ textTransform: 'uppercase', letterSpacing: '0.09em', color: 'rgba(255,255,255,0.4)', px: 0.8 }}
                   >
                     Atalhos
                   </Typography>
@@ -484,11 +508,12 @@ export function StoreHeader() {
                           sx={{
                             minHeight: 52,
                             borderRadius: 2.4,
-                            border: 'none',
-                            bgcolor: 'rgba(255,255,255,0.68)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            bgcolor: 'rgba(255,255,255,0.04)',
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' },
                           }}
                         >
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#f0ede8' }}>
                             {link.label}
                           </Typography>
                         </ListItemButton>
@@ -505,33 +530,64 @@ export function StoreHeader() {
               sx={{
                 p: 2,
                 pb: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-                bgcolor: 'rgba(242, 246, 243, 0.92)',
+                bgcolor: 'rgba(10,10,15,0.98)',
+                borderTop: '1px solid rgba(255,255,255,0.06)',
               }}
             >
-              <Button
-                fullWidth
-                variant="contained"
-                component={RouterLink}
-                className="ds-pressable"
-                to="/catalog"
-                onClick={() => handleCloseMobileMenu(false)}
-              >
-                Ver catalogo
-              </Button>
               {status === 'authenticated' ? (
+                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ px: 0.5, py: 0.5 }}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #d4a843 0%, #f0c040 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#000',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      flexShrink: 0,
+                      border: '2px solid rgba(212,168,67,0.4)',
+                    }}
+                  >
+                    {(user?.name ?? 'U')[0].toUpperCase()}
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#f0ede8', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user?.name ?? 'Usuário'}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)' }}>
+                      {user?.role === 'owner' ? 'Administrador' : 'Cliente'}
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="inherit"
+                    className="ds-pressable"
+                    onClick={() => {
+                      void handleLogout()
+                      handleCloseMobileMenu(false)
+                    }}
+                    sx={{ borderColor: 'rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: '#d4a843', color: '#d4a843' }, flexShrink: 0, fontSize: '0.75rem', px: 1.2 }}
+                  >
+                    Sair
+                  </Button>
+                </Stack>
+              ) : (
                 <Button
                   fullWidth
-                  variant="outlined"
-                  color="inherit"
+                  variant="contained"
+                  component={RouterLink}
                   className="ds-pressable"
-                  onClick={() => {
-                    void handleLogout()
-                    handleCloseMobileMenu(false)
-                  }}
+                  to="/catalog"
+                  onClick={() => handleCloseMobileMenu(false)}
                 >
-                  Sair da conta
+                  Ver catálogo
                 </Button>
-              ) : null}
+              )}
             </Stack>
           </Box>
         </Grow>

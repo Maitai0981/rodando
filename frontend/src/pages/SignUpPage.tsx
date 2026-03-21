@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { BackButton } from '../shared/ui/primitives/BackButton'
 import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react'
 import { useAuth } from '../shared/context/AuthContext'
 import { ApiError } from '../shared/lib/api'
@@ -74,6 +75,7 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
       <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+        <BackButton />
         <div className="rounded-2xl p-6 bg-white/[0.03] border border-white/[0.06]">
           <h1 className="text-2xl mb-2 text-[#f0ede8] font-bold">Criar conta</h1>
           <p className="text-sm mb-6 text-[#6b7280]">Cadastre-se para acompanhar seus pedidos.</p>

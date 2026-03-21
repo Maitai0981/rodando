@@ -9,7 +9,6 @@ import {
   Phone,
   Plus,
   ShoppingCart,
-  Tag,
   Trash2,
   Truck,
   Package,
@@ -31,7 +30,6 @@ export default function CartPage() {
   const { items, itemCount, total, updateQty, removeItem, clear, loading } = useCart()
   const [deliveryMethod, setDeliveryMethod] = useState<CheckoutDeliveryMethod>('pickup')
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
-  const [coupon, setCoupon] = useState('')
   const [removing, setRemoving] = useState<number | null>(null)
   const [stockWarning, setStockWarning] = useState<number | null>(null)
   const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -288,7 +286,7 @@ export default function CartPage() {
                       <m.button
                         aria-label="Remover item"
                         onClick={() => handleRemove(item.productId)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-[#ef4444]/10 text-[#f87171]"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center opacity-50 group-hover:opacity-100 transition-opacity bg-[#ef4444]/10 text-[#f87171]"
                         whileHover={{ scale: 1.1, background: 'rgba(239,68,68,0.2)' }}
                         whileTap={{ scale: 0.9 }}
                       >
@@ -368,30 +366,6 @@ export default function CartPage() {
                 ) : (
                   <p className="text-xs text-[#6b7280]">{shippingMessage}</p>
                 )}
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] opacity-50">
-                <div className="flex items-center gap-2 mb-3">
-                  <Tag className="w-4 h-4 text-[#d4a843]" />
-                  <span className="text-sm text-[#f0ede8] font-semibold">Cupom de desconto</span>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Em breve"
-                    value={coupon}
-                    onChange={(e) => setCoupon(e.target.value)}
-                    disabled
-                    className="flex-1 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.04] border border-white/[0.08] text-[#f0ede8] cursor-not-allowed"
-                  />
-                  <button
-                    disabled
-                    className="px-4 py-2.5 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold cursor-not-allowed"
-                  >
-                    OK
-                  </button>
-                </div>
-                <p className="text-xs mt-2 text-[#4b5563]">Cupons disponíveis em breve.</p>
               </div>
 
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06]">

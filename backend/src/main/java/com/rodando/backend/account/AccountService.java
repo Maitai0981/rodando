@@ -12,6 +12,10 @@ import com.rodando.backend.auth.RoleRepository;
 import com.rodando.backend.auth.SessionRepository;
 import com.rodando.backend.account.UserAddressRepository;
 import com.rodando.backend.auth.UserRepository;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -19,11 +23,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
@@ -203,6 +209,61 @@ public class AccountService {
     user.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
     userRepository.save(user);
 
+    List<Map<String, Object>> addresses = listUserAddresses(userId);
+    return Map.of("user", authUserPayload(user, addresses));
+  }
+
+  @Transactional
+  public Map<String, Object> changePassword(long userId, Map<String, Object> body) {
+    String current = service.trim(service.stringValue(body.get("currentPassword")));
+    String next = service.trim(service.stringValue(body.get("newPassword")));
+    if (current.isBlank() || next.isBlank()) {
+      throw new ApiException(400, "Preencha a senha atual e a nova senha.");
+    }
+    if (next.length() < 6) {
+      throw new ApiException(400, "A nova senha deve ter pelo menos 6 caracteres.");
+    }
+    UserEntity user = userRepository.findDetailedById(userId)
+        .orElseThrow(() -> new ApiException(404, "Usuario nao encontrado."));
+    if (!service.verifyPassword(current, service.stringValue(user.getPasswordHash()))) {
+      throw new ApiException(400, "Senha atual incorreta.");
+    }
+    user.setPasswordHash(service.hashPassword(next));
+    user.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    userRepository.save(user);
+    return service.orderedMap("ok", true);
+  }
+
+  private static final Set<String> AVATAR_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/webp", "image/gif", "image/avif");
+
+  @Transactional
+  public Map<String, Object> uploadAvatar(long userId, MultipartFile image, String publicBaseUrl) {
+    if (image == null || image.isEmpty()) {
+      throw new ApiException(400, "Nenhuma imagem enviada.");
+    }
+    String mimeType = service.trim(image.getContentType()).toLowerCase(Locale.ROOT);
+    if (!AVATAR_MIME_TYPES.contains(mimeType)) {
+      throw new ApiException(400, "Arquivo invalido. Envie JPG, PNG, WebP, GIF ou AVIF.");
+    }
+    if (image.getSize() > properties.uploadMaxBytes()) {
+      throw new ApiException(400, "Imagem excede o limite de tamanho permitido.");
+    }
+    String ext = mimeType.equals("image/jpeg") ? ".jpg" : mimeType.equals("image/png") ? ".png"
+        : mimeType.equals("image/webp") ? ".webp" : mimeType.equals("image/gif") ? ".gif" : ".avif";
+    String fileName = "avatar-" + userId + "-" + System.currentTimeMillis() + ext;
+    Path uploadPath = Path.of("uploads", "avatars", fileName);
+    try (InputStream input = image.getInputStream()) {
+      Files.createDirectories(uploadPath.getParent());
+      Files.copy(input, uploadPath, StandardCopyOption.REPLACE_EXISTING);
+    } catch (Exception exception) {
+      throw new ApiException(500, "Falha ao enviar imagem.");
+    }
+    String avatarUrl = publicBaseUrl.replaceAll("/+$", "") + "/uploads/avatars/" + fileName;
+    UserEntity user = userRepository.findDetailedById(userId)
+        .orElseThrow(() -> new ApiException(404, "Usuario nao encontrado."));
+    user.setAvatarUrl(avatarUrl);
+    user.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    userRepository.save(user);
     List<Map<String, Object>> addresses = listUserAddresses(userId);
     return Map.of("user", authUserPayload(user, addresses));
   }
@@ -429,6 +490,7 @@ public class AccountService {
         "addressStreet", blankToNull(user.getAddressStreet()),
         "addressCity", blankToNull(user.getAddressCity()),
         "addressState", blankToNull(user.getAddressState()),
+        "avatarUrl", blankToNull(user.getAvatarUrl()),
         "createdAt", user.getCreatedAt() == null ? null : user.getCreatedAt().toString(),
         "addresses", addresses,
         "defaultAddressId", defaultAddressId);
