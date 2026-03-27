@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -703,6 +704,7 @@ public class RodandoService {
           .uri("https://viacep.com.br/ws/{cep}/json/", cep)
           .retrieve()
           .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+          .timeout(Duration.ofSeconds(5))
           .block();
       if (payload == null || booleanValue(payload.get("erro"))) {
         throw new ApiException(400, "CEP nao encontrado.");

@@ -1675,7 +1675,9 @@ public class CommerceService {
 
     Map<String, Object> response = postMercadoPagoPreference(orderId, requestBody);
     String preferenceId = service.blankToNull(service.stringValue(response.get("id")));
-    String checkoutUrl = firstNonBlank(response.get("init_point"), response.get("sandbox_init_point"));
+    String checkoutUrl = properties.mercadoPagoSandbox()
+        ? firstNonBlank(response.get("sandbox_init_point"), response.get("init_point"))
+        : firstNonBlank(response.get("init_point"), response.get("sandbox_init_point"));
     if (preferenceId == null || checkoutUrl == null) {
       throw new ApiException(502, "Mercado Pago nao retornou o checkout do cartao.");
     }

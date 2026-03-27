@@ -208,6 +208,12 @@ public class AppProperties {
     return trim(environment.getProperty("MERCADOPAGO_NOTIFICATION_URL"));
   }
 
+  public boolean mercadoPagoSandbox() {
+    String token = mercadoPagoAccessToken();
+    if (token.startsWith("TEST-")) return true;
+    return parseBoolean(environment.getProperty("MERCADOPAGO_SANDBOX"), false);
+  }
+
   public String stripeSecretKey() {
     return trim(environment.getProperty("STRIPE_SECRET_KEY"));
   }

@@ -34,6 +34,8 @@ function formatCep(value: string): string {
   return digits
 }
 
+const CEP_SERVICE_ERROR = 'Servico de CEP indisponivel'
+
 export default function SignUpPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -41,6 +43,10 @@ export default function SignUpPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [cep, setCep] = useState('')
+  const [addressStreet, setAddressStreet] = useState('')
+  const [addressCity, setAddressCity] = useState('')
+  const [addressState, setAddressState] = useState('')
+  const [showAddressFields, setShowAddressFields] = useState(false)
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const pwStrength = useMemo(() => getPasswordStrength(password), [password])
@@ -85,11 +91,23 @@ export default function SignUpPage() {
     setError(null)
 
     try {
-      await signUp({ name, email, password, cep: cep.replace(/\D/g, '') })
+      await signUp({
+        name,
+        email,
+        password,
+        cep: cep.replace(/\D/g, ''),
+        ...(showAddressFields && addressStreet && addressCity && addressState
+          ? { addressStreet, addressCity, addressState: addressState.toUpperCase() }
+          : {}),
+      })
       const returnTo = searchParams.get('returnTo')
       navigate(returnTo || '/')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao criar conta.')
+      const message = err instanceof ApiError ? err.message : 'Falha ao criar conta.'
+      setError(message)
+      if (message.includes(CEP_SERVICE_ERROR)) {
+        setShowAddressFields(true)
+      }
     } finally {
       setLoading(false)
     }
@@ -183,6 +201,48 @@ export default function SignUpPage() {
               </div>
               {errors.cep ? <p className="text-xs mt-1 text-[#f87171]">{errors.cep}</p> : null}
             </div>
+
+            {showAddressFields ? (
+              <div className="space-y-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <p className="text-xs text-[#9ca3af]">Serviço de CEP indisponível. Informe o endereço manualmente:</p>
+                <div>
+                  <label htmlFor="signup-street" className="text-xs uppercase tracking-widest text-[#d4a843]">Logradouro</label>
+                  <input
+                    id="signup-street"
+                    type="text"
+                    value={addressStreet}
+                    onChange={(e) => setAddressStreet(e.target.value)}
+                    placeholder="Ex: Rua das Flores"
+                    className="mt-1 w-full px-3 py-2.5 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label htmlFor="signup-city" className="text-xs uppercase tracking-widest text-[#d4a843]">Cidade</label>
+                    <input
+                      id="signup-city"
+                      type="text"
+                      value={addressCity}
+                      onChange={(e) => setAddressCity(e.target.value)}
+                      placeholder="Ex: São Paulo"
+                      className="mt-1 w-full px-3 py-2.5 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                    />
+                  </div>
+                  <div className="w-20">
+                    <label htmlFor="signup-state" className="text-xs uppercase tracking-widest text-[#d4a843]">UF</label>
+                    <input
+                      id="signup-state"
+                      type="text"
+                      value={addressState}
+                      onChange={(e) => setAddressState(e.target.value.toUpperCase().slice(0, 2))}
+                      placeholder="SP"
+                      maxLength={2}
+                      className="mt-1 w-full px-3 py-2.5 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div>
               <label htmlFor="signup-password" className="text-xs uppercase tracking-widest text-[#d4a843]">
