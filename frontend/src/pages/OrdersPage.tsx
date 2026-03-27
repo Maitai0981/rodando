@@ -34,6 +34,14 @@ const DELIVERY_METHOD_LABEL: Record<string, string> = {
   delivery: 'Entrega',
 }
 
+const STATUS_TABS = [
+  { value: 'all', label: 'Todos' },
+  { value: 'created', label: 'Criados' },
+  { value: 'processing', label: 'Em andamento' },
+  { value: 'shipped', label: 'Enviados' },
+  { value: 'delivered', label: 'Entregues' },
+] as const
+
 export default function OrdersPage() {
   const { status } = useAuth()
   const { completeStep } = useAssist()
@@ -41,6 +49,7 @@ export default function OrdersPage() {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const ordersQuery = useQuery({
     queryKey: ['orders-list'],
@@ -48,9 +57,14 @@ export default function OrdersPage() {
     enabled: status === 'authenticated',
   })
 
-  const orders = useMemo(
+  const allOrders = useMemo(
     () => (ordersQuery.data?.items ?? []).filter((order) => order.status !== 'cancelled'),
     [ordersQuery.data?.items],
+  )
+
+  const orders = useMemo(
+    () => statusFilter === 'all' ? allOrders : allOrders.filter((o) => o.status === statusFilter),
+    [allOrders, statusFilter],
   )
 
   function canCancelOrder(order: { status: string; paymentStatus?: string }) {
@@ -120,6 +134,30 @@ export default function OrdersPage() {
         <div className="mb-6">
           <h1 className="text-2xl text-[#f0ede8] font-bold">Meus pedidos</h1>
           <p className="text-sm text-[#6b7280]">Histórico completo com status, método de entrega e total.</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setStatusFilter(tab.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                statusFilter === tab.value
+                  ? 'bg-[#d4a843]/10 text-[#d4a843] border border-[#d4a843]/30'
+                  : 'bg-white/[0.04] text-[#6b7280] border border-white/[0.08] hover:text-[#9ca3af]'
+              }`}
+            >
+              {tab.label}
+              {tab.value !== 'all' ? (
+                <span className="ml-1.5 opacity-60">
+                  {allOrders.filter((o) => o.status === tab.value).length}
+                </span>
+              ) : (
+                <span className="ml-1.5 opacity-60">{allOrders.length}</span>
+              )}
+            </button>
+          ))}
         </div>
 
         {ordersQuery.isLoading ? (

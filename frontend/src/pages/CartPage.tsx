@@ -280,7 +280,7 @@ export default function CartPage() {
                         </m.button>
                       </div>
                       {stockWarning === item.productId && (
-                        <span className="text-xs text-amber-400">Estoque máximo atingido</span>
+                        <span className="text-xs text-[#d4a843]">Estoque máximo atingido</span>
                       )}
 
                       <m.button

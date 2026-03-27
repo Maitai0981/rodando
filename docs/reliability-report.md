@@ -1,27 +1,30 @@
-# Reliability Report (Before/After)
+# Reliability Report
 
-Date: 2026-03-04
+Data: 2026-03-27
 
-## Implemented
-- Env hardening com `APP_ENV` e bloqueio de flags destrutivas em ambiente real.
-- Endpoint `GET /api/ready` com checks de ambiente + DB + outbox.
-- Checkout idempotente via `Idempotency-Key` (`idempotency_keys`).
-- Dedupe de webhook Mercado Pago (`payment_webhook_events`).
-- Outbox com retry exponencial e dead-letter lógico (`outbox_jobs`).
-- Runtime padronizado para Node 20.x (`.nvmrc` + `engines`).
+## Status atual
 
-## Validation summary
-- Frontend build executado com sucesso:
-  - `npm --prefix frontend run build`
-  - tempo de build: ~2.94s (Vite output local)
-- Backend test suite bloqueada no ambiente atual por credencial inválida do PostgreSQL (`28P01`).
-  - comando executado: `npm --prefix backend run test`
-  - erro: `autenticação do tipo senha falhou para o usuário "postgres"`
-  - ação para destravar: ajustar `TEST_DATABASE_URL`/`DATABASE_URL` com credencial válida.
+| Check                         | Status  |
+|-------------------------------|---------|
+| Backend compila (`mvnw test`) | Passando |
+| Frontend lint                 | Passando |
+| Frontend build                | Passando |
+| Frontend unit tests (155)     | Passando |
+| Frontend a11y                 | Passando |
+| E2E (Playwright)              | Requer backend + banco rodando |
 
-## Key expected gains
-1. Evita duplicação de pedidos sob retry/reenvio de checkout.
-2. Evita reprocessamento de webhook duplicado.
-3. Melhora diagnóstico operacional com readiness real e métricas de outbox.
-4. Reduz risco de perda de dados por reset/seed em produção.
-5. Aumenta previsibilidade de runtime ao alinhar Node local e CI.
+## Hardening implementado
+
+- Autenticação via cookie HTTP-only com hash SCrypt
+- Rate limiting em memória (Caffeine) por IP/chave
+- Reset e alteração de senha via OTP por email (TTL 15 min, máx. 5 tentativas)
+- Flags destrutivas (`DB_RESET`, `SEED_*`) bloqueadas em `production`/`staging`
+- `MOCK_PAYMENT_PROVIDERS` para isolar testes do gateway de pagamento
+- Fallback automático para simulação de PIX em não-produção
+
+## Limitações conhecidas
+
+- Rate limiting in-process (Caffeine): não escala entre múltiplas instâncias backend
+- Cache público (Caffeine): igualmente local por instância
+- Sem APM/tracing distribuído configurado (apenas logs estruturados via SLF4J)
+- Sem backup automático configurado no repositório — responsabilidade da infra de hospedagem

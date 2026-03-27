@@ -130,6 +130,63 @@ public class AuthController extends BaseApiController {
     return accountService.uploadAvatar(requireAuth(request).id(), image, baseUrl);
   }
 
+  @PostMapping("/password-reset/request")
+  public Map<String, Object> requestPasswordReset(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      @RequestBody Map<String, Object> body) {
+    enforceRateLimit(
+        response,
+        "auth",
+        "pwd-reset-request:" + clientKey(request),
+        properties.authRateLimitWindow(),
+        properties.authRateLimitMax(),
+        "Muitas tentativas. Aguarde e tente novamente.");
+    return accountService.requestPasswordReset(body);
+  }
+
+  @PostMapping("/password-reset/confirm")
+  public Map<String, Object> confirmPasswordReset(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      @RequestBody Map<String, Object> body) {
+    enforceRateLimit(
+        response,
+        "auth",
+        "pwd-reset-confirm:" + clientKey(request),
+        properties.authRateLimitWindow(),
+        properties.authRateLimitMax(),
+        "Muitas tentativas. Aguarde e tente novamente.");
+    return accountService.confirmPasswordReset(body);
+  }
+
+  @PostMapping("/password-change/request-code")
+  public Map<String, Object> requestPasswordChangeCode(HttpServletRequest request, HttpServletResponse response) {
+    enforceRateLimit(
+        response,
+        "auth",
+        "pwd-change-request:" + clientKey(request),
+        properties.authRateLimitWindow(),
+        properties.authRateLimitMax(),
+        "Muitas tentativas. Aguarde e tente novamente.");
+    return accountService.requestPasswordChangeCode(requireAuth(request).id());
+  }
+
+  @PostMapping("/password-change/confirm")
+  public Map<String, Object> confirmPasswordChange(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      @RequestBody Map<String, Object> body) {
+    enforceRateLimit(
+        response,
+        "auth",
+        "pwd-change-confirm:" + clientKey(request),
+        properties.authRateLimitWindow(),
+        properties.authRateLimitMax(),
+        "Muitas tentativas. Aguarde e tente novamente.");
+    return accountService.confirmPasswordChange(requireAuth(request).id(), body);
+  }
+
   @GetMapping("/addresses")
   public Map<String, Object> listAddresses(HttpServletRequest request) {
     List<Map<String, Object>> items = accountService.listUserAddresses(requireAuth(request).id());
@@ -163,5 +220,3 @@ public class AuthController extends BaseApiController {
     return service.orderedMap("ok", true);
   }
 }
-
-

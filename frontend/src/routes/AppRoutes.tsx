@@ -11,6 +11,8 @@ export const routeImporters = {
   checkout: () => import('../pages/CheckoutPage'),
   signIn: () => import('../pages/SignInPage'),
   signUp: () => import('../pages/SignUpPage'),
+  forgotPassword: () => import('../pages/ForgotPasswordPage'),
+  resetPassword: () => import('../pages/ResetPasswordPage'),
   accountProfile: () => import('../pages/AccountProfilePage'),
   orders: () => import('../pages/OrdersPage'),
   orderDetails: () => import('../pages/OrderDetailsPage'),
@@ -21,6 +23,8 @@ export const routeImporters = {
   ownerProductForm: () => import('../pages/OwnerProductFormPage'),
   ownerSettings: () => import('../pages/OwnerSettingsPage'),
   ownerOrders: () => import('../pages/OwnerOrdersPage'),
+  security: () => import('../pages/SecurityPage'),
+  accountSettings: () => import('../pages/SettingsPage'),
 } as const
 
 const HomePage = lazy(routeImporters.home)
@@ -30,6 +34,8 @@ const CartPage = lazy(routeImporters.cart)
 const CheckoutPage = lazy(routeImporters.checkout)
 const SignInPage = lazy(routeImporters.signIn)
 const SignUpPage = lazy(routeImporters.signUp)
+const ForgotPasswordPage = lazy(routeImporters.forgotPassword)
+const ResetPasswordPage = lazy(routeImporters.resetPassword)
 const AccountProfilePage = lazy(routeImporters.accountProfile)
 const OrdersPage = lazy(routeImporters.orders)
 const OrderDetailsPage = lazy(routeImporters.orderDetails)
@@ -40,6 +46,8 @@ const OwnerProductsPage = lazy(routeImporters.ownerProducts)
 const OwnerProductFormPage = lazy(routeImporters.ownerProductForm)
 const OwnerSettingsPage = lazy(routeImporters.ownerSettings)
 const OwnerOrdersPage = lazy(routeImporters.ownerOrders)
+const SecurityPage = lazy(routeImporters.security)
+const SettingsPage = lazy(routeImporters.accountSettings)
 
 export function AppRoutes() {
   return (
@@ -52,7 +60,11 @@ export function AppRoutes() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/auth" element={<SignInPage />} />
         <Route path="/auth/signup" element={<SignUpPage />} />
+        <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/account/profile" element={<AccountProfilePage />} />
+        <Route path="/account/security" element={<SecurityPage />} />
+        <Route path="/account/settings" element={<SettingsPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/orders/:id" element={<OrderDetailsPage />} />
       </Route>

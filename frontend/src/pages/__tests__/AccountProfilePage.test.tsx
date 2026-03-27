@@ -129,6 +129,7 @@ describe('AccountProfilePage', () => {
     renderWithProviders(<AccountProfilePage />, { initialEntries: ['/account'] })
     await screen.findByText('Casa')
     await user.click(screen.getByRole('button', { name: /remover/i }))
+    await user.click(screen.getByRole('button', { name: /sim, remover/i }))
     await waitFor(() => expect(deleteAddressMock).toHaveBeenCalledWith(3))
     expect(await screen.findByText(/endereço removido/i)).toBeInTheDocument()
   })

@@ -1,34 +1,13 @@
-# ── Claude Code ───────────────────────────────────────────────
-# .claude/ contém configurações locais (não rastrear)
-.claude/
-# CLAUDE.md é rastreado intencionalmente (instruções do projeto)
-
-# MCP servers locais (contêm tokens sensíveis)
-.mcp.json
-
-# ── Sistema operacional ───────────────────────────────────────
+# ══════════════════════════════════════════════════════════════
+# SISTEMA OPERACIONAL
+# ══════════════════════════════════════════════════════════════
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# ── Logs (raiz) ───────────────────────────────────────────────
-*.log
-logs/
-output/
-
 # ══════════════════════════════════════════════════════════════
-# FRONTEND (Node / Vite / React)
+# VARIÁVEIS DE AMBIENTE  (nunca rastrear valores reais)
 # ══════════════════════════════════════════════════════════════
-
-node_modules/
-
-# Build
-dist/
-dist-ssr/
-frontend/dist/
-frontend/.vite/
-
-# Variáveis de ambiente — apenas arquivos com valores reais
 .env
 .env.local
 .env.*.local
@@ -38,9 +17,29 @@ frontend/.vite/
 .env.test.local
 .env.production
 .env.production.local
-# .env.example e .env.docker.example são rastreados (são templates)
+# *.example e *.docker.example são rastreados — são templates sem segredos
 
-# Testes & cobertura
+# ══════════════════════════════════════════════════════════════
+# LOGS
+# ══════════════════════════════════════════════════════════════
+*.log
+logs/
+output/
+
+# ══════════════════════════════════════════════════════════════
+# FRONTEND — Node / Vite / React / TypeScript
+# ══════════════════════════════════════════════════════════════
+
+# Dependências
+node_modules/
+
+# Build
+dist/
+dist-ssr/
+frontend/dist/
+frontend/.vite/
+
+# Testes e cobertura
 coverage/
 frontend/coverage/
 frontend/test-results/
@@ -48,67 +47,76 @@ frontend/playwright-report/
 frontend/blob-report/
 test-results/
 playwright-report/
+blob-report/
 
 # TypeScript incremental
 *.tsbuildinfo
 
+# Vite
+vite.config.ts.timestamp-*
+
 # ══════════════════════════════════════════════════════════════
-# BACKEND (Java / Spring Boot / Maven)
+# BACKEND — Java / Spring Boot / Maven
 # ══════════════════════════════════════════════════════════════
 
-# Maven build output
+# Build Maven
 backend/target/
-backend/build/
 backend/*.jar
 backend/*.war
 backend/*.class
 backend/HELP.md
 
-# Maven wrapper binário (scripts mvnw/mvnw.cmd são rastreados)
+# Maven wrapper — só o binário; os scripts mvnw/mvnw.cmd são rastreados
 backend/.mvn/wrapper/maven-wrapper.jar
 
-# Gradle
-backend/.gradle/
+# Variáveis de ambiente do backend
+backend/.env
+backend/.env.local
+backend/.env.*.local
 
 # Logs e perf
 backend/*.log
 backend/perf/
 
-# Variáveis de ambiente do backend (contêm credenciais reais)
-backend/.env
-backend/.env.local
-backend/.env.*.local
-
-# Banco de dados local (SQLite legado)
-backend/data/**/*.sqlite
-backend/data/**/*.sqlite-*
-
-# Uploads (preservar .gitkeep)
+# Uploads locais — preservar placeholder
 backend/uploads/*
 !backend/uploads/.gitkeep
 
-# Legado
-backend/legacy/trash/
+# ══════════════════════════════════════════════════════════════
+# CLAUDE CODE
+# ══════════════════════════════════════════════════════════════
+# Configurações pessoais locais (não rastrear)
+.claude/settings.local.json
+.claude/todos.json
+# .claude/commands/ é rastreado — contém os slash commands do projeto
+# CLAUDE.md é rastreado — contém as instruções do projeto
+
+# MCP com tokens locais
+.mcp.json
 
 # ══════════════════════════════════════════════════════════════
-# EDITORES & IDEs
+# EDITORES E IDEs
 # ══════════════════════════════════════════════════════════════
 
-# VS Code
+# VS Code — manter extensões e configurações do projeto rastreadas
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 
-# IntelliJ IDEA (regras finas ficam em backend/.idea/.gitignore)
+# IntelliJ IDEA — regras finas ficam em backend/.idea/.gitignore
 .idea/
 !.idea/.gitignore
 *.iml
 *.iws
 
-# Outros
+# Eclipse
+.project
+.classpath
+.settings/
+
+# Outros editores
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-*.local

@@ -52,6 +52,24 @@ public class EmailService {
     send(toEmail, subject, html);
   }
 
+  /**
+   * Sends the OTP code by email.
+   * @return the OTP code itself when email is NOT configured (dev/test mode), null otherwise.
+   */
+  public String sendPasswordOtpEmail(String userName, String userEmail, String otp, String purpose) {
+    boolean isReset = "reset".equals(purpose);
+    String subject = (isReset ? "Redefinicao de senha" : "Codigo de verificacao para alteracao de senha")
+        + " – " + properties.emailFromName();
+    String html = buildPasswordOtpHtml(userName, otp, isReset);
+    if (!properties.emailEnabled()) {
+      log.warn("[OTP DEV] Email nao configurado. Codigo para {}: {} (purpose={})", userEmail, otp, purpose);
+      send(userEmail, subject, html); // still calls send() for the simulation log
+      return otp;
+    }
+    send(userEmail, subject, html);
+    return null;
+  }
+
   public void sendOwnerSaleAlert(long orderId) {
     Map<String, Object> settings = service.one("""
         SELECT sales_alert_email AS "salesAlertEmail", sales_alert_whatsapp AS "salesAlertWhatsapp"
@@ -390,6 +408,59 @@ public class EmailService {
           <tr><td style="font-size:13px;color:#374151;padding:8px 16px;">Av. das Torres, Cascavel – PR<br><span style="color:#6b7280;">Aguarde a confirmação de disponibilidade antes de retirar.</span></td></tr>
         </table>
         """;
+  }
+
+  private String buildPasswordOtpHtml(String userName, String otp, boolean isReset) {
+    String displayName = userName == null || userName.isBlank() ? "cliente" : userName;
+    String title   = isReset ? "Redefinição de senha" : "Alteração de senha";
+    String context = isReset
+        ? "Recebemos uma solicitação para redefinir a senha da sua conta."
+        : "Recebemos uma solicitação para alterar a senha da sua conta.";
+    String ignore  = isReset
+        ? "Se você não solicitou a redefinição de senha, ignore este email — sua senha permanece a mesma."
+        : "Se você não solicitou essa alteração, ignore este email — sua senha permanece a mesma.";
+    // Render each digit as a big box for readability
+    StringBuilder digitBoxes = new StringBuilder();
+    for (char c : otp.toCharArray()) {
+      digitBoxes.append(
+          "<span style=\"display:inline-block;width:44px;height:56px;line-height:56px;text-align:center;" +
+          "font-size:28px;font-weight:700;color:#111118;background:#f9fafb;" +
+          "border:2px solid #d4a843;border-radius:8px;margin:0 4px;\">")
+          .append(c).append("</span>");
+    }
+    return """
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>%s</title></head>
+        <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+        <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0;">
+          <tr><td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px;">
+              <tr><td style="background:#111118;padding:24px 32px;">
+                <h1 style="margin:0;color:#d4a843;font-size:22px;font-weight:700;">Rodando Moto Center</h1>
+                <p style="margin:6px 0 0;color:#9ca3af;font-size:13px;">Peças para motos – Cascavel / PR</p>
+              </td></tr>
+              <tr><td style="padding:32px;">
+                <h2 style="margin:0 0 8px;color:#111118;font-size:18px;">%s</h2>
+                <p style="margin:0 0 16px;color:#374151;font-size:14px;">Olá, <strong>%s</strong>!</p>
+                <p style="margin:0 0 24px;color:#374151;font-size:14px;">%s</p>
+                <p style="margin:0 0 12px;color:#374151;font-size:14px;font-weight:600;">Seu código de verificação:</p>
+                <div style="text-align:center;margin-bottom:8px;">%s</div>
+                <p style="margin:0 0 24px;text-align:center;color:#6b7280;font-size:12px;">
+                  Válido por <strong>15 minutos</strong> · Máximo de 5 tentativas
+                </p>
+                <p style="margin:0;color:#9ca3af;font-size:12px;">%s</p>
+              </td></tr>
+              <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
+                <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">Rodando Moto Center · Cascavel, PR · Este é um email automático.</p>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+        </body></html>
+        """.formatted(title, title, escapeHtml(displayName), escapeHtml(context),
+        digitBoxes.toString(), escapeHtml(ignore));
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────

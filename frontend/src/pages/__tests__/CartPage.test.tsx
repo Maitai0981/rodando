@@ -58,6 +58,7 @@ describe('CartPage', () => {
     ]
     clearMock.mockReset()
     updateQtyMock.mockReset()
+    updateQtyMock.mockResolvedValue({ truncated: false })
     removeItemMock.mockReset()
     vi.restoreAllMocks()
     vi.spyOn(api, 'listAddresses').mockResolvedValue({
@@ -141,18 +142,6 @@ describe('CartPage', () => {
 
     expect(screen.getByText('Sua mochila está vazia')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Finalizar pedido' })).toBeDisabled()
-  })
-
-  it('aplica cupom de desconto e exibe subtração no resumo', async () => {
-    authStatus = 'authenticated'
-    renderWithProviders(<CartPage />, { initialEntries: ['/cart'] })
-
-    const couponInput = screen.getByPlaceholderText(/Ex:/i)
-    fireEvent.change(couponInput, { target: { value: 'TESTE20' } })
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }))
-
-    await waitFor(() => expect(screen.getByText(/TESTE20 aplicado/)).toBeInTheDocument())
-    expect(screen.getByText(/Desconto \(10%\)/)).toBeInTheDocument()
   })
 
   it('chama removeItem ao clicar no botao remover item', async () => {

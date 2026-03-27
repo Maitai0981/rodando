@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { BackButton } from '../shared/ui/primitives/BackButton'
@@ -14,6 +14,26 @@ interface FormErrors {
   password?: string
 }
 
+function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
+  if (!pw) return { score: 0, label: '', color: '' }
+  let score = 0
+  if (pw.length >= 6) score++
+  if (pw.length >= 10) score++
+  if (/[A-Z]/.test(pw)) score++
+  if (/\d/.test(pw)) score++
+  if (/[^A-Za-z0-9]/.test(pw)) score++
+  if (score <= 1) return { score, label: 'Fraca', color: '#ef4444' }
+  if (score <= 2) return { score, label: 'Regular', color: '#f59e0b' }
+  if (score <= 3) return { score, label: 'Boa', color: '#d4a843' }
+  return { score, label: 'Forte', color: '#22c55e' }
+}
+
+function formatCep(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  if (digits.length > 5) return `${digits.slice(0, 5)}-${digits.slice(5)}`
+  return digits
+}
+
 export default function SignUpPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -23,6 +43,7 @@ export default function SignUpPage() {
   const [cep, setCep] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const pwStrength = useMemo(() => getPasswordStrength(password), [password])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -46,7 +67,9 @@ export default function SignUpPage() {
       newErrors.password = 'Senha deve ter pelo menos 6 caracteres'
     }
     if (!cep) {
-      newErrors.cep = 'CEP e obrigatorio'
+      newErrors.cep = 'CEP é obrigatório'
+    } else if (cep.replace(/\D/g, '').length !== 8) {
+      newErrors.cep = 'CEP inválido — use o formato XXXXX-XXX'
     }
 
     setErrors(newErrors)
@@ -62,7 +85,7 @@ export default function SignUpPage() {
     setError(null)
 
     try {
-      await signUp({ name, email, password, cep })
+      await signUp({ name, email, password, cep: cep.replace(/\D/g, '') })
       const returnTo = searchParams.get('returnTo')
       navigate(returnTo || '/')
     } catch (err) {
@@ -146,9 +169,12 @@ export default function SignUpPage() {
                   title="CEP"
                   data-testid="signup-cep-input"
                   type="text"
+                  inputMode="numeric"
+                  placeholder="00000-000"
+                  maxLength={9}
                   value={cep}
                   onChange={(event) => {
-                    setCep(event.target.value)
+                    setCep(formatCep(event.target.value))
                     if (errors.cep) setErrors((prev) => ({ ...prev, cep: undefined }))
                   }}
                   className="w-full py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
@@ -188,6 +214,20 @@ export default function SignUpPage() {
                 </button>
               </div>
               {errors.password ? <p className="text-xs mt-1 text-[#f87171]">{errors.password}</p> : null}
+              {!errors.password && password ? (
+                <div className="mt-2">
+                  <div className="flex gap-1 mb-1">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className="h-1 flex-1 rounded-full transition-colors"
+                        style={{ backgroundColor: pwStrength.score >= i ? pwStrength.color : 'rgba(255,255,255,0.08)' }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs" style={{ color: pwStrength.color }}>{pwStrength.label}</p>
+                </div>
+              ) : null}
             </div>
 
             <button

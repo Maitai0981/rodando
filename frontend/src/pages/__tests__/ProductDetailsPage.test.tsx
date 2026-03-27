@@ -101,8 +101,8 @@ describe('ProductDetailsPage', () => {
 
   it('exibe nome e fabricante do produto carregado', async () => {
     renderProduct()
-    expect(await screen.findByText('Kit Transmissão CG')).toBeInTheDocument()
-    expect(screen.getByText(/Rodando/)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Kit Transmissão CG' })).toBeInTheDocument()
+    expect(screen.getByText(/Rodando · CG 160/)).toBeInTheDocument()
   })
 
   it('exibe badge de desconto quando há desconto', async () => {
@@ -113,7 +113,7 @@ describe('ProductDetailsPage', () => {
   it('exibe rating e total de avaliações', async () => {
     renderProduct()
     expect(await screen.findByText(/4\.6/)).toBeInTheDocument()
-    expect(screen.getByText(/14 comentario/i)).toBeInTheDocument()
+    expect(screen.getByText(/14 avalia/i)).toBeInTheDocument()
   })
 
   it('exibe preço principal e riscado', async () => {
@@ -133,7 +133,7 @@ describe('ProductDetailsPage', () => {
   it('incrementa quantidade ao clicar em aumentar', async () => {
     const user = userEvent.setup()
     renderProduct()
-    await screen.findByText('Kit Transmissão CG')
+    await screen.findByRole('heading', { name: 'Kit Transmissão CG' })
     const incrementBtn = screen.getByRole('button', { name: /aumentar quantidade/i })
     await user.click(incrementBtn)
     expect(screen.getByText('2')).toBeInTheDocument()
@@ -142,7 +142,7 @@ describe('ProductDetailsPage', () => {
   it('não decrementa quantidade abaixo de 1', async () => {
     const user = userEvent.setup()
     renderProduct()
-    await screen.findByText('Kit Transmissão CG')
+    await screen.findByRole('heading', { name: 'Kit Transmissão CG' })
     const decrementBtn = screen.getByRole('button', { name: /diminuir quantidade/i })
     await user.click(decrementBtn)
     expect(screen.getByText('1')).toBeInTheDocument()
@@ -173,21 +173,21 @@ describe('ProductDetailsPage', () => {
       item: { ...makeProductDetail().item, stock: 10 },
     })
     renderProduct()
-    await screen.findByText('Kit Transmissão CG')
+    await screen.findByRole('heading', { name: 'Kit Transmissão CG' })
     expect(screen.queryByTestId('low-stock-badge')).not.toBeInTheDocument()
   })
 
   // Feature 4: Product Sharing
   it('exibe botão de compartilhar', async () => {
     renderProduct()
-    await screen.findByText('Kit Transmissão CG')
+    await screen.findByRole('heading', { name: 'Kit Transmissão CG' })
     expect(screen.getByTestId('share-button')).toBeInTheDocument()
   })
 
   it('exibe feedback de link copiado ao compartilhar', async () => {
     const user = userEvent.setup()
     renderProduct()
-    await screen.findByText('Kit Transmissão CG')
+    await screen.findByRole('heading', { name: 'Kit Transmissão CG' })
     await user.click(screen.getByTestId('share-button'))
     expect(await screen.findByTestId('share-copied-feedback')).toBeInTheDocument()
   })
@@ -218,7 +218,7 @@ describe('ProductDetailsPage', () => {
 
   it('exibe formulário de avaliação para usuário autenticado', async () => {
     renderProduct()
-    await screen.findByText('Kit Transmissão CG')
+    await screen.findByRole('heading', { name: 'Kit Transmissão CG' })
     expect(screen.getByPlaceholderText(/sua experiência/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /enviar avaliação/i })).toBeInTheDocument()
   })
@@ -226,7 +226,7 @@ describe('ProductDetailsPage', () => {
   it('exibe prompt de login para usuário não autenticado', async () => {
     useAuthMock.mockReturnValue({ status: 'unauthenticated', user: null })
     renderProduct()
-    await screen.findByText('Kit Transmissão CG')
+    await screen.findByRole('heading', { name: 'Kit Transmissão CG' })
     expect(screen.getByText(/faça login/i)).toBeInTheDocument()
   })
 
@@ -236,7 +236,7 @@ describe('ProductDetailsPage', () => {
       item: { id: 99, userId: 1, productId: 7, authorName: 'Test', rating: 5, message: 'Bom!', productName: '', productImageUrl: '', createdAt: '', updatedAt: '' },
     })
     renderProduct()
-    await screen.findByText('Kit Transmissão CG')
+    await screen.findByRole('heading', { name: 'Kit Transmissão CG' })
     const textarea = screen.getByPlaceholderText(/sua experiência/i)
     await user.type(textarea, 'Ótimo produto!')
     await user.click(screen.getByRole('button', { name: /enviar avaliação/i }))
@@ -247,7 +247,7 @@ describe('ProductDetailsPage', () => {
   it('rastreia produto visualizado via trackView', async () => {
     const { trackView: trackViewMock } = await import('../../shared/hooks/useRecentlyViewed')
     renderProduct()
-    await screen.findByText('Kit Transmissão CG')
+    await screen.findByRole('heading', { name: 'Kit Transmissão CG' })
     expect(trackViewMock).toHaveBeenCalledWith(expect.objectContaining({ id: 7 }))
   })
 })

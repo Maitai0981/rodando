@@ -9,7 +9,7 @@ export function Input({ label, hint, error, requiredMark = false, required, ...p
     <TextField
       {...textFieldProps}
       label={finalLabel}
-      required={required || requiredMark}
+      required={required}
       error={Boolean(error)}
       helperText={error || hint || ' '}
       fullWidth

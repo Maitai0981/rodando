@@ -346,14 +346,20 @@ export default function SiteLayout() {
               </div>
               <div className="flex gap-3 mt-5">
                 <m.a
-                  href="#"
+                  href="https://www.instagram.com/rodandomoto?utm_source=qr&igsh=MWUzd3VvM21rYzk2Mg%3D%3D"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Instagram"
                   whileHover={{ scale: 1.15, color: '#d4a843' }}
                   className="p-2 rounded-lg bg-white/[0.05] text-[#a0a0a0]"
                 >
                   <Instagram className="w-4 h-4" />
                 </m.a>
                 <m.a
-                  href="#"
+                  href="https://www.facebook.com/people/Rodando-MOTO-Center/100063563260906/?rdid=hmuIEMzS0niAaxPa&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F154Nx32j9w%2F"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Facebook"
                   whileHover={{ scale: 1.15, color: '#d4a843' }}
                   className="p-2 rounded-lg bg-white/[0.05] text-[#a0a0a0]"
                 >

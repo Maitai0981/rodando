@@ -1,11 +1,20 @@
 # Changelog
 
-## 0.1.0 - 2026-02-27 17:47 (UTC-05:00)
+## 0.1.0 — 2026-02-27
 
-- Added design tokens in `src/styles/tokens.ts` and centralized MUI theme in `src/theme/index.ts`.
-- Created reusable UI primitives in `src/components/ui` with typed props and per-component folders.
-- Added foundational sections (`Header`, `Footer`) and placeholders for core home sections.
-- Introduced `AppShell` layout and connected public pages to shared header/footer structure.
-- Moved routing config into `src/routes` with `OwnerRoute` guard.
-- Added helper utilities in `src/lib` (`formatCurrency`, `maskPhone`, validators).
-- Added Prettier configuration and scripts, and aligned ESLint integration for flat config.
+- Estrutura inicial: design tokens, tema MUI, primitivos de UI
+- Layout público (`SiteLayout`, `StoreHeader`, `StoreFooter`)
+- Roteamento com guard `OwnerRoute`
+- Utilitários: `formatCurrency`, `maskPhone`, validadores
+- ESLint flat config + Prettier
+
+## 0.2.0 — 2026-03-27
+
+- Fluxo de recuperação de senha via OTP por email (`ForgotPasswordPage`)
+- Alteração de senha autenticada via OTP (`SecurityPage`)
+- Página de aparência/tema (`SettingsPage`)
+- Sidebar de conta (`AccountSidebar`) com links para Perfil, Pedidos, Segurança e Aparência
+- Redirect de compatibilidade `/auth/reset-password` → `/auth/forgot-password`
+- Backend: endpoints `/api/auth/password-reset/*` e `/api/auth/password-change/*`
+- Backend: tabela `password_reset_tokens` (migrações V5 e V6)
+- Backend: `EmailService` com envio de OTP por SMTP (modo dev retorna `devCode`)

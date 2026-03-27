@@ -240,8 +240,12 @@ public class AppProperties {
     return v.isBlank() ? "Rodando Moto Center" : v;
   }
 
+  public String smtpPassword() {
+    return trim(environment.getProperty("SMTP_PASSWORD"));
+  }
+
   public boolean emailEnabled() {
-    return !smtpHost().isBlank();
+    return !smtpHost().isBlank() && !smtpPassword().isBlank();
   }
 
   public int outboxPollIntervalMs() {

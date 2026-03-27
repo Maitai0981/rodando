@@ -1,9 +1,14 @@
 package com.rodando.backend.account;
 import com.rodando.backend.core.RodandoService;
+import com.rodando.backend.core.EmailService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.rodando.backend.auth.AuthContext;
 import com.rodando.backend.common.ApiException;
 import com.rodando.backend.config.AppProperties;
+import com.rodando.backend.auth.PasswordResetTokenEntity;
+import com.rodando.backend.auth.PasswordResetTokenRepository;
 import com.rodando.backend.auth.RoleEntity;
 import com.rodando.backend.auth.SessionEntity;
 import com.rodando.backend.account.UserAddressEntity;
@@ -24,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.security.SecureRandom;
 import java.util.UUID;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
@@ -35,29 +41,37 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Service
 public class AccountService {
 
+  private static final Logger log = LoggerFactory.getLogger(AccountService.class);
+
   private final UserRepository userRepository;
   private final RoleRepository roleRepository;
   private final UserAddressRepository userAddressRepository;
   private final SessionRepository sessionRepository;
+  private final PasswordResetTokenRepository passwordResetTokenRepository;
   private final RodandoService service;
   private final AppProperties properties;
   private final WebClient webClient;
+  private final EmailService emailService;
 
   public AccountService(
       UserRepository userRepository,
       RoleRepository roleRepository,
       UserAddressRepository userAddressRepository,
       SessionRepository sessionRepository,
+      PasswordResetTokenRepository passwordResetTokenRepository,
       RodandoService service,
       AppProperties properties,
-      WebClient webClient) {
+      WebClient webClient,
+      EmailService emailService) {
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
     this.userAddressRepository = userAddressRepository;
     this.sessionRepository = sessionRepository;
+    this.passwordResetTokenRepository = passwordResetTokenRepository;
     this.service = service;
     this.properties = properties;
     this.webClient = webClient;
+    this.emailService = emailService;
   }
 
   public record SessionInfo(String token, OffsetDateTime expiresAt) {
@@ -232,6 +246,157 @@ public class AccountService {
     user.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
     userRepository.save(user);
     return service.orderedMap("ok", true);
+  }
+
+  // ── Password reset / change via OTP ──────────────────────────────────────
+
+  private static final long   OTP_TTL_MINUTES    = 15;
+  private static final int    OTP_MAX_ATTEMPTS   = 5;
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+  private static final String RESET_REQUEST_OK =
+      "Se esse email estiver cadastrado, voce recebera um codigo de verificacao em breve.";
+
+  private String generateOtp() {
+    return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+  }
+
+  // ── Forgot-password: step 1 – send OTP ───────────────────────────────────
+
+  @Transactional
+  public Map<String, Object> requestPasswordReset(Map<String, Object> body) {
+    String email = service.normalize(service.stringValue(body.get("email")));
+    if (!email.contains("@") || email.length() < 5) {
+      return service.orderedMap("message", RESET_REQUEST_OK);
+    }
+    String[] devCodeHolder = { null };
+    userRepository.findByEmailIgnoreCase(email).ifPresent(user -> {
+      passwordResetTokenRepository.deleteByUserIdAndPurpose(user.getId(), "reset");
+
+      String otp = generateOtp();
+      OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+
+      PasswordResetTokenEntity token = new PasswordResetTokenEntity();
+      token.setUser(user);
+      token.setPurpose("reset");
+      token.setTokenHash(service.hashToken(otp));
+      token.setAttempts(0);
+      token.setExpiresAt(now.plusMinutes(OTP_TTL_MINUTES));
+      token.setCreatedAt(now);
+      passwordResetTokenRepository.save(token);
+
+      try {
+        devCodeHolder[0] = emailService.sendPasswordOtpEmail(user.getName(), user.getEmail(), otp, "reset");
+      } catch (Exception emailEx) {
+        log.error("[PASSWORD_RESET] Falha ao enviar email de OTP para {}. Token salvo. Erro: {}", user.getEmail(), emailEx.getMessage());
+      }
+    });
+    if (devCodeHolder[0] != null) {
+      return service.orderedMap("message", RESET_REQUEST_OK, "devCode", devCodeHolder[0]);
+    }
+    return service.orderedMap("message", RESET_REQUEST_OK);
+  }
+
+  // ── Forgot-password: step 2 – validate OTP + set new password ────────────
+
+  @Transactional
+  public Map<String, Object> confirmPasswordReset(Map<String, Object> body) {
+    String email       = service.normalize(service.stringValue(body.get("email")));
+    String otp         = service.trim(service.stringValue(body.get("code")));
+    String newPassword = service.trim(service.stringValue(body.get("password")));
+
+    if (!email.contains("@") || otp.length() != 6 || newPassword.length() < 6) {
+      throw new ApiException(400, "Dados invalidos.");
+    }
+
+    UserEntity user = userRepository.findByEmailIgnoreCase(email)
+        .orElseThrow(() -> new ApiException(400, "Codigo invalido ou expirado."));
+
+    applyOtpAndChangePassword(user, otp, newPassword, "reset");
+    sessionRepository.deleteAllByUserId(user.getId());
+    return service.orderedMap("message", "Senha redefinida com sucesso. Faca login com a nova senha.");
+  }
+
+  // ── Change-password (logged-in): step 1 – send OTP ───────────────────────
+
+  @Transactional
+  public Map<String, Object> requestPasswordChangeCode(long userId) {
+    UserEntity user = userRepository.findDetailedById(userId)
+        .orElseThrow(() -> new ApiException(404, "Usuario nao encontrado."));
+    if (!StringUtils.hasText(user.getEmail())) {
+      throw new ApiException(500, "Email do usuario nao configurado.");
+    }
+
+    passwordResetTokenRepository.deleteByUserIdAndPurpose(userId, "change");
+
+    String otp = generateOtp();
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+
+    PasswordResetTokenEntity token = new PasswordResetTokenEntity();
+    token.setUser(user);
+    token.setPurpose("change");
+    token.setTokenHash(service.hashToken(otp));
+    token.setAttempts(0);
+    token.setExpiresAt(now.plusMinutes(OTP_TTL_MINUTES));
+    token.setCreatedAt(now);
+    passwordResetTokenRepository.save(token);
+
+    String devCode = emailService.sendPasswordOtpEmail(user.getName(), user.getEmail(), otp, "change");
+    if (devCode != null) {
+      return service.orderedMap("message", "Codigo de verificacao enviado para o seu email.", "devCode", devCode);
+    }
+    return service.orderedMap("message", "Codigo de verificacao enviado para o seu email.");
+  }
+
+  // ── Change-password (logged-in): step 2 – validate OTP + set new password
+
+  @Transactional
+  public Map<String, Object> confirmPasswordChange(long userId, Map<String, Object> body) {
+    String otp         = service.trim(service.stringValue(body.get("code")));
+    String newPassword = service.trim(service.stringValue(body.get("password")));
+
+    if (otp.length() != 6) {
+      throw new ApiException(400, "Codigo invalido. Informe os 6 digitos.");
+    }
+    if (newPassword.length() < 6) {
+      throw new ApiException(400, "Senha deve ter pelo menos 6 caracteres.");
+    }
+
+    UserEntity user = userRepository.findDetailedById(userId)
+        .orElseThrow(() -> new ApiException(404, "Usuario nao encontrado."));
+
+    applyOtpAndChangePassword(user, otp, newPassword, "change");
+    return service.orderedMap("message", "Senha alterada com sucesso.");
+  }
+
+  // ── shared OTP validation ─────────────────────────────────────────────────
+
+  private void applyOtpAndChangePassword(UserEntity user, String otp, String newPassword, String purpose) {
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+
+    PasswordResetTokenEntity token = passwordResetTokenRepository
+        .findActiveByUserIdAndPurpose(user.getId(), purpose, now)
+        .orElseThrow(() -> new ApiException(400, "Codigo expirado ou ja utilizado. Solicite um novo."));
+
+    token.setAttempts(token.getAttempts() + 1);
+
+    if (!service.hashToken(otp).equals(token.getTokenHash())) {
+      if (token.getAttempts() >= OTP_MAX_ATTEMPTS) {
+        token.setUsedAt(now);
+        passwordResetTokenRepository.save(token);
+        throw new ApiException(400, "Muitas tentativas incorretas. Solicite um novo codigo.");
+      }
+      passwordResetTokenRepository.save(token);
+      int remaining = OTP_MAX_ATTEMPTS - token.getAttempts();
+      throw new ApiException(400, "Codigo invalido. " + remaining + " tentativa(s) restante(s).");
+    }
+
+    token.setUsedAt(now);
+    passwordResetTokenRepository.save(token);
+
+    user.setPasswordHash(service.hashPassword(newPassword));
+    user.setUpdatedAt(now);
+    userRepository.save(user);
   }
 
   private static final Set<String> AVATAR_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/webp", "image/gif", "image/avif");
@@ -544,5 +709,3 @@ public class AccountService {
     return service.blankToNull(value);
   }
 }
-
-

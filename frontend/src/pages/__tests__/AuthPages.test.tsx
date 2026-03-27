@@ -75,7 +75,7 @@ describe('auth pages', () => {
         name: 'Cliente Novo',
         email: 'novo@rodando.local',
         password: '123456',
-        cep: '01001-000',
+        cep: '01001000',
       }),
     )
     await waitFor(() => expect(screen.getByTestId('auth-location')).toHaveTextContent('/'))

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../../test/renderWithProviders'
 import SiteLayout from '../SiteLayout'
 
@@ -42,21 +42,22 @@ describe('SiteLayout', () => {
     renderWithProviders(<SiteLayout />, { initialEntries: ['/'] })
     expect(screen.getAllByText('Início').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Catálogo').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Carrinho').length).toBeGreaterThan(0)
   })
 
-  it('exibe atalhos de pedidos e conta para cliente autenticado no layout publico', () => {
+  it('exibe itens do menu do avatar para cliente autenticado', () => {
     vi.mocked(useAuth).mockReturnValue({
       status: 'authenticated',
       user: { name: 'João', role: 'customer' },
       logout: mockLogout,
     })
     renderWithProviders(<SiteLayout />, { initialEntries: ['/'] })
+    const avatarBtn = screen.getByRole('button', { name: /menu de joão/i })
+    fireEvent.click(avatarBtn)
     expect(screen.getByText('Meus pedidos')).toBeInTheDocument()
-    expect(screen.getByText('Minha conta')).toBeInTheDocument()
+    expect(screen.getByText('Meu perfil')).toBeInTheDocument()
   })
 
-  it('não exibe atalhos exclusivos de cliente para visitante anônimo', () => {
+  it('não exibe itens de conta no nav para visitante anônimo', () => {
     renderWithProviders(<SiteLayout />, { initialEntries: ['/'] })
     expect(screen.queryByText('Meus pedidos')).not.toBeInTheDocument()
     expect(screen.queryByText('Minha conta')).not.toBeInTheDocument()
@@ -68,13 +69,15 @@ describe('SiteLayout', () => {
     expect(screen.getByText('3')).toBeInTheDocument()
   })
 
-  it('exibe botão de sair para cliente autenticado', () => {
+  it('exibe botão de sair no dropdown do avatar para cliente autenticado', () => {
     vi.mocked(useAuth).mockReturnValue({
       status: 'authenticated',
       user: { name: 'Ana', role: 'customer' },
       logout: mockLogout,
     })
     renderWithProviders(<SiteLayout />, { initialEntries: ['/'] })
+    const avatarBtn = screen.getByRole('button', { name: /menu de ana/i })
+    fireEvent.click(avatarBtn)
     expect(screen.getByRole('button', { name: /sair/i })).toBeInTheDocument()
   })
 })

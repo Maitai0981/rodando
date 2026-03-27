@@ -737,6 +737,26 @@ export const api = {
     }),
   deleteAddress: (id: number) =>
     apiRequest<void>(`/api/auth/addresses/${id}`, { method: 'DELETE' }),
+  requestPasswordReset: (email: string) =>
+    apiRequest<{ message: string; devCode?: string }>('/api/auth/password-reset/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  confirmPasswordReset: (email: string, code: string, password: string) =>
+    apiRequest<{ message: string }>('/api/auth/password-reset/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ email, code, password }),
+    }),
+  requestPasswordChangeCode: () =>
+    apiRequest<{ message: string; devCode?: string }>('/api/auth/password-change/request-code', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+  confirmPasswordChange: (code: string, password: string) =>
+    apiRequest<{ message: string }>('/api/auth/password-change/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ code, password }),
+    }),
   logout: () =>
     apiRequest<{ message: string }>('/api/auth/logout', {
       method: 'POST',

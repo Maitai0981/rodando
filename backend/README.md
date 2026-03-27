@@ -1,113 +1,128 @@
-# Backend
+# Backend — Rodando Moto Center
 
-O backend roda oficialmente como uma aplicacao `Java 21 + Spring Boot + Gradle`.
-Nao existe mais runtime Node dentro de `backend/` para API, regras de negocio, testes ou scripts operacionais.
-
-## Estrutura
-
-- `src/main/java/`: aplicacao Spring Boot organizada na mesma linha do `api_supabase-main`.
-- `src/main/java/com/rodando/backend/controller`: controllers HTTP.
-- `src/main/java/com/rodando/backend/models`: entidades e modelos de apoio.
-- `src/main/java/com/rodando/backend/repository`: repositories JPA.
-- `src/main/java/com/rodando/backend/service`: regras de negocio e servicos de aplicacao.
-- `src/main/resources/`: configuracao Spring, migracoes Flyway e assets do painel `/ops`.
-- `src/test/java/`: testes Java.
-- `uploads/`: arquivos enviados em ambiente local.
-
-Observacao:
-- Os unicos arquivos nao-Java mantidos no backend sao recursos estaticos do `/ops` e SQL de migracao. A logica da API fica em Java.
+API REST em Java 21 + Spring Boot 3.5, banco PostgreSQL, build com Maven.
 
 ## Runtime
 
-- Java: `21`
-- Spring Boot: `3.5.0`
-- Banco: `PostgreSQL`
-- Build tool: `Gradle Wrapper`
+| Componente     | Tecnologia              |
+|----------------|-------------------------|
+| Runtime        | Java 21                 |
+| Framework      | Spring Boot 3.5.0       |
+| Banco de dados | PostgreSQL 16           |
+| Migrações      | Flyway                  |
+| Build          | Maven (via `mvnw`)      |
+| Cache          | Caffeine (in-process)   |
+
+## Estrutura
+
+```
+src/main/java/com/rodando/backend/
+├── api/        ApiController (health/metrics/reset E2E), BaseApiController
+├── auth/       AuthController, UserEntity, SessionEntity, PasswordResetTokenEntity
+├── account/    AccountService, UserAddressEntity
+├── catalog/    CatalogController, CatalogService
+├── commerce/   CommerceController, CommerceService
+├── owner/      OwnerController, OwnerService, OwnerOfferService, OwnerSupportService
+├── assist/     AssistController, AssistService
+├── core/       RodandoService, RateLimiterService, PublicCacheService, EmailService
+├── common/     ApiException, GlobalExceptionHandler
+├── config/     AppProperties, SecurityConfig, WebConfig, AuthFilter
+└── tools/      ApiPerfRunner
+
+src/main/resources/
+├── application.properties
+└── db/migration/   V1__baseline.sql … V6__password_reset_tokens_add_purpose_attempts.sql
+```
 
 ## Comandos
 
-Windows PowerShell:
+```bash
+# Subir a API
+./mvnw spring-boot:run
+
+# Rodar testes
+./mvnw test
+
+# Gerar build
+./mvnw package -DskipTests
+```
+
+Windows (PowerShell):
 
 ```powershell
-cd C:\Users\mathe\rodando\backend
-.\gradlew.bat bootRun
+.\mvnw.cmd spring-boot:run
+.\mvnw.cmd test
 ```
 
-Linux/macOS:
+## Configuração
+
+Copie o template e preencha os valores:
 
 ```bash
-cd backend
-./gradlew bootRun
+cp .env.example .env.local
 ```
 
-Comandos uteis:
+O Spring Boot lê automaticamente `backend/.env.local` via `spring.config.import` em `application.properties`.
 
-- subir a API: `./gradlew bootRun`
-- rodar testes: `./gradlew test`
-- gerar build: `./gradlew build`
-- benchmark curto da API: `./gradlew apiPerf`
-
-## Configuracao
-
-- Variavel principal: `APP_ENV`
-- Arquivos locais suportados:
-  - `.env.local`
-  - `.env.test.local`
-- O Spring importa automaticamente o arquivo correspondente ao ambiente.
-- O fluxo local padrao assume banco limpo:
-  - mantenha `FLYWAY_BASELINE_ON_MIGRATE=false`
-  - se o schema `public` estiver herdado e sem `flyway_schema_history`, resete o banco `rodando`
-- Baseline permanece como escape para schema legado:
-  - `FLYWAY_BASELINE_ON_MIGRATE=true`
-  - `FLYWAY_BASELINE_VERSION=0`
-- `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` e `SPRING_DATASOURCE_PASSWORD` tem precedencia sobre `DATABASE_URL`
-
-Exemplo local:
+Variáveis obrigatórias para desenvolvimento local:
 
 ```env
 APP_ENV=local
-DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/rodando
-ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+DATABASE_URL=postgres://postgres:SUA_SENHA@127.0.0.1:5432/rodando
+OWNER_SEED_EMAIL=owner@rodando.local
+OWNER_SEED_PASSWORD=123456
+OWNER_SEED_NAME=Owner
+ALLOWED_ORIGINS=http://localhost:5173
 PUBLIC_APP_BASE_URL=http://localhost:5173
 COOKIE_SECURE=0
-TRUST_PROXY=0
 RATE_LIMIT_ENABLED=1
-PAYMENT_CARD_PROVIDER=mercado_pago
-PAYMENT_PIX_PROVIDER=mercado_pago
-MERCADOPAGO_PUBLIC_KEY=APP_USR-xxxxxxxx
-MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxxxxxx
-MERCADOPAGO_NOTIFICATION_URL=http://127.0.0.1:4000/api/payments/webhooks/mercadopago
-MOCK_PAYMENT_PROVIDERS=0
+MOCK_PAYMENT_PROVIDERS=1
 ```
 
-## Banco local
+## Banco de dados local
 
-Se o banco local estiver descartavel, prefira resetar antes de subir a API:
+Resetar e recriar (descartável):
 
-Windows PowerShell:
+```bash
+# Linux / macOS
+PGPASSWORD=SUA_SENHA psql -h 127.0.0.1 -U postgres -c "DROP DATABASE IF EXISTS rodando;"
+PGPASSWORD=SUA_SENHA psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE rodando;"
+./mvnw spring-boot:run
+```
 
 ```powershell
+# Windows PowerShell
 $env:PGPASSWORD="SUA_SENHA"
 & "C:\Program Files\PostgreSQL\16\bin\dropdb.exe" -h 127.0.0.1 -U postgres rodando
 & "C:\Program Files\PostgreSQL\16\bin\createdb.exe" -h 127.0.0.1 -U postgres rodando
-.\gradlew.bat bootRun
+.\mvnw.cmd spring-boot:run
 ```
 
-Depois do reset, o backend deve criar `flyway_schema_history`, aplicar `V1__baseline.sql` e responder em `http://127.0.0.1:4000/api/health`.
+Ao subir, o Flyway aplica todas as migrações e o `ApiController` cria o owner seed se `OWNER_SEED_EMAIL` estiver definido.
 
-## Endpoints operacionais
+## Endpoints de health
 
-- `GET /api/health`
-- `GET /api/ready`
-- `GET /api/metrics`
-- `GET /ops`
+| Método | Path          | Descrição             |
+|--------|---------------|-----------------------|
+| GET    | `/api/health` | Status da aplicação   |
+| GET    | `/api/ready`  | Prontidão (DB + deps) |
+| GET    | `/api/metrics`| Métricas de uso       |
 
-O `/ops` continua protegido por sessao owner e agora e servido a partir de resources do Spring.
+## Variáveis de ambiente
 
-## Performance
-
-O task `apiPerf` gera:
-
-- `backend/perf/backend-api.json`
-
-Ele depende de a API estar rodando no `API_BASE` configurado, ou usa `http://127.0.0.1:4000` por padrao.
+| Variável                    | Padrão                        | Descrição                              |
+|-----------------------------|-------------------------------|----------------------------------------|
+| `DATABASE_URL`              | `postgres://...@.../rodando`  | URL de conexão PostgreSQL              |
+| `APP_ENV`                   | `local`                       | `local`, `staging`, `production`       |
+| `PORT`                      | `4000`                        | Porta HTTP                             |
+| `OWNER_SEED_EMAIL`          | —                             | Email do owner criado no boot          |
+| `OWNER_SEED_PASSWORD`       | —                             | Senha do owner                         |
+| `ALLOWED_ORIGINS`           | `http://localhost:5173,...`   | Origins permitidas no CORS             |
+| `COOKIE_SECURE`             | `true` em prod               | Exige HTTPS para o cookie de sessão    |
+| `RATE_LIMIT_ENABLED`        | `true` (exceto test/e2e)     | Ativa rate limiting em memória         |
+| `MOCK_PAYMENT_PROVIDERS`    | `true` em test/e2e            | Simula pagamentos sem chamar gateways  |
+| `SMTP_HOST`                 | —                             | Servidor SMTP para emails              |
+| `SMTP_PASSWORD`             | —                             | Senha SMTP                             |
+| `MERCADOPAGO_ACCESS_TOKEN`  | —                             | Token Mercado Pago                     |
+| `DB_RESET`                  | `0`                           | Limpa e recria o schema no boot (CI)   |
+| `SEED_BASE_CATALOG`         | `0`                           | Seed de catálogo base no boot          |

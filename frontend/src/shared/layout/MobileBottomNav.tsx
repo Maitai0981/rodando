@@ -93,13 +93,13 @@ export function FloatingAccessBarMobile({ visible = true }: FloatingAccessBarMob
           maxWidth: 'var(--ds-content-max-width)',
           mx: 'auto',
           borderRadius: 3,
-          border: 'none',
-          backgroundColor: 'rgba(255,255,255,0.98)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          backgroundColor: 'rgba(10,10,15,0.95)',
           px: 1,
           py: 0.95,
-          boxShadow: '0 12px 28px rgba(20,34,53,0.2)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
         }}
       >
         <LayoutGroup id="mobile-route-nav">
@@ -119,16 +119,16 @@ export function FloatingAccessBarMobile({ visible = true }: FloatingAccessBarMob
                   onIntent={handlePrefetch}
                   sx={{
                     border: 'none',
-                    backgroundColor: active ? '#1C9C4B' : 'transparent',
+                    backgroundColor: active ? '#d4a843' : 'transparent',
                     '&:hover': {
-                      backgroundColor: active ? '#1C9C4B' : 'rgba(20,34,53,0.06)',
+                      backgroundColor: active ? '#d4a843' : 'rgba(212,168,67,0.08)',
                     },
                   }}
                   contentSx={{
-                    color: active ? '#FFFFFF' : '#34475D',
+                    color: active ? '#000000' : '#6b7280',
                   }}
                   indicatorSx={{
-                    background: 'linear-gradient(165deg, rgba(28,156,75,0.98) 0%, rgba(22,122,59,0.98) 100%)',
+                    background: 'linear-gradient(165deg, rgba(212,168,67,0.98) 0%, rgba(240,192,64,0.98) 100%)',
                     border: 'none',
                   }}
                 />

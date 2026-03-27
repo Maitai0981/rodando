@@ -42,6 +42,7 @@ export default function CheckoutPage() {
   const [pixFeedback, setPixFeedback] = useState<string | null>(null)
   const [checkoutOrderId, setCheckoutOrderId] = useState<number | null>(null)
   const [checkoutPayment, setCheckoutPayment] = useState<CheckoutPayment | null>(null)
+  const [showBackWarning, setShowBackWarning] = useState(false)
   const handledMercadoPagoTokenRef = useRef<string | null>(null)
   const completingMercadoPagoRef = useRef(false)
   const mercadoPagoStatus = searchParams.get('mpStatus') || searchParams.get('status')
@@ -244,7 +245,29 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <BackButton label="Voltar ao carrinho" />
+        <BackButton
+          label="Voltar ao carrinho"
+          onClick={step > 0 && !checkoutOrderId ? () => setShowBackWarning(true) : undefined}
+        />
+        {showBackWarning ? (
+          <div className="mb-4 p-3 rounded-lg text-sm bg-amber-500/10 border border-amber-500/20 text-amber-400 flex flex-wrap items-center justify-between gap-3">
+            <span>Sair agora vai descartar o progresso do checkout. Deseja continuar?</span>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={() => { setShowBackWarning(false); navigate(-1) }}
+                className="px-3 py-1 rounded-lg text-xs bg-amber-500/20 text-amber-300 font-bold"
+              >
+                Sim, sair
+              </button>
+              <button
+                onClick={() => setShowBackWarning(false)}
+                className="px-3 py-1 rounded-lg text-xs border border-white/[0.12] text-[#f0ede8]"
+              >
+                Ficar
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="mb-6">
           <h1 className="text-2xl text-[#f0ede8] font-bold">Checkout</h1>
           <p className="text-sm text-[#6b7280]">Finalize sua compra em etapas rápidas.</p>

@@ -15,10 +15,11 @@ export function Toast({
   title,
   message,
   onClose,
-  durationMs = 2800,
+  durationMs,
 }: ToastProps) {
+  const effectiveDuration = durationMs ?? (tone === 'error' ? 5000 : 2800)
   return (
-    <Snackbar open={open} autoHideDuration={durationMs} onClose={onClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+    <Snackbar open={open} autoHideDuration={effectiveDuration} onClose={onClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
       <MuiAlert
         severity={mapTone(tone)}
         onClose={onClose}

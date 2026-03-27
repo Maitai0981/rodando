@@ -14,7 +14,7 @@ export function Price({
   const showCompareAt = typeof compareAt === 'number' && compareAt > amount
   return (
     <Stack direction="row" alignItems="baseline" spacing={1}>
-      <Typography variant={size} sx={{ color: 'info.main', fontWeight: 700 }}>
+      <Typography variant={size} sx={{ color: '#d4a843', fontWeight: 700 }}>
         {formatCurrency(Number(amount || 0))}
       </Typography>
       {showCompareAt ? (

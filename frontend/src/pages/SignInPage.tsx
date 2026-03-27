@@ -75,7 +75,7 @@ export default function SignInPage() {
 
           {error ? (
             <div className="mb-4 p-3 rounded-lg text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">
-              {error}{String(error).toLowerCase().includes('credenciais') ? ' Verifique o email/senha ou crie uma conta primeiro.' : ''}
+              {error}
             </div>
           ) : null}
 
@@ -147,7 +147,10 @@ export default function SignInPage() {
           </form>
 
           <p className="text-sm mt-4 text-[#9ca3af]">
-            Nao tem conta? <Link to="/auth/signup" className="text-[#d4a843]">Criar agora</Link>
+            Não tem conta? <Link to="/auth/signup" className="text-[#d4a843]">Criar agora</Link>
+          </p>
+          <p className="text-sm mt-2 text-[#9ca3af]">
+            <Link to="/auth/forgot-password" className="text-[#d4a843]">Esqueci minha senha</Link>
           </p>
           <p className="text-xs mt-2 text-[#6b7280]">
             Conta owner: use <Link to="/owner/login" className="text-[#d4a843]">/owner/login</Link>.

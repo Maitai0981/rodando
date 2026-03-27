@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, m } from 'framer-motion'
-import { User, Package, LogOut, ChevronRight, LogIn, UserPlus } from 'lucide-react'
+import { User, Package, LogOut, ChevronRight, LogIn, UserPlus, Sun, Moon } from 'lucide-react'
 import { useAuth } from '@/shared/context/AuthContext'
+import { useSiteTheme } from '@/shared/context/ThemeContext'
 
 function AvatarImg({ src, initial }: { src: string; initial: string }) {
   const [broken, setBroken] = useState(false)
@@ -25,6 +26,7 @@ function AvatarImg({ src, initial }: { src: string; initial: string }) {
 export function AccountMenu() {
   const { status, user, logout } = useAuth()
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useSiteTheme()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const isAuthenticated = status === 'authenticated'
@@ -33,7 +35,7 @@ export function AccountMenu() {
       ? '/owner/dashboard'
       : '/account/profile'
     : '/auth'
-  const initial = (user?.name ?? 'U')[0].toUpperCase()
+  const initial = (user?.name || user?.email || 'U')[0].toUpperCase()
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -143,6 +145,20 @@ export function AccountMenu() {
 
                 <div className="border-t border-white/[0.06]" />
 
+                {/* Tema */}
+                <div className="py-1.5">
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#d0ccc6] hover:text-[#f0ede8] hover:bg-white/[0.04] transition-colors"
+                  >
+                    {theme === 'dark' ? <Sun className="w-4 h-4 text-[#6b7280]" /> : <Moon className="w-4 h-4 text-[#6b7280]" />}
+                    {theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
+                  </button>
+                </div>
+
+                <div className="border-t border-white/[0.06]" />
+
                 {/* Sair */}
                 <div className="py-1.5">
                   <button
@@ -173,6 +189,15 @@ export function AccountMenu() {
                   <UserPlus className="w-4 h-4 text-[#6b7280]" />
                   Criar conta
                 </Link>
+                <div className="border-t border-white/[0.06] my-1" />
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#d0ccc6] hover:text-[#f0ede8] hover:bg-white/[0.04] transition-colors"
+                >
+                  {theme === 'dark' ? <Sun className="w-4 h-4 text-[#6b7280]" /> : <Moon className="w-4 h-4 text-[#6b7280]" />}
+                  {theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
+                </button>
               </div>
             )}
           </m.div>

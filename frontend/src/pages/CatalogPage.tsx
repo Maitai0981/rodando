@@ -19,11 +19,6 @@ import { useCart } from '../shared/context/CartContext'
 
 const SEARCH_DEBOUNCE_MS = 300
 
-const partsImage =
-  'https://images.unsplash.com/photo-1675247911627-0fb610250598?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3RvcmN5Y2xlJTIwZW5naW5lJTIwcGFydHMlMjBjbG9zZSUyMHVwJTIwbHV4dXJ5fGVufDF8fHx8MTc3MzA2OTA0OHww&ixlib=rb-4.1.0&q=80&w=1080'
-const partsImage2 =
-  'https://images.unsplash.com/photo-1663342850009-d85dc9329916?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3RvcmN5Y2xlJTIwYWNjZXNzb3JpZXMlMjBwcmVtaXVtJTIwYmxhY2slMjBnb2xkfGVufDF8fHx8MTc3MzA2OTA1Mnww&ixlib=rb-4.1.0&q=80&w=1080'
-
 const SORT_OPTIONS = [
   { label: 'Mais vendidos', value: 'best-sellers' },
   { label: 'Menor preço', value: 'price-asc' },
@@ -94,7 +89,7 @@ function ProductCard({
     >
       <div className="relative h-44 overflow-hidden flex-shrink-0 bg-white/[0.02]">
         <ImageWithFallback
-          src={product.imageUrl || (product.id % 2 === 0 ? partsImage2 : partsImage)}
+          src={product.imageUrl ?? undefined}
           alt={product.name}
           className="w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity duration-500"
         />
@@ -162,24 +157,33 @@ export default function CatalogPage() {
   const querySearch = searchParams.get('q') || ''
   const [filters, setFilters] = useState<Filters>(() => ({ ...DEFAULT_FILTERS, search: querySearch }))
   const [searchInputValue, setSearchInputValue] = useState(querySearch)
-  const [page, setPage] = useState(1)
+  const page = Math.max(1, Number(searchParams.get('page') || '1'))
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const perPage = 12
   const { addProduct } = useCart()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  function goToPage(p: number) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      if (p <= 1) next.delete('page')
+      else next.set('page', String(p))
+      return next
+    }, { replace: true })
+  }
+
   const updateFilter = useCallback((key: keyof Filters, value: string | number) => {
     setFilters((f) => ({ ...f, [key]: value }))
-    setPage(1)
-    if (key === 'search') {
-      setSearchParams((current) => {
-        const next = new URLSearchParams(current)
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.delete('page')
+      if (key === 'search') {
         const searchValue = String(value).trim()
         if (searchValue) next.set('q', searchValue)
         else next.delete('q')
-        return next
-      }, { replace: true })
-    }
+      }
+      return next
+    }, { replace: true })
   }, [setSearchParams])
 
   const handleSearchChange = useCallback((value: string) => {
@@ -193,11 +197,11 @@ export default function CatalogPage() {
   const clearFilters = useCallback(() => {
     setFilters(DEFAULT_FILTERS)
     setSearchInputValue('')
-    setPage(1)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     setSearchParams((current) => {
       const next = new URLSearchParams(current)
       next.delete('q')
+      next.delete('page')
       return next
     }, { replace: true })
   }, [setSearchParams])
@@ -208,7 +212,6 @@ export default function CatalogPage() {
       return { ...current, search: querySearch }
     })
     setSearchInputValue(querySearch)
-    setPage(1)
   }, [querySearch])
 
   // cleanup debounce on unmount
@@ -248,8 +251,9 @@ export default function CatalogPage() {
     retry: false,
   })
   const applyFilters = useCallback(() => {
-    setPage(1)
+    goToPage(1)
     void productQuery.refetch()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productQuery.refetch])
 
   const items = useMemo(() => productQuery.data?.items ?? [], [productQuery.data?.items])
@@ -713,7 +717,7 @@ export default function CatalogPage() {
                 className="flex items-center justify-center gap-2 mt-10"
               >
                 <m.button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => goToPage(Math.max(1, page - 1))}
                   disabled={page === 1}
                   className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-30 bg-white/[0.05] border border-white/[0.08] text-[#f0ede8]"
                   whileHover={{ scale: 1.08 }}
@@ -728,7 +732,7 @@ export default function CatalogPage() {
                   ) : (
                     <m.button
                       key={p}
-                      onClick={() => setPage(p)}
+                      onClick={() => goToPage(p)}
                       className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm ${
                         page === p
                           ? 'bg-gradient-to-br from-[#d4a843] to-[#f0c040] text-black font-bold'
@@ -743,7 +747,7 @@ export default function CatalogPage() {
                 )}
 
                 <m.button
-                  onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+                  onClick={() => goToPage(Math.min(meta.totalPages, page + 1))}
                   disabled={page === meta.totalPages}
                   className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-30 bg-white/[0.05] border border-white/[0.08] text-[#f0ede8]"
                   whileHover={{ scale: 1.08 }}

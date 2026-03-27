@@ -12,6 +12,10 @@ public interface SessionRepository extends JpaRepository<SessionEntity, Long> {
   Optional<SessionEntity> findByTokenHashAndExpiresAtAfter(String tokenHash, OffsetDateTime expiresAt);
 
   void deleteByTokenHash(String tokenHash);
+
+  @org.springframework.data.jpa.repository.Modifying
+  @org.springframework.data.jpa.repository.Query("DELETE FROM SessionEntity s WHERE s.user.id = ?1")
+  void deleteAllByUserId(long userId);
 }
 
 

@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
-import { User, Package, Lock } from 'lucide-react'
+import { User, Package, Lock, Palette } from 'lucide-react'
 
 const links = [
   { to: '/account/profile', label: 'Perfil', icon: User },
   { to: '/orders', label: 'Meus Pedidos', icon: Package },
   { to: '/account/security', label: 'Segurança', icon: Lock },
+  { to: '/account/settings', label: 'Aparência', icon: Palette },
 ]
 
 export function AccountSidebar() {

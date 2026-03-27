@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, GripVertical, ImagePlus, Trash2, Upload } from 'lucide-react'
 import OwnerLayout from '../shared/layout/OwnerLayout'
 import { api, ApiError, type Product } from '../shared/lib/api'
 import { useAssist } from '../shared/context/AssistContext'
@@ -18,8 +18,7 @@ type ProductForm = {
   stock: string
   minimumStock: string
   reorderPoint: string
-  imageUrl: string
-  hoverImageUrl: string
+  images: string[]
   description: string
   isActive: boolean
 }
@@ -35,11 +34,12 @@ const emptyForm: ProductForm = {
   stock: '',
   minimumStock: '5',
   reorderPoint: '10',
-  imageUrl: '',
-  hoverImageUrl: '',
+  images: [''],
   description: '',
   isActive: true,
 }
+
+const IMAGE_SLOT_LABELS = ['Principal', 'Hover', 'Extra 1', 'Extra 2', 'Extra 3', 'Extra 4']
 
 export default function OwnerProductFormPage() {
   const { id } = useParams<{ id: string }>()
@@ -55,9 +55,9 @@ export default function OwnerProductFormPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [uploadingMain, setUploadingMain] = useState(false)
-  const [uploadingHover, setUploadingHover] = useState(false)
+  const [uploadingSlot, setUploadingSlot] = useState<number | null>(null)
   const [loadedProduct, setLoadedProduct] = useState<Product | null>(null)
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   const pageTitle = useMemo(() => (isCreate ? 'Novo produto' : 'Editar produto'), [isCreate])
 
@@ -84,6 +84,10 @@ export default function OwnerProductFormPage() {
       .then(({ item }) => {
         if (!active) return
         setLoadedProduct(item)
+        const imgs: string[] = []
+        if (item.imageUrl) imgs.push(item.imageUrl)
+        if (item.hoverImageUrl) imgs.push(item.hoverImageUrl)
+        if (imgs.length === 0) imgs.push('')
         setForm({
           name: item.name,
           sku: item.sku,
@@ -95,8 +99,7 @@ export default function OwnerProductFormPage() {
           stock: String(item.stock),
           minimumStock: String(item.minimumStock ?? 5),
           reorderPoint: String(item.reorderPoint ?? 10),
-          imageUrl: item.imageUrl || '',
-          hoverImageUrl: item.hoverImageUrl || '',
+          images: imgs,
           description: item.description,
           isActive: Boolean(item.isActive),
         })
@@ -119,6 +122,7 @@ export default function OwnerProductFormPage() {
     setSaving(true)
     setError(null)
 
+    const filledImages = form.images.map((u) => u.trim()).filter(Boolean)
     const payload = {
       name: form.name.trim(),
       sku: form.sku.trim().toUpperCase(),
@@ -130,8 +134,8 @@ export default function OwnerProductFormPage() {
       stock: Number(form.stock),
       minimumStock: Number(form.minimumStock || 0),
       reorderPoint: Number(form.reorderPoint || 0),
-      imageUrl: form.imageUrl.trim(),
-      hoverImageUrl: form.hoverImageUrl.trim(),
+      imageUrl: filledImages[0] ?? '',
+      hoverImageUrl: filledImages[1] ?? '',
       description: form.description.trim(),
       isActive: form.isActive,
     }
@@ -170,24 +174,42 @@ export default function OwnerProductFormPage() {
     }
   }
 
-  async function handleLocalImageUpload(kind: 'main' | 'hover', file?: File) {
+  async function handleImageUpload(slotIndex: number, file?: File) {
     if (!file) return
-    const setUploading = kind === 'main' ? setUploadingMain : setUploadingHover
-    setUploading(true)
+    setUploadingSlot(slotIndex)
     setUploadError(null)
 
     try {
       const { item } = await api.uploadOwnerImage(file)
-      setForm((prev) =>
-        kind === 'main'
-          ? { ...prev, imageUrl: item.publicUrl }
-          : { ...prev, hoverImageUrl: item.publicUrl },
-      )
+      setForm((prev) => {
+        const next = [...prev.images]
+        next[slotIndex] = item.publicUrl
+        return { ...prev, images: next }
+      })
     } catch (err) {
-      setUploadError(err instanceof ApiError ? err.message : 'Falha ao enviar imagem local.')
+      setUploadError(err instanceof ApiError ? err.message : 'Falha ao enviar imagem.')
     } finally {
-      setUploading(false)
+      setUploadingSlot(null)
     }
+  }
+
+  function setImageUrl(slotIndex: number, url: string) {
+    setForm((prev) => {
+      const next = [...prev.images]
+      next[slotIndex] = url
+      return { ...prev, images: next }
+    })
+  }
+
+  function removeImageSlot(slotIndex: number) {
+    setForm((prev) => {
+      const next = prev.images.filter((_, i) => i !== slotIndex)
+      return { ...prev, images: next.length > 0 ? next : [''] }
+    })
+  }
+
+  function addImageSlot() {
+    setForm((prev) => ({ ...prev, images: [...prev.images, ''] }))
   }
 
   return (
@@ -337,100 +359,98 @@ export default function OwnerProductFormPage() {
                   />
                 </div>
 
+                {/* ── Galeria de imagens ── */}
                 <div>
-                  <label htmlFor="owner-product-image-url" className="text-xs uppercase tracking-widest text-[#d4a843]">
-                    URL da imagem
-                  </label>
-                  <input
-                    id="owner-product-image-url"
-                    aria-label="URL da imagem"
-                    title="URL da imagem"
-                    data-testid="owner-product-image-url"
-                    placeholder="https://... ou upload local"
-                    value={form.imageUrl}
-                    onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                    className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
-                  />
-                  <p className="text-xs mt-1 text-[#6b7280]">Obrigatoria para produto ativo na vitrine publica.</p>
-                </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-[#d4a843]">Galeria de imagens</p>
+                      <p className="text-xs mt-0.5 text-[#6b7280]">
+                        1ª = principal · 2ª = hover nos cards · demais = galeria no produto
+                      </p>
+                    </div>
+                    {form.images.length < 6 ? (
+                      <button
+                        type="button"
+                        onClick={addImageSlot}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border border-[#d4a843]/40 text-[#d4a843] hover:bg-[#d4a843]/10 transition-colors"
+                      >
+                        <ImagePlus className="w-3.5 h-3.5" />
+                        Adicionar imagem
+                      </button>
+                    ) : null}
+                  </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <label
-                    data-testid="owner-product-main-upload-button"
-                    className={`px-3 py-2 rounded-xl text-xs cursor-pointer border border-white/[0.12] text-[#e5e7eb] ${uploadingMain ? 'opacity-60' : ''}`}
-                  >
-                    {uploadingMain ? 'Enviando imagem...' : 'Enviar imagem local'}
-                    <input
-                      hidden
-                      accept="image/*"
-                      type="file"
-                      aria-label="Enviar imagem local"
-                      title="Enviar imagem local"
-                      data-testid="owner-product-main-upload-input"
-                      onChange={(event) => {
-                        const file = event.currentTarget.files?.[0]
-                        void handleLocalImageUpload('main', file)
-                        event.currentTarget.value = ''
-                      }}
-                    />
-                  </label>
-                  {form.imageUrl ? (
-                    <button
-                      type="button"
-                      className="px-3 py-2 rounded-xl text-xs border border-white/[0.12] text-[#e5e7eb]"
-                      onClick={() => setForm((prev) => ({ ...prev, imageUrl: '' }))}
-                    >
-                      Limpar imagem
-                    </button>
-                  ) : null}
-                </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {form.images.map((url, idx) => (
+                      <div
+                        key={idx}
+                        className="group relative rounded-xl border border-white/[0.08] bg-white/[0.03] overflow-hidden"
+                      >
+                        {/* Preview */}
+                        <div className="relative h-28 flex items-center justify-center bg-[#111118]/60">
+                          {url ? (
+                            <img
+                              src={url}
+                              alt={`Imagem ${idx + 1}`}
+                              className="w-full h-full object-contain p-2"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '0.2' }}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center gap-1 text-[#4b5563]">
+                              <GripVertical className="w-5 h-5" />
+                              <span className="text-xs">Vazio</span>
+                            </div>
+                          )}
 
-                <div>
-                  <label htmlFor="owner-product-hover-image-url" className="text-xs uppercase tracking-widest text-[#d4a843]">
-                    URL da imagem hover (opcional)
-                  </label>
-                  <input
-                    id="owner-product-hover-image-url"
-                    aria-label="URL da imagem hover"
-                    title="URL da imagem hover"
-                    data-testid="owner-product-hover-image-url"
-                    placeholder="https://... ou upload local"
-                    value={form.hoverImageUrl}
-                    onChange={(e) => setForm((prev) => ({ ...prev, hoverImageUrl: e.target.value }))}
-                    className="w-full mt-2 py-2.5 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8]"
-                  />
-                  <p className="text-xs mt-1 text-[#6b7280]">Quando preenchida, substitui a imagem principal no hover dos cards.</p>
-                </div>
+                          {/* Slot label badge */}
+                          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#0a0a0f]/80 text-[#d4a843]">
+                            {IMAGE_SLOT_LABELS[idx] ?? `Extra ${idx - 1}`}
+                          </span>
 
-                <div className="flex flex-wrap gap-2">
-                  <label
-                    data-testid="owner-product-hover-upload-button"
-                    className={`px-3 py-2 rounded-xl text-xs cursor-pointer border border-white/[0.12] text-[#e5e7eb] ${uploadingHover ? 'opacity-60' : ''}`}
-                  >
-                    {uploadingHover ? 'Enviando imagem hover...' : 'Enviar imagem hover local'}
-                    <input
-                      hidden
-                      accept="image/*"
-                      type="file"
-                      aria-label="Enviar imagem hover local"
-                      title="Enviar imagem hover local"
-                      data-testid="owner-product-hover-upload-input"
-                      onChange={(event) => {
-                        const file = event.currentTarget.files?.[0]
-                        void handleLocalImageUpload('hover', file)
-                        event.currentTarget.value = ''
-                      }}
-                    />
-                  </label>
-                  {form.hoverImageUrl ? (
-                    <button
-                      type="button"
-                      className="px-3 py-2 rounded-xl text-xs border border-white/[0.12] text-[#e5e7eb]"
-                      onClick={() => setForm((prev) => ({ ...prev, hoverImageUrl: '' }))}
-                    >
-                      Limpar hover
-                    </button>
-                  ) : null}
+                          {/* Delete */}
+                          {form.images.length > 1 ? (
+                            <button
+                              type="button"
+                              aria-label={`Remover imagem ${idx + 1}`}
+                              onClick={() => removeImageSlot(idx)}
+                              className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-[#ef4444]/20 text-[#f87171] opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {/* URL input + upload */}
+                        <div className="p-2 space-y-1.5">
+                          <input
+                            type="text"
+                            aria-label={`URL da imagem ${idx + 1}`}
+                            placeholder="https://..."
+                            value={url}
+                            onChange={(e) => setImageUrl(idx, e.target.value)}
+                            className="w-full py-1.5 px-2 rounded-lg text-xs outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8] placeholder-[#4b5563]"
+                          />
+                          <label
+                            className={`flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg text-xs cursor-pointer border border-white/[0.1] text-[#9ca3af] hover:text-[#f0ede8] hover:border-white/[0.2] transition-colors ${uploadingSlot === idx ? 'opacity-60 pointer-events-none' : ''}`}
+                          >
+                            <Upload className="w-3 h-3" />
+                            {uploadingSlot === idx ? 'Enviando...' : 'Upload'}
+                            <input
+                              ref={(el) => { fileInputRefs.current[idx] = el }}
+                              hidden
+                              accept="image/*"
+                              type="file"
+                              onChange={(event) => {
+                                const file = event.currentTarget.files?.[0]
+                                void handleImageUpload(idx, file)
+                                event.currentTarget.value = ''
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {uploadError ? (
@@ -587,34 +607,31 @@ export default function OwnerProductFormPage() {
                   <Line label="Estoque" value={form.stock || '-'} />
                   <Line label="Estoque minimo" value={form.minimumStock || '-'} />
                   <Line label="Reposicao" value={form.reorderPoint || '-'} />
-                  <Line label="Imagem" value={form.imageUrl ? 'Configurada' : 'Sem imagem'} />
-                  <Line label="Imagem hover" value={form.hoverImageUrl ? 'Configurada' : 'Nao informada'} />
+                  <Line label="Imagens" value={`${form.images.filter(Boolean).length} configurada(s)`} />
                 </div>
               )}
             </div>
 
             <div className="rounded-2xl p-5 bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-xs uppercase tracking-widest text-[#d4a843]">Preview da imagem</p>
-              <div
-                className="mt-3 rounded-xl flex items-center justify-center overflow-hidden border border-white/[0.08] bg-[#111118]/60 min-h-[180px]"
-              >
-                {form.imageUrl ? (
+              <p className="text-xs uppercase tracking-widest text-[#d4a843]">Preview principal</p>
+              <div className="mt-3 rounded-xl flex items-center justify-center overflow-hidden border border-white/[0.08] bg-[#111118]/60 min-h-[180px]">
+                {form.images[0] ? (
                   <img
-                    key={form.imageUrl}
-                    src={form.imageUrl}
+                    key={form.images[0]}
+                    src={form.images[0]}
                     alt={form.name || 'Preview do produto'}
                     className="w-full h-[180px] object-contain p-4"
                     onError={(event) => {
-                      ;(event.currentTarget as HTMLImageElement).style.display = 'none'
+                      ;(event.currentTarget as HTMLImageElement).style.opacity = '0.2'
                     }}
                   />
                 ) : (
-                  <span className="text-sm text-[#6b7280]">Informe uma URL para visualizar.</span>
+                  <span className="text-sm text-[#6b7280]">Sem imagem principal.</span>
                 )}
               </div>
             </div>
 
-            {form.isActive && !form.imageUrl.trim() ? (
+            {form.isActive && !form.images[0]?.trim() ? (
               <div className="p-3 rounded-lg text-sm bg-[#eab308]/[0.12] border border-[#eab308]/20 text-[#facc15]">
                 Produto ativo sem imagem nao pode ser publicado na vitrine.
               </div>
