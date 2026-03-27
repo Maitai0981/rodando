@@ -125,13 +125,20 @@ public class CommerceController extends BaseApiController {
       HttpServletRequest request,
       HttpServletResponse response,
       @RequestHeader(value = "x-signature", required = false) String signature,
+      @RequestHeader(value = "x-request-id", required = false) String requestId,
       @RequestBody Map<String, Object> body) {
     // Valida assinatura ANTES do rate limit para que requisições sem assinatura
     // válida não consumam o budget de rate de fontes legítimas.
-    commerceService.validateMercadoPagoSignature(signature);
+    String dataId = "";
+    Object data = body.get("data");
+    if (data instanceof Map<?, ?> dataMap) {
+      Object id = dataMap.get("id");
+      dataId = id != null ? String.valueOf(id) : "";
+    }
+    commerceService.validateMercadoPagoSignature(signature, requestId, dataId);
     enforceRateLimit(response, "webhook", "webhook:mercadopago:" + clientKey(request), properties.webhookRateLimitWindow(),
         properties.webhookRateLimitMax(), "Limite de webhook excedido.");
-    return commerceService.handleMercadoPagoWebhook(signature, body);
+    return commerceService.handleMercadoPagoWebhook(signature, requestId, body);
   }
 
   @PostMapping("/payments/webhooks/stripe")

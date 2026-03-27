@@ -25,7 +25,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.imageio.ImageIO;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.payment.PaymentCreateRequest;
 import com.mercadopago.client.common.IdentificationRequest;
@@ -903,24 +908,57 @@ public class CommerceService {
         "synced", true);
   }
 
-  /** Valida apenas a assinatura do webhook MercadoPago — chamado pelo controller antes do rate limit. */
-  public void validateMercadoPagoSignature(String signature) {
+  /**
+   * Valida a assinatura HMAC-SHA256 do webhook MercadoPago.
+   * Formato x-signature: ts=TIMESTAMP,v1=HMAC_HEX
+   * Mensagem assinada: id={dataId};request-id={requestId};ts={ts}
+   */
+  public void validateMercadoPagoSignature(String signature, String requestId, String dataId) {
     String secret = service.trim(properties.mercadoPagoWebhookSecret());
-    // Se não há secret configurado em ambiente productionLike, rejeita por padrão.
-    // Em dev/test sem secret, permite (mockPaymentProviders cobre esses cenários).
     if (secret.isBlank()) {
       if (properties.productionLike()) {
         throw new ApiException(401, "Webhook secret nao configurado.");
       }
       return;
     }
-    if (!secret.equals(service.trim(signature))) {
-      throw new ApiException(401, "Assinatura de webhook invalida.");
+    if (signature == null || signature.isBlank()) {
+      throw new ApiException(401, "Assinatura de webhook ausente.");
+    }
+    String ts = null;
+    String v1 = null;
+    for (String part : signature.split(",")) {
+      String[] kv = part.split("=", 2);
+      if (kv.length == 2) {
+        String k = kv[0].trim();
+        String v = kv[1].trim();
+        if ("ts".equals(k)) ts = v;
+        if ("v1".equals(k)) v1 = v;
+      }
+    }
+    if (ts == null || v1 == null) {
+      throw new ApiException(401, "Formato de assinatura invalido.");
+    }
+    String manifest = "id=" + service.trim(dataId)
+        + ";request-id=" + service.trim(requestId)
+        + ";ts=" + ts;
+    try {
+      Mac mac = Mac.getInstance("HmacSHA256");
+      mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+      byte[] hash = mac.doFinal(manifest.getBytes(StandardCharsets.UTF_8));
+      StringBuilder computed = new StringBuilder(hash.length * 2);
+      for (byte b : hash) {
+        computed.append(String.format("%02x", b));
+      }
+      if (!computed.toString().equals(v1)) {
+        throw new ApiException(401, "Assinatura de webhook invalida.");
+      }
+    } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+      throw new ApiException(500, "Erro interno ao validar assinatura.");
     }
   }
 
-  public Map<String, Object> handleMercadoPagoWebhook(String signature, Map<String, Object> event) {
-    validateMercadoPagoSignature(signature);
+  public Map<String, Object> handleMercadoPagoWebhook(String signature, String requestId, Map<String, Object> event) {
+    // Assinatura já validada no controller antes do rate limit.
     Map<String, Object> data = asMap(event.get("data"));
     String paymentExternalId = service.trim(service.stringValue(event.get("paymentExternalId")));
     if (paymentExternalId.isBlank()) {
