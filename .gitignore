@@ -85,11 +85,8 @@ backend/uploads/*
 # ══════════════════════════════════════════════════════════════
 # CLAUDE CODE
 # ══════════════════════════════════════════════════════════════
-# Configurações pessoais locais (não rastrear)
-.claude/settings.local.json
-.claude/todos.json
-# .claude/commands/ é rastreado — contém os slash commands do projeto
-# CLAUDE.md é rastreado — contém as instruções do projeto
+.claude/
+CLAUDE.md
 
 # MCP com tokens locais
 .mcp.json
