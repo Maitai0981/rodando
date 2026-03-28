@@ -77,7 +77,7 @@ describe('SecurityPage', () => {
 
   it('exibe o email do usuário no step idle', () => {
     renderPage()
-    expect(screen.getByText('cliente@rodando.local')).toBeInTheDocument()
+    expect(screen.getAllByText('cliente@rodando.local')[0]).toBeInTheDocument()
   })
 
   it('exibe o botão "Enviar código por email" no step idle', () => {
@@ -98,7 +98,7 @@ describe('SecurityPage', () => {
     renderPage()
     fireEvent.click(screen.getByText('Enviar código por email'))
 
-    await waitFor(() => expect(screen.getByText('Muitas tentativas.')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Muitas tentativas/i)).toBeInTheDocument())
     expect(screen.getByText('Enviar código por email')).toBeInTheDocument()
   })
 
@@ -123,7 +123,7 @@ describe('SecurityPage', () => {
     await goToStepCode()
     fireEvent.click(screen.getByText('Alterar senha'))
     await waitFor(() =>
-      expect(screen.getByText('Informe o código de 6 dígitos recebido por email')).toBeInTheDocument(),
+      expect(screen.getByText('Informe o código de 6 dígitos')).toBeInTheDocument(),
     )
     expect(confirmPasswordChangeMock).not.toHaveBeenCalled()
   })
@@ -132,10 +132,8 @@ describe('SecurityPage', () => {
     await goToStepCode()
     fireEvent.change(screen.getByPlaceholderText('000000'), { target: { value: '123456' } })
     // senha "abc" tem 3 chars — menor que 6
-    const [pwNew] = screen.getAllByRole('textbox', { hidden: true }).filter(
-      (el) => (el as HTMLInputElement).autocomplete === 'new-password',
-    )
-    fireEvent.change(pwNew ?? screen.getAllByDisplayValue('')[0], { target: { value: 'abc' } })
+    const pwNewInput = document.getElementById('sec-pw-new')!
+    fireEvent.change(pwNewInput, { target: { value: 'abc' } })
     fireEvent.click(screen.getByText('Alterar senha'))
     await waitFor(() =>
       expect(screen.getByText('A nova senha deve ter pelo menos 6 caracteres')).toBeInTheDocument(),

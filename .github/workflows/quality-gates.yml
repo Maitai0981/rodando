@@ -26,6 +26,7 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/rodando_test
       DB_RESET: 1
+      FLYWAY_CLEAN_DISABLED: 'false'
       OWNER_SEED_EMAIL: owner_test@rodando.local
       OWNER_SEED_PASSWORD: 123456
       OWNER_SEED_NAME: Owner Test
@@ -131,6 +132,7 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/rodando_e2e
           DB_RESET: "1"
+          FLYWAY_CLEAN_DISABLED: 'false'
           OWNER_SEED_EMAIL: owner_test@rodando.local
           OWNER_SEED_PASSWORD: "123456"
           OWNER_SEED_NAME: Owner Test
@@ -182,6 +184,7 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/rodando_perf
       DB_RESET: 1
+      FLYWAY_CLEAN_DISABLED: 'false'
       SEED_BASE_CATALOG: 1
       SEED_DEMO_DATA: 1
       OWNER_SEED_EMAIL: owner_test@rodando.local

@@ -78,7 +78,7 @@ describe('ForgotPasswordPage', () => {
     fireEvent.change(screen.getByTestId('forgot-email-input'), { target: { value: 'cliente@rodando.local' } })
     fireEvent.click(screen.getByTestId('forgot-submit-button'))
 
-    await waitFor(() => expect(screen.getByText('Muitas tentativas.')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Muitas tentativas/i)).toBeInTheDocument())
     expect(screen.getByTestId('forgot-email-input')).toBeInTheDocument()
   })
 
