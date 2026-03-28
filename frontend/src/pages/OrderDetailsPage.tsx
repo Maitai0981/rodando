@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError } from '../shared/lib/api'
+import { api, friendlyError } from '../shared/lib/api'
 import { useAuth } from '../shared/context/AuthContext'
 import { useAssist } from '../shared/context/AssistContext'
 import { copyTextToClipboard, formatCurrency } from '../shared/lib'
@@ -76,7 +76,7 @@ export default function OrderDetailsPage() {
       await copyTextToClipboard(pixCode)
       setPixFeedback('Codigo Pix copiado.')
     } catch (err) {
-      setPixFeedback(err instanceof Error ? err.message : 'Nao foi possivel copiar o codigo Pix.')
+      setPixFeedback(friendlyError(err, 'Nao foi possivel copiar o codigo Pix.'))
     }
   }
 
@@ -99,7 +99,7 @@ export default function OrderDetailsPage() {
       ])
       setCancelFeedback(`Pedido #${order.id} cancelado.`)
     } catch (err) {
-      setCancelError(err instanceof Error ? err.message : 'Nao foi possivel cancelar o pedido.')
+      setCancelError(friendlyError(err, 'Nao foi possivel cancelar o pedido.'))
     } finally {
       setCancelling(false)
     }
@@ -123,7 +123,7 @@ export default function OrderDetailsPage() {
         setPaymentFeedback(`Pagamento do pedido #${order.id} ainda aguarda confirmacao do gateway.`)
       }
     } catch (err) {
-      setPaymentError(err instanceof ApiError ? err.message : 'Nao foi possivel atualizar o status do pagamento.')
+      setPaymentError(friendlyError(err, 'Nao foi possivel atualizar o status do pagamento.'))
     } finally {
       setSyncingPayment(false)
     }

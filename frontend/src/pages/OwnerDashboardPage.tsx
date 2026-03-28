@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import OwnerLayout from '../shared/layout/OwnerLayout'
-import { api, ApiError, type OwnerDashboardParams, type OwnerDashboardResponse } from '../shared/lib/api'
+import { api, friendlyError, type OwnerDashboardParams, type OwnerDashboardResponse } from '../shared/lib/api'
 import { useAssist } from '../shared/context/AssistContext'
 
 type SortDirection = 'asc' | 'desc'
@@ -54,7 +54,7 @@ export default function OwnerDashboardPage() {
       setDashboard(data)
     } catch (err) {
       if (latestRequestRef.current !== requestId) return
-      setError(err instanceof ApiError ? err.message : 'Falha ao carregar dashboard de produtos.')
+      setError(friendlyError(err, 'Falha ao carregar dashboard de produtos.'))
     } finally {
       if (latestRequestRef.current === requestId) {
         setLoading(false)
@@ -174,7 +174,7 @@ export default function OwnerDashboardPage() {
       anchor.remove()
       window.URL.revokeObjectURL(url)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao exportar CSV.')
+      setError(friendlyError(err, 'Falha ao exportar CSV.'))
     } finally {
       setExporting(false)
     }

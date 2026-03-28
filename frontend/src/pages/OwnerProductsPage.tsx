@@ -1,7 +1,7 @@
 import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import OwnerLayout from '../shared/layout/OwnerLayout'
-import { api, ApiError, type OwnerOfferItem, type Product } from '../shared/lib/api'
+import { api, friendlyError, type OwnerOfferItem, type Product } from '../shared/lib/api'
 import { useAssist } from '../shared/context/AssistContext'
 import { AssistHintInline } from '../features/assist'
 
@@ -39,7 +39,7 @@ export default function OwnerProductsPage() {
         setOffersByProductId(offersMap)
       })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao carregar produtos.')
+      setError(friendlyError(err, 'Falha ao carregar produtos.'))
     } finally {
       setLoading(false)
     }
@@ -76,7 +76,7 @@ export default function OwnerProductsPage() {
       }
       setDeleteTarget(null)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao excluir produto.')
+      setError(friendlyError(err, 'Falha ao excluir produto.'))
     } finally {
       setDeleteModeLoading(null)
     }
@@ -109,7 +109,7 @@ export default function OwnerProductsPage() {
       await loadProducts(query)
       setToast('Oferta criada com sucesso.')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao criar oferta.')
+      setError(friendlyError(err, 'Falha ao criar oferta.'))
     }
   }
 
@@ -143,7 +143,7 @@ export default function OwnerProductsPage() {
       await loadProducts(query)
       setToast('Oferta atualizada com sucesso.')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao atualizar oferta.')
+      setError(friendlyError(err, 'Falha ao atualizar oferta.'))
     }
   }
 
@@ -155,7 +155,7 @@ export default function OwnerProductsPage() {
       await loadProducts(query)
       setToast('Oferta removida com sucesso.')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao remover oferta.')
+      setError(friendlyError(err, 'Falha ao remover oferta.'))
     }
   }
 

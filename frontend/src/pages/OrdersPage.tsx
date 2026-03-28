@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { BackButton } from '../shared/ui/primitives/BackButton'
 import { AccountSidebar } from '../shared/ui/primitives/AccountSidebar'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../shared/lib/api'
+import { api, friendlyError } from '../shared/lib/api'
 import { useAuth } from '../shared/context/AuthContext'
 import { useAssist } from '../shared/context/AssistContext'
 import { formatCurrency } from '../shared/lib'
@@ -84,7 +84,7 @@ export default function OrdersPage() {
       ])
       setFeedback(`Pedido #${orderId} cancelado.`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nao foi possivel cancelar o pedido.')
+      setError(friendlyError(err, 'Nao foi possivel cancelar o pedido.'))
     } finally {
       setCancellingOrderId(null)
     }

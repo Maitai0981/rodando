@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BackButton } from '../shared/ui/primitives/BackButton'
 import { Mail, KeyRound, Eye, EyeOff, CheckCircle } from 'lucide-react'
-import { api, ApiError } from '../shared/lib/api'
+import { api, friendlyError } from '../shared/lib/api'
 import { isValidEmail } from '../shared/lib'
 
 type Step = 'email' | 'code' | 'done'
@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
       if ('devCode' in res && res.devCode) setDevCode(res.devCode as string)
       setStep('code')
     } catch (err) {
-      setEmailApiError(err instanceof ApiError ? err.message : 'Falha ao enviar código. Tente novamente.')
+      setEmailApiError(friendlyError(err, 'Falha ao enviar código. Tente novamente.'))
     } finally {
       setLoadingEmail(false)
     }
@@ -93,7 +93,7 @@ export default function ForgotPasswordPage() {
       await api.confirmPasswordReset(email, code, password)
       setStep('done')
     } catch (err) {
-      setConfirmError(err instanceof ApiError ? err.message : 'Falha ao redefinir senha. Tente novamente.')
+      setConfirmError(friendlyError(err, 'Falha ao redefinir senha. Tente novamente.'))
     } finally {
       setLoadingConfirm(false)
     }

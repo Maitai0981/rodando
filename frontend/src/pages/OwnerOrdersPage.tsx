@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import OwnerLayout from '../shared/layout/OwnerLayout'
-import { api, ApiError, type OwnerOrderSummary } from '../shared/lib/api'
+import { api, friendlyError, type OwnerOrderSummary } from '../shared/lib/api'
 import { formatCurrency } from '../shared/lib'
 import { useAssist } from '../shared/context/AssistContext'
 
@@ -86,7 +86,7 @@ export default function OwnerOrdersPage() {
       }
     },
     onError: (err) => {
-      setError(err instanceof ApiError ? err.message : 'Falha ao atualizar status.')
+      setError(friendlyError(err, 'Falha ao atualizar status.'))
     },
   })
 

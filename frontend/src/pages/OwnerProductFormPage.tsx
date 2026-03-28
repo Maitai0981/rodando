@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ChevronRight, GripVertical, ImagePlus, Trash2, Upload } from 'lucide-react'
 import OwnerLayout from '../shared/layout/OwnerLayout'
-import { api, ApiError, type Product } from '../shared/lib/api'
+import { api, ApiError, friendlyError, type Product } from '../shared/lib/api'
 import { useAssist } from '../shared/context/AssistContext'
 import { AssistHintInline } from '../features/assist'
 
@@ -106,7 +106,7 @@ export default function OwnerProductFormPage() {
       })
       .catch((err) => {
         if (!active) return
-        setError(err instanceof ApiError ? err.message : 'Falha ao carregar produto.')
+        setError(friendlyError(err, 'Falha ao carregar produto.'))
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -168,7 +168,7 @@ export default function OwnerProductFormPage() {
         state: { toast: 'Produto atualizado com sucesso.' },
       })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao salvar produto.')
+      setError(friendlyError(err, 'Falha ao salvar produto.'))
     } finally {
       setSaving(false)
     }
@@ -187,7 +187,7 @@ export default function OwnerProductFormPage() {
         return { ...prev, images: next }
       })
     } catch (err) {
-      setUploadError(err instanceof ApiError ? err.message : 'Falha ao enviar imagem.')
+      setUploadError(friendlyError(err, 'Falha ao enviar imagem.'))
     } finally {
       setUploadingSlot(null)
     }

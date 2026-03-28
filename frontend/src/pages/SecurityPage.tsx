@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { Eye, EyeOff, KeyRound, Send, CheckCircle, Mail } from 'lucide-react'
 import { BackButton } from '../shared/ui/primitives/BackButton'
 import { AccountSidebar } from '../shared/ui/primitives/AccountSidebar'
-import { api, ApiError } from '../shared/lib/api'
+import { api, friendlyError } from '../shared/lib/api'
 import { useAuth } from '../shared/context/AuthContext'
 import { isValidEmail } from '../shared/lib'
 
@@ -50,7 +50,7 @@ export default function SecurityPage() {
       if (res.devCode) setPwDevCode(res.devCode)
       setPwStep('code')
     } catch (err) {
-      setPwSendError(err instanceof ApiError ? err.message : 'Falha ao enviar código. Tente novamente.')
+      setPwSendError(friendlyError(err, 'Falha ao enviar código. Tente novamente.'))
     } finally {
       setPwSendLoading(false)
     }
@@ -76,7 +76,7 @@ export default function SecurityPage() {
       await api.confirmPasswordChange(pwCode, pwNew)
       setPwStep('done')
     } catch (err) {
-      setPwConfirmError(err instanceof ApiError ? err.message : 'Falha ao alterar senha.')
+      setPwConfirmError(friendlyError(err, 'Falha ao alterar senha.'))
     } finally {
       setPwConfirmLoading(false)
     }
@@ -119,7 +119,7 @@ export default function SecurityPage() {
       if (res.devCode) setEmailDevCode(res.devCode)
       setEmailStep('code')
     } catch (err) {
-      setEmailSendError(err instanceof ApiError ? err.message : 'Falha ao enviar código. Tente novamente.')
+      setEmailSendError(friendlyError(err, 'Falha ao enviar código. Tente novamente.'))
     } finally {
       setEmailSendLoading(false)
     }
@@ -139,7 +139,7 @@ export default function SecurityPage() {
       await refreshSession()
       setEmailStep('done')
     } catch (err) {
-      setEmailConfirmError(err instanceof ApiError ? err.message : 'Falha ao alterar email.')
+      setEmailConfirmError(friendlyError(err, 'Falha ao alterar email.'))
     } finally {
       setEmailConfirmLoading(false)
     }

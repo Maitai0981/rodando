@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { api, ApiError, type CheckoutDeliveryMethod, type PaymentMethod } from '../shared/lib/api'
+import { api, ApiError, friendlyError, type CheckoutDeliveryMethod, type PaymentMethod } from '../shared/lib/api'
 import { useAuth } from '../shared/context/AuthContext'
 import { useCart } from '../shared/context/CartContext'
 import { copyTextToClipboard, formatCurrency } from '../shared/lib'
@@ -112,7 +112,7 @@ export default function CheckoutPage() {
         }
       } catch (err) {
         handledMercadoPagoTokenRef.current = null
-        setError(err instanceof ApiError ? err.message : 'Falha ao concluir pagamento Mercado Pago.')
+        setError(friendlyError(err, 'Falha ao concluir pagamento Mercado Pago.'))
       } finally {
         completingMercadoPagoRef.current = false
       }
@@ -184,7 +184,7 @@ export default function CheckoutPage() {
       } else {
         setPendingOrderId(null)
       }
-      setError(err instanceof ApiError ? err.message : 'Falha ao finalizar pedido.')
+      setError(friendlyError(err, 'Falha ao finalizar pedido.'))
     } finally {
       setLoading(false)
     }
@@ -199,7 +199,7 @@ export default function CheckoutPage() {
       setPendingOrderId(null)
       await createCheckout()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao cancelar pedido pendente.')
+      setError(friendlyError(err, 'Falha ao cancelar pedido pendente.'))
     } finally {
       setLoading(false)
     }
@@ -212,7 +212,7 @@ export default function CheckoutPage() {
       await copyTextToClipboard(pixCode)
       setPixFeedback('Codigo Pix copiado.')
     } catch (err) {
-      setPixFeedback(err instanceof Error ? err.message : 'Nao foi possivel copiar o codigo Pix.')
+      setPixFeedback(friendlyError(err, 'Nao foi possivel copiar o codigo Pix.'))
     }
   }
 
@@ -232,7 +232,7 @@ export default function CheckoutPage() {
         setSuccessMessage(`Pedido #${result.order.id} ainda aguarda confirmacao do gateway.`)
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Nao foi possivel atualizar o status do pagamento.')
+      setError(friendlyError(err, 'Nao foi possivel atualizar o status do pagamento.'))
     } finally {
       setSyncingPayment(false)
     }

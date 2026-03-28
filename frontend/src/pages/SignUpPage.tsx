@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { BackButton } from '../shared/ui/primitives/BackButton'
 import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react'
 import { useAuth } from '../shared/context/AuthContext'
-import { ApiError } from '../shared/lib/api'
+import { friendlyError } from '../shared/lib/api'
 import { isStrongPassword, isValidEmail } from '../shared/lib'
 
 interface FormErrors {
@@ -103,7 +103,7 @@ export default function SignUpPage() {
       const returnTo = searchParams.get('returnTo')
       navigate(returnTo || '/')
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Falha ao criar conta.'
+      const message = friendlyError(err, 'Falha ao criar conta.')
       setError(message)
       if (message.includes(CEP_SERVICE_ERROR)) {
         setShowAddressFields(true)

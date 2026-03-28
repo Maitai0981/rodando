@@ -4,7 +4,7 @@ import { ShieldCheck, ChevronRight, Sun, Moon } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BackButton } from '../shared/ui/primitives/BackButton'
 import { AccountSidebar } from '../shared/ui/primitives/AccountSidebar'
-import { api, ApiError, type AddressItem } from '../shared/lib/api'
+import { api, friendlyError, type AddressItem } from '../shared/lib/api'
 import { useAuth } from '../shared/context/AuthContext'
 import { useAssist } from '../shared/context/AssistContext'
 import { useSiteTheme } from '../shared/context/ThemeContext'
@@ -230,7 +230,7 @@ const [draft, setDraft] = useState<AddressDraft>(EMPTY_ADDRESS)
       }
     },
     onError: (err) => {
-      setError(err instanceof ApiError ? err.message : 'Falha ao salvar endereço.')
+      setError(friendlyError(err, 'Falha ao salvar endereço.'))
     },
   })
 
@@ -270,7 +270,7 @@ const [draft, setDraft] = useState<AddressDraft>(EMPTY_ADDRESS)
       setAvatarPreview(null)
       setAvatarFile(null)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao enviar foto.')
+      setError(friendlyError(err, 'Falha ao enviar foto.'))
     } finally {
       setAvatarUploading(false)
       if (avatarInputRef.current) avatarInputRef.current.value = ''
@@ -292,7 +292,7 @@ const [draft, setDraft] = useState<AddressDraft>(EMPTY_ADDRESS)
       setFeedback('Perfil atualizado com sucesso.')
       completeStep('profile-saved', 'account-profile')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao atualizar perfil.')
+      setError(friendlyError(err, 'Falha ao atualizar perfil.'))
     }
   }
 
@@ -323,7 +323,7 @@ const [draft, setDraft] = useState<AddressDraft>(EMPTY_ADDRESS)
       setFeedback('Endereço principal atualizado.')
       completeStep('default-address-set', 'account-profile')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao atualizar endereço principal.')
+      setError(friendlyError(err, 'Falha ao atualizar endereço principal.'))
     }
   }
 
@@ -339,7 +339,7 @@ const [draft, setDraft] = useState<AddressDraft>(EMPTY_ADDRESS)
       }
       setFeedback('Endereço removido.')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao remover endereço.')
+      setError(friendlyError(err, 'Falha ao remover endereço.'))
     }
   }
 

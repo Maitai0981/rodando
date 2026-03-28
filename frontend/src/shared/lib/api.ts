@@ -588,6 +588,41 @@ export class ApiError extends Error {
   }
 }
 
+function httpFallback(status: number): string {
+  if (status === 400) return 'Dados inválidos. Verifique as informações e tente novamente.'
+  if (status === 401) return 'Sessão expirada. Faça login novamente para continuar.'
+  if (status === 403) return 'Você não tem permissão para realizar esta ação.'
+  if (status === 404) return 'Recurso não encontrado. Ele pode ter sido removido.'
+  if (status === 409) return 'Conflito de dados. Atualize a página e tente novamente.'
+  if (status === 422) return 'Informações inválidas. Verifique os campos e tente novamente.'
+  if (status === 429) return 'Muitas tentativas. Aguarde alguns minutos antes de tentar de novo.'
+  if (status >= 500) return 'Problema temporário no servidor. Tente novamente em alguns instantes.'
+  return `Erro inesperado (${status}). Tente novamente ou contate o suporte.`
+}
+
+/** Extrai mensagem amigável + dica de ação de qualquer erro capturado. */
+export function friendlyError(err: unknown, fallback = 'Algo deu errado. Tente novamente.'): string {
+  if (err instanceof ApiError) {
+    const msg = err.message?.trim() || httpFallback(err.status)
+    // Append hint when the message alone isn't actionable
+    if (err.status === 401 && !msg.toLowerCase().includes('login')) {
+      return msg + ' Faça login novamente.'
+    }
+    if (err.status === 429 && !msg.toLowerCase().includes('aguarde')) {
+      return msg + ' Aguarde alguns minutos antes de tentar de novo.'
+    }
+    if (err.status >= 500 && !msg.toLowerCase().includes('tente')) {
+      return msg + ' Tente novamente em alguns instantes.'
+    }
+    if (err.status === 0 || err.status === 408) {
+      return msg
+    }
+    return msg
+  }
+  if (err instanceof Error && err.message) return err.message
+  return fallback
+}
+
 export function buildProductUrl(product: Pick<Product, 'id' | 'name' | 'seoSlug'>) {
   const rawSlug = String(product.seoSlug || product.name || '')
     .normalize('NFD')
@@ -633,9 +668,9 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
     })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
-      throw new ApiError('A requisição demorou demais. Verifique sua conexão.', 408)
+      throw new ApiError('A requisição demorou demais. Verifique sua conexão e tente novamente.', 408)
     }
-    throw err
+    throw new ApiError('Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.', 0)
   } finally {
     clearTimeout(timeoutId)
   }
@@ -644,7 +679,8 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const payload = isJson ? await response.json() : null
 
   if (!response.ok) {
-    const message = payload?.error || payload?.message || `Erro HTTP ${response.status}`
+    const raw = payload?.error || payload?.message || ''
+    const message = raw || httpFallback(response.status)
     throw new ApiError(message, response.status, payload?.code, payload)
   }
 
