@@ -536,6 +536,19 @@ export default function CheckoutPage() {
                     {paymentMethod !== 'pix' && checkoutPayment.checkoutUrl ? (
                       <a
                         href={checkoutPayment.checkoutUrl}
+                        onClick={
+                          import.meta.env.VITE_MOCK_PAYMENT_PROVIDERS === '1'
+                            ? (e) => {
+                                e.preventDefault()
+                                try {
+                                  const u = new URL(checkoutPayment.checkoutUrl!)
+                                  navigate(u.pathname + u.search)
+                                } catch {
+                                  window.location.href = checkoutPayment.checkoutUrl!
+                                }
+                              }
+                            : undefined
+                        }
                         {...(import.meta.env.VITE_MOCK_PAYMENT_PROVIDERS !== '1' && { target: '_blank', rel: 'noreferrer' })}
                         className="px-3 py-2 rounded-lg text-xs text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold"
                       >
