@@ -187,6 +187,37 @@ public class AuthController extends BaseApiController {
     return accountService.confirmPasswordChange(requireAuth(request).id(), body);
   }
 
+  @PostMapping("/email-change/request-code")
+  public Map<String, Object> requestEmailChangeCode(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      @RequestBody Map<String, Object> body) {
+    enforceRateLimit(
+        response,
+        "auth",
+        "email-change-request:" + clientKey(request),
+        properties.authRateLimitWindow(),
+        properties.authRateLimitMax(),
+        "Muitas tentativas. Aguarde e tente novamente.");
+    return accountService.requestEmailChangeCode(requireAuth(request).id(), body);
+  }
+
+  @PostMapping("/email-change/confirm")
+  public Map<String, Object> confirmEmailChange(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      @RequestBody Map<String, Object> body) {
+    enforceRateLimit(
+        response,
+        "auth",
+        "email-change-confirm:" + clientKey(request),
+        properties.authRateLimitWindow(),
+        properties.authRateLimitMax(),
+        "Muitas tentativas. Aguarde e tente novamente.");
+    Map<String, Object> result = accountService.confirmEmailChange(requireAuth(request).id(), body);
+    return result;
+  }
+
   @GetMapping("/addresses")
   public Map<String, Object> listAddresses(HttpServletRequest request) {
     List<Map<String, Object>> items = accountService.listUserAddresses(requireAuth(request).id());

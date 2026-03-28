@@ -348,6 +348,92 @@ public class AccountService {
     return service.orderedMap("message", "Codigo de verificacao enviado para o seu email.");
   }
 
+  // ── Change-email (logged-in): step 1 – send OTP to the new email address
+
+  @Transactional
+  public Map<String, Object> requestEmailChangeCode(long userId, Map<String, Object> body) {
+    String newEmail = service.normalize(service.stringValue(body.get("email")));
+    if (!newEmail.contains("@") || newEmail.length() < 5) {
+      throw new ApiException(400, "Email invalido.");
+    }
+
+    UserEntity user = userRepository.findDetailedById(userId)
+        .orElseThrow(() -> new ApiException(404, "Usuario nao encontrado."));
+
+    if (newEmail.equalsIgnoreCase(user.getEmail())) {
+      throw new ApiException(400, "O novo email deve ser diferente do atual.");
+    }
+    if (userRepository.findByEmailIgnoreCase(newEmail).isPresent()) {
+      throw new ApiException(409, "Esse email ja esta em uso por outra conta.");
+    }
+
+    passwordResetTokenRepository.deleteByUserIdAndPurpose(userId, "email-change");
+
+    String otp = generateOtp();
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+
+    PasswordResetTokenEntity token = new PasswordResetTokenEntity();
+    token.setUser(user);
+    token.setPurpose("email-change");
+    token.setTokenHash(service.hashToken(otp + "|" + newEmail));
+    token.setAttempts(0);
+    token.setExpiresAt(now.plusMinutes(OTP_TTL_MINUTES));
+    token.setCreatedAt(now);
+    passwordResetTokenRepository.save(token);
+
+    String devCode = emailService.sendPasswordOtpEmail(user.getName(), newEmail, otp, "email-change");
+    if (devCode != null) {
+      return service.orderedMap("message", "Codigo de verificacao enviado para " + newEmail + ".", "devCode", devCode);
+    }
+    return service.orderedMap("message", "Codigo de verificacao enviado para " + newEmail + ".");
+  }
+
+  // ── Change-email (logged-in): step 2 – validate OTP + apply new email
+
+  @Transactional
+  public Map<String, Object> confirmEmailChange(long userId, Map<String, Object> body) {
+    String otp      = service.trim(service.stringValue(body.get("code")));
+    String newEmail = service.normalize(service.stringValue(body.get("email")));
+
+    if (otp.length() != 6) throw new ApiException(400, "Codigo invalido. Informe os 6 digitos.");
+    if (!newEmail.contains("@") || newEmail.length() < 5) throw new ApiException(400, "Email invalido.");
+
+    UserEntity user = userRepository.findDetailedById(userId)
+        .orElseThrow(() -> new ApiException(404, "Usuario nao encontrado."));
+
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    PasswordResetTokenEntity token = passwordResetTokenRepository
+        .findActiveByUserIdAndPurpose(userId, "email-change", now)
+        .orElseThrow(() -> new ApiException(400, "Codigo expirado ou ja utilizado. Solicite um novo."));
+
+    token.setAttempts(token.getAttempts() + 1);
+
+    if (!service.hashToken(otp + "|" + newEmail).equals(token.getTokenHash())) {
+      if (token.getAttempts() >= OTP_MAX_ATTEMPTS) {
+        token.setUsedAt(now);
+        passwordResetTokenRepository.save(token);
+        throw new ApiException(400, "Muitas tentativas incorretas. Solicite um novo codigo.");
+      }
+      passwordResetTokenRepository.save(token);
+      int remaining = OTP_MAX_ATTEMPTS - token.getAttempts();
+      throw new ApiException(400, "Codigo invalido. " + remaining + " tentativa(s) restante(s).");
+    }
+
+    if (userRepository.findByEmailIgnoreCase(newEmail).filter(u -> !u.getId().equals(userId)).isPresent()) {
+      throw new ApiException(409, "Esse email ja esta em uso por outra conta.");
+    }
+
+    token.setUsedAt(now);
+    passwordResetTokenRepository.save(token);
+
+    user.setEmail(newEmail);
+    user.setUpdatedAt(now);
+    userRepository.save(user);
+
+    List<Map<String, Object>> addresses = listUserAddresses(userId);
+    return service.orderedMap("message", "Email alterado com sucesso.", "user", authUserPayload(user, addresses));
+  }
+
   // ── Change-password (logged-in): step 2 – validate OTP + set new password
 
   @Transactional

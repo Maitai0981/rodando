@@ -757,6 +757,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ code, password }),
     }),
+  requestEmailChangeCode: (email: string) =>
+    apiRequest<{ message: string; devCode?: string }>('/api/auth/email-change/request-code', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  confirmEmailChange: (code: string, email: string) =>
+    apiRequest<{ message: string; user: AuthUser }>('/api/auth/email-change/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ code, email }),
+    }),
   logout: () =>
     apiRequest<{ message: string }>('/api/auth/logout', {
       method: 'POST',
