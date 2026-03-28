@@ -60,6 +60,7 @@ export default defineConfig({
         PUBLIC_APP_BASE_URL: `http://127.0.0.1:${frontendPort}`,
         SEED_BASE_CATALOG: String(process.env.SEED_BASE_CATALOG || '1'),
         DB_RESET: String(process.env.DB_RESET || '1'),
+        FLYWAY_CLEAN_DISABLED: String(process.env.FLYWAY_CLEAN_DISABLED || 'false'),
         SEED_DEMO_DATA: String(process.env.SEED_DEMO_DATA || '0'),
         MOCK_PAYMENT_PROVIDERS: String(process.env.MOCK_PAYMENT_PROVIDERS || '1'),
         OWNER_SEED_EMAIL: ownerSeedEmail,

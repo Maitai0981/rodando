@@ -11,7 +11,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test:unit": "vitest run --coverage=false --maxWorkers=1",
-    "test:a11y": "node --max-old-space-size=1024 node_modules/.bin/vitest run --pool=forks src/a11y",
+    "test:a11y": "node --max-old-space-size=1024 node_modules/.bin/vitest run --pool=forks --config vitest.a11y.config.ts",
     "test:e2e": "node ./scripts/e2e-db-preflight.mjs && playwright test",
     "test:e2e:headed": "node ./scripts/e2e-db-preflight.mjs && playwright test --headed",
     "test:e2e:local": "node ./scripts/e2e-db-preflight.mjs && playwright test",

@@ -13,7 +13,7 @@ import { getRecentlyViewed, trackView } from '../shared/hooks/useRecentlyViewed'
 function StarRating({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' }) {
   const sz = size === 'md' ? 'w-5 h-5' : 'w-3.5 h-3.5'
   return (
-    <div className="flex gap-0.5" aria-label={`Nota ${rating.toFixed(1)} de 5`}>
+    <div role="img" className="flex gap-0.5" aria-label={`Nota ${rating.toFixed(1)} de 5`}>
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
@@ -561,7 +561,7 @@ export default function ProductDetailsPage() {
                       </div>
                     ) : (
                       <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-                        <h3 className="text-sm text-[#f0ede8] font-semibold mb-3">Deixe sua avaliação</h3>
+                        <h2 className="text-sm text-[#f0ede8] font-semibold mb-3">Deixe sua avaliação</h2>
                         <div className="flex gap-1 mb-3">
                           {Array.from({ length: 5 }).map((_, i) => (
                             <button
