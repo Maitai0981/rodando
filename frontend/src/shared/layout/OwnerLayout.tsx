@@ -167,8 +167,8 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
         </aside>
 
         {/* ── Main ──────────────────────────────────────────────── */}
-        <main className="flex-1 min-w-0 overflow-x-hidden">
-          <div className="px-4 pb-12 pt-6 md:px-8 md:pt-8 max-w-6xl mx-auto">
+        <main className="flex-1 min-w-0">
+          <div className="px-4 pb-12 pt-6 md:px-8 md:pt-8 max-w-6xl mx-auto w-full">
             {children}
           </div>
         </main>

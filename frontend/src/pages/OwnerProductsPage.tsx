@@ -1,5 +1,6 @@
 import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { Pencil, Plus, Tag, Trash2, X } from 'lucide-react'
 import OwnerLayout from '../shared/layout/OwnerLayout'
 import { api, friendlyError, type OwnerOfferItem, type Product } from '../shared/lib/api'
 import { useAssist } from '../shared/context/AssistContext'
@@ -194,9 +195,9 @@ export default function OwnerProductsPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h1 className="text-2xl text-[#f0ede8] font-bold">Produtos</h1>
-            <p className="text-sm text-[#9ca3af]">
-              Gestao operacional de cadastro, vitrine e ofertas.
+            <h1 className="text-xl font-bold text-[#f0ede8]">Produtos</h1>
+            <p className="mt-0.5 text-xs text-[#6b7280]">
+              Cadastro, vitrine e gestão de ofertas.
             </p>
           </div>
           <Link
@@ -288,7 +289,7 @@ export default function OwnerProductsPage() {
 
         <div className="rounded-2xl overflow-hidden bg-white/[0.04] border border-white/[0.08]">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-xs text-[#9ca3af]">
+            <table className="min-w-[640px] w-full text-xs text-[#9ca3af]">
               <thead className="bg-white/[0.05]">
                 <tr className="text-left text-[#a1a1aa]">
                   <th className="py-3 px-3">Produto</th>
@@ -363,47 +364,52 @@ export default function OwnerProductsPage() {
                           )}
                         </td>
                         <td className="py-3 px-3">
-                          <div className="flex flex-wrap justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             <Link
                               data-testid={`owner-edit-${item.id}`}
                               to={`/owner/products/${item.id}/edit`}
-                              className="h-8 px-3 rounded-full text-[11px] border border-white/[0.12] text-[#e5e7eb] inline-flex items-center"
+                              title="Editar produto"
+                              className="w-8 h-8 rounded-lg border border-white/[0.12] text-[#9ca3af] hover:text-[#f0ede8] hover:border-white/[0.25] inline-flex items-center justify-center transition-colors"
                             >
-                              Editar
+                              <Pencil className="w-3.5 h-3.5" />
                             </Link>
-                            <button
-                              data-testid={`owner-delete-${item.id}`}
-                              onClick={() => setDeleteTarget(item)}
-                              className="h-8 px-3 rounded-full text-[11px] border border-[#ef4444]/40 text-[#f87171]"
-                            >
-                              Excluir
-                            </button>
                             {offer ? (
-                              <>
-                                <button
-                                  data-testid={`owner-offer-edit-${item.id}`}
-                                  onClick={() => void handleEditOffer(item, offer)}
-                                  className="h-8 px-3 rounded-full text-[11px] border border-[#d4a843]/40 text-[#d4a843]"
-                                >
-                                  Oferta
-                                </button>
-                                <button
-                                  data-testid={`owner-offer-remove-${item.id}`}
-                                  onClick={() => void handleDeleteOffer(offer)}
-                                  className="h-8 px-3 rounded-full text-[11px] border border-[#facc15]/40 text-[#facc15]"
-                                >
-                                  Remover
-                                </button>
-                              </>
+                              <button
+                                data-testid={`owner-offer-edit-${item.id}`}
+                                onClick={() => void handleEditOffer(item, offer)}
+                                title="Editar oferta"
+                                className="w-8 h-8 rounded-lg border border-[#d4a843]/30 text-[#d4a843] hover:bg-[#d4a843]/10 inline-flex items-center justify-center transition-colors"
+                              >
+                                <Tag className="w-3.5 h-3.5" />
+                              </button>
                             ) : (
                               <button
                                 data-testid={`owner-offer-create-${item.id}`}
                                 onClick={() => void handleCreateOffer(item)}
-                                className="h-8 px-3 rounded-full text-[11px] border border-[#22c55e]/40 text-[#22c55e]"
+                                title="Criar oferta"
+                                className="w-8 h-8 rounded-lg border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 inline-flex items-center justify-center transition-colors"
                               >
-                                Criar oferta
+                                <Plus className="w-3.5 h-3.5" />
                               </button>
                             )}
+                            {offer ? (
+                              <button
+                                data-testid={`owner-offer-remove-${item.id}`}
+                                onClick={() => void handleDeleteOffer(offer)}
+                                title="Remover oferta"
+                                className="w-8 h-8 rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 inline-flex items-center justify-center transition-colors"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            ) : null}
+                            <button
+                              data-testid={`owner-delete-${item.id}`}
+                              onClick={() => setDeleteTarget(item)}
+                              title="Excluir produto"
+                              className="w-8 h-8 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 inline-flex items-center justify-center transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>
