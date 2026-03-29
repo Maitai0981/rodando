@@ -707,15 +707,15 @@ export default function HomePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={localInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ delay: 0.6 }}
-                className="absolute bottom-5 left-5 right-5 p-4 rounded-xl bg-black/85 border border-[#d4a843]/20 backdrop-blur-[12px]"
+                className="absolute bottom-5 left-5 right-5 p-4 rounded-xl bg-white/95 border border-[#e5ddd0] backdrop-blur-[12px]"
               >
                 <div className="flex items-center gap-3">
                   <MapPin className="w-5 h-5 flex-shrink-0 text-[#d4a843]" />
                   <div>
-                    <p className="text-sm text-[#f0ede8] font-semibold">
+                    <p className="text-sm text-[#1a1007] font-semibold">
                       Av. Brasil, 8708 - Cascavel - PR
                     </p>
-                    <p className="text-xs text-[#6b7280]">
+                    <p className="text-xs text-[#5a5040]">
                       Segunda a sexta, 08h às 18h
                     </p>
                   </div>
