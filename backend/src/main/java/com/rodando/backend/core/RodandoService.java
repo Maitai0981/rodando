@@ -1497,18 +1497,22 @@ public class RodandoService {
     Long entityId = payload.get("entityId") == null ? null : longValue(payload.get("entityId"));
     Object before = payload.get("before");
     Object after = payload.get("after");
+    String ip = blankToNull(AuditContext.ip());
+    String ua = blankToNull(AuditContext.userAgent());
     try {
       run("""
           INSERT INTO owner_audit_logs (
-            owner_user_id, action_type, entity_type, entity_id, before_json, after_json, created_at
-          ) VALUES (?, ?, ?, ?, ?::jsonb, ?::jsonb, NOW())
+            owner_user_id, action_type, entity_type, entity_id, before_json, after_json, ip_address, user_agent, created_at
+          ) VALUES (?, ?, ?, ?, ?::jsonb, ?::jsonb, ?, ?, NOW())
           """,
           ownerUserId,
           actionType,
           entityType,
           entityId,
           json(before instanceof Map<?, ?> map ? map : Map.of()),
-          json(after instanceof Map<?, ?> map ? map : Map.of()));
+          json(after instanceof Map<?, ?> map ? map : Map.of()),
+          ip,
+          ua);
     } catch (Exception e) {
       // Audit logging é best-effort e não deve quebrar o fluxo da requisição,
       // mas a falha é registrada para alertas de observabilidade.

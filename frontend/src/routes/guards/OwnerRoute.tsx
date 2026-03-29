@@ -18,7 +18,7 @@ export function OwnerRoute({ children }: PropsWithChildren) {
     return <Navigate to="/owner" replace />
   }
 
-  if (user?.role !== 'owner') {
+  if (user?.role !== 'owner' && user?.role !== 'staff') {
     return <Navigate to="/" replace />
   }
 

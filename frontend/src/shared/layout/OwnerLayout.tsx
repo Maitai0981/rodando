@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, LogOut, Menu, Package, Settings, ShoppingBag, X, Zap } from 'lucide-react'
+import { LayoutDashboard, LogOut, Menu, Package, Settings, Shield, ShoppingBag, Users, X, Zap } from 'lucide-react'
 import { useAuth } from '@/shared/context/AuthContext'
 
 const NAV_GROUPS = [
   {
     label: 'Operações',
+    ownerOnly: false,
     items: [
       { to: '/owner/dashboard', label: 'Início',        icon: LayoutDashboard },
       { to: '/owner/orders',    label: 'Pedidos',       icon: ShoppingBag     },
@@ -14,12 +15,22 @@ const NAV_GROUPS = [
   },
   {
     label: 'Catálogo',
+    ownerOnly: false,
     items: [
       { to: '/owner/products', label: 'Produtos', icon: Package },
     ],
   },
   {
+    label: 'Equipe',
+    ownerOnly: true,
+    items: [
+      { to: '/owner/staff',  label: 'Funcionários', icon: Users  },
+      { to: '/owner/audit',  label: 'Auditoria',    icon: Shield },
+    ],
+  },
+  {
     label: 'Sistema',
+    ownerOnly: false,
     items: [
       { to: '/owner/settings', label: 'Configurações', icon: Settings },
     ],
@@ -38,7 +49,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
   useEffect(() => {
     if (status === 'loading') return
     if (status === 'anonymous') { navigate('/owner/login', { replace: true }); return }
-    if (user && user.role !== 'owner') navigate('/', { replace: true })
+    if (user && user.role !== 'owner' && user.role !== 'staff') navigate('/', { replace: true })
   }, [navigate, status, user])
 
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
@@ -59,7 +70,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
     )
   }
 
-  if (!user || user.role !== 'owner') return null
+  if (!user || (user.role !== 'owner' && user.role !== 'staff')) return null
 
   const initials = (user.name ?? user.email ?? 'U').slice(0, 2).toUpperCase()
 
@@ -84,7 +95,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
 
       {/* Navegação */}
       <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-1">
-        {NAV_GROUPS.map((group, gi) => (
+        {NAV_GROUPS.filter((g) => !g.ownerOnly || user.role === 'owner').map((group, gi) => (
           <div key={group.label} className={gi > 0 ? 'pt-3' : ''}>
             <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b7280]">
               {group.label}
@@ -123,7 +134,7 @@ export default function OwnerLayout({ children }: PropsWithChildren) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-[#e5e7eb] truncate leading-tight">{user.name || user.email}</p>
-            <p className="text-[10px] text-[#6b7280] leading-tight mt-0.5">Administrador</p>
+            <p className="text-[10px] text-[#6b7280] leading-tight mt-0.5">{user.role === 'owner' ? 'Proprietário' : 'Funcionário'}</p>
           </div>
         </div>
         <button

@@ -184,13 +184,16 @@ public class AccountService {
     if (!service.verifyPassword(password, service.stringValue(user.getPasswordHash()))) {
       throw new ApiException(401, "Credenciais invalidas.");
     }
+    if (!user.isActive()) {
+      throw new ApiException(401, "Conta desativada. Entre em contato com o administrador.");
+    }
 
     String role = resolveRole(user);
-    if (ownerOnly && !"owner".equals(role)) {
-      throw new ApiException(403, "Acesso restrito ao owner.");
+    if (ownerOnly && !"owner".equals(role) && !"staff".equals(role)) {
+      throw new ApiException(403, "Acesso restrito ao painel.");
     }
-    if (!ownerOnly && "owner".equals(role)) {
-      throw new ApiException(403, "Conta owner deve usar /owner/login.");
+    if (!ownerOnly && ("owner".equals(role) || "staff".equals(role))) {
+      throw new ApiException(403, "Conta de funcionario deve usar /owner/login.");
     }
 
     service.mergeGuestBagToUser(context == null ? "" : context.guestTokenHash(), user.getId());
@@ -787,7 +790,11 @@ public class AccountService {
         .map(RoleEntity::getCode)
         .map(service::normalize)
         .filter(StringUtils::hasText)
-        .min(Comparator.comparingInt((String role) -> "owner".equals(role) ? 0 : 1).thenComparing(role -> role))
+        .min(Comparator.comparingInt((String role) -> switch (role) {
+          case "owner" -> 0;
+          case "staff" -> 1;
+          default -> 2;
+        }).thenComparing(role -> role))
         .orElse("customer");
   }
 

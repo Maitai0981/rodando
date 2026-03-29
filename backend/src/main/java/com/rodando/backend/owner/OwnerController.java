@@ -30,6 +30,7 @@ public class OwnerController extends BaseApiController {
   private final CommerceService commerceService;
   private final OwnerOfferService ownerOfferService;
   private final OwnerSupportService ownerSupportService;
+  private final OwnerStaffService ownerStaffService;
 
   public OwnerController(
       AppProperties properties,
@@ -38,12 +39,14 @@ public class OwnerController extends BaseApiController {
       OwnerService ownerService,
       CommerceService commerceService,
       OwnerOfferService ownerOfferService,
-      OwnerSupportService ownerSupportService) {
+      OwnerSupportService ownerSupportService,
+      OwnerStaffService ownerStaffService) {
     super(properties, service, rateLimiter);
     this.ownerService = ownerService;
     this.commerceService = commerceService;
     this.ownerOfferService = ownerOfferService;
     this.ownerSupportService = ownerSupportService;
+    this.ownerStaffService = ownerStaffService;
   }
 
   // ── Products ─────────────────────────────────────────────────────────────
@@ -217,6 +220,32 @@ public class OwnerController extends BaseApiController {
   public Map<String, Object> auditLogs(HttpServletRequest request, @RequestParam(value = "limit", required = false) Integer limit) {
     requireOwner(request);
     return ownerSupportService.listAuditLogs(limit);
+  }
+
+  // ── Staff (funcionários) ─────────────────────────────────────────────────
+
+  @GetMapping("/staff")
+  public Map<String, Object> listStaff(HttpServletRequest request) {
+    requireOwnerOnly(request);
+    return ownerStaffService.listStaff();
+  }
+
+  @PostMapping("/staff")
+  public ResponseEntity<Map<String, Object>> createStaff(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+    AuthContext.AuthUser actor = requireOwnerOnly(request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(ownerStaffService.createStaff(actor.id(), body));
+  }
+
+  @PatchMapping("/staff/{id}")
+  public Map<String, Object> updateStaff(HttpServletRequest request, @PathVariable long id, @RequestBody Map<String, Object> body) {
+    AuthContext.AuthUser actor = requireOwnerOnly(request);
+    return ownerStaffService.updateStaff(actor.id(), id, body);
+  }
+
+  @PostMapping("/staff/{id}/reset-password")
+  public Map<String, Object> resetStaffPassword(HttpServletRequest request, @PathVariable long id, @RequestBody Map<String, Object> body) {
+    AuthContext.AuthUser actor = requireOwnerOnly(request);
+    return ownerStaffService.resetStaffPassword(actor.id(), id, body);
   }
 
   // ── Uploads ───────────────────────────────────────────────────────────────

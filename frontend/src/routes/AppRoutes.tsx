@@ -23,6 +23,8 @@ export const routeImporters = {
   ownerProductForm: () => import('../pages/OwnerProductFormPage'),
   ownerSettings: () => import('../pages/OwnerSettingsPage'),
   ownerOrders: () => import('../pages/OwnerOrdersPage'),
+  ownerStaff: () => import('../pages/OwnerStaffPage'),
+  ownerAudit: () => import('../pages/OwnerAuditPage'),
   security: () => import('../pages/SecurityPage'),
   accountSettings: () => import('../pages/SettingsPage'),
 } as const
@@ -46,6 +48,8 @@ const OwnerProductsPage = lazy(routeImporters.ownerProducts)
 const OwnerProductFormPage = lazy(routeImporters.ownerProductForm)
 const OwnerSettingsPage = lazy(routeImporters.ownerSettings)
 const OwnerOrdersPage = lazy(routeImporters.ownerOrders)
+const OwnerStaffPage = lazy(routeImporters.ownerStaff)
+const OwnerAuditPage = lazy(routeImporters.ownerAudit)
 const SecurityPage = lazy(routeImporters.security)
 const SettingsPage = lazy(routeImporters.accountSettings)
 
@@ -116,6 +120,22 @@ export function AppRoutes() {
         element={
           <OwnerRoute>
             <OwnerOrdersPage />
+          </OwnerRoute>
+        }
+      />
+      <Route
+        path="/owner/staff"
+        element={
+          <OwnerRoute>
+            <OwnerStaffPage />
+          </OwnerRoute>
+        }
+      />
+      <Route
+        path="/owner/audit"
+        element={
+          <OwnerRoute>
+            <OwnerAuditPage />
           </OwnerRoute>
         }
       />

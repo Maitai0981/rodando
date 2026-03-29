@@ -259,11 +259,14 @@ public class OwnerSupportService {
           l.id,
           l.owner_user_id AS "ownerUserId",
           u.name AS "ownerName",
+          u.email AS "ownerEmail",
           l.action_type AS "actionType",
           l.entity_type AS "entityType",
           l.entity_id AS "entityId",
           l.before_json AS "before",
           l.after_json AS "after",
+          l.ip_address AS "ipAddress",
+          l.user_agent AS "userAgent",
           l.created_at AS "createdAt"
         FROM owner_audit_logs l
         JOIN users u ON u.id = l.owner_user_id
@@ -273,11 +276,14 @@ public class OwnerSupportService {
             "id", service.longValue(row.get("id")),
             "ownerUserId", service.longValue(row.get("ownerUserId")),
             "ownerName", service.stringValue(row.get("ownerName")),
+            "ownerEmail", service.stringValue(row.get("ownerEmail")),
             "actionType", service.stringValue(row.get("actionType")),
             "entityType", service.stringValue(row.get("entityType")),
             "entityId", optionalLong(row.get("entityId")),
             "before", jsonSupport.readMap(row.get("before")),
             "after", jsonSupport.readMap(row.get("after")),
+            "ipAddress", blankString(row.get("ipAddress")),
+            "userAgent", blankString(row.get("userAgent")),
             "createdAt", service.stringValue(row.get("createdAt"))))
         .toList();
     return service.orderedMap("items", items);

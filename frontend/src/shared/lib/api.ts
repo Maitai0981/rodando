@@ -2,7 +2,7 @@ export type AuthUser = {
   id: number
   name: string
   email: string
-  role: 'owner' | 'customer'
+  role: 'owner' | 'staff' | 'customer'
   phone?: string | null
   document?: string | null
   cep: string | null
@@ -555,12 +555,25 @@ export type OwnerAuditLogItem = {
   id: number
   ownerUserId: number
   ownerName: string
+  ownerEmail: string
   actionType: string
   entityType: string
   entityId: number | null
   before: Record<string, unknown>
   after: Record<string, unknown>
+  ipAddress: string | null
+  userAgent: string | null
   createdAt: string
+}
+
+export type StaffMember = {
+  id: number
+  name: string
+  email: string
+  active: boolean
+  createdAt: string
+  updatedAt: string
+  lastLoginAt: string | null
 }
 
 export type OwnerUploadImageItem = {
@@ -1073,8 +1086,25 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
-  listOwnerAuditLogs: (limit = 50) =>
+  listOwnerAuditLogs: (limit = 100) =>
     apiRequest<{ items: OwnerAuditLogItem[] }>(`/api/owner/audit-logs?limit=${encodeURIComponent(String(limit))}`),
+  listStaff: () =>
+    apiRequest<{ items: StaffMember[] }>('/api/owner/staff'),
+  createStaff: (payload: { name: string; email: string; password: string }) =>
+    apiRequest<{ item: StaffMember }>('/api/owner/staff', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateStaff: (id: number, payload: { name?: string; active?: boolean }) =>
+    apiRequest<{ item: StaffMember }>(`/api/owner/staff/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  resetStaffPassword: (id: number, payload: { password: string }) =>
+    apiRequest<{ ok: boolean }>(`/api/owner/staff/${id}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   uploadOwnerImage: async (file: File) => {
     const formData = new FormData()
     formData.append('image', file)

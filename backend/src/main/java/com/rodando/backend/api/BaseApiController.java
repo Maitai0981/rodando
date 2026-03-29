@@ -44,8 +44,17 @@ public abstract class BaseApiController {
 
   protected AuthContext.AuthUser requireOwner(HttpServletRequest request) {
     AuthContext.AuthUser user = requireAuth(request);
+    String role = service.normalize(user.role());
+    if (!"owner".equals(role) && !"staff".equals(role)) {
+      throw new ApiException(403, "Acesso restrito ao painel.");
+    }
+    return user;
+  }
+
+  protected AuthContext.AuthUser requireOwnerOnly(HttpServletRequest request) {
+    AuthContext.AuthUser user = requireAuth(request);
     if (!"owner".equals(service.normalize(user.role()))) {
-      throw new ApiException(403, "Acesso restrito ao owner.");
+      throw new ApiException(403, "Acesso restrito ao proprietario.");
     }
     return user;
   }

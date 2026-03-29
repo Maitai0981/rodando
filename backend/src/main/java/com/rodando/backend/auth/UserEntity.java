@@ -53,6 +53,12 @@ public class UserEntity {
   @Column(name = "avatar_url")
   private String avatarUrl;
 
+  @Column(name = "active", nullable = false)
+  private boolean active = true;
+
+  @Column(name = "created_by_owner_id")
+  private Long createdByOwnerId;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
