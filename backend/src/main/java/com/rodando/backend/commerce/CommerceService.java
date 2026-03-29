@@ -1288,40 +1288,45 @@ public class CommerceService {
     if ("cancelled".equals(status)) {
       cancelOrderAndRestoreResources(id, "cancelled", "Pedido cancelado no painel owner.", "owner", true);
     } else {
-      service.run("UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?", status, id);
-      service.run("""
-          INSERT INTO order_events (order_id, status, title, description, source, created_at)
-          VALUES (?, ?, ?, 'Alterado no painel owner.', 'owner', NOW())
-          """, id, status, "Status atualizado para " + status);
-      if ("shipped".equals(status)) {
-        Map<String, Object> paymentTx = service.one("""
-            SELECT provider, status, provider_payment_intent_id AS "providerPaymentIntentId", external_id AS "externalId"
-            FROM payment_transactions
-            WHERE order_id = ?
-            ORDER BY created_at DESC
-            LIMIT 1
-            """, id).orElse(null);
-        if (paymentTx != null && "authorized".equals(service.normalize(service.stringValue(paymentTx.get("status"))))) {
-          String provider = service.stringValue(paymentTx.get("provider"));
-          String captureExternalId = service.blankToNull(service.stringValue(paymentTx.get("providerPaymentIntentId"))) == null
-              ? service.stringValue(paymentTx.get("externalId"))
-              : service.stringValue(paymentTx.get("providerPaymentIntentId"));
-          String captureStatus = "paid";
-          service.run("""
-              UPDATE payment_transactions
-              SET status = ?, payload_json = jsonb_set(COALESCE(payload_json, '{}'::jsonb), '{last_capture}', ?::jsonb, true), updated_at = NOW()
+      // Todos os writes do bloco são atômicos: se qualquer um falhar o pedido
+      // permanece no estado anterior e nenhum write parcial é visível.
+      service.inTransaction(() -> {
+        service.run("UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?", status, id);
+        service.run("""
+            INSERT INTO order_events (order_id, status, title, description, source, created_at)
+            VALUES (?, ?, ?, 'Alterado no painel owner.', 'owner', NOW())
+            """, id, status, "Status atualizado para " + status);
+        if ("shipped".equals(status)) {
+          Map<String, Object> paymentTx = service.one("""
+              SELECT provider, status, provider_payment_intent_id AS "providerPaymentIntentId", external_id AS "externalId"
+              FROM payment_transactions
               WHERE order_id = ?
-              """, captureStatus, service.json(service.orderedMap("provider", provider, "captured", true, "externalId", captureExternalId)), id);
-          service.run("UPDATE orders SET payment_status = ?, updated_at = NOW() WHERE id = ?", captureStatus, id);
-          service.run("""
-              INSERT INTO order_events (order_id, status, title, description, source, created_at)
-              VALUES (?, ?, ?, ?, 'system', NOW())
-              """, id, captureStatus, paymentEventTitle(captureStatus), "Captura automatica " + provider + " ao enviar.");
-          recordPaymentEvent(id, provider, captureExternalId, provider + "_capture", captureStatus, service.orderedMap("externalId", captureExternalId, "captured", true));
-          consumeCartItemsForOrder(id);
-          service.run("UPDATE fiscal_documents SET status = 'ready', updated_at = NOW() WHERE order_id = ?", id);
+              ORDER BY created_at DESC
+              LIMIT 1
+              """, id).orElse(null);
+          if (paymentTx != null && "authorized".equals(service.normalize(service.stringValue(paymentTx.get("status"))))) {
+            String provider = service.stringValue(paymentTx.get("provider"));
+            String captureExternalId = service.blankToNull(service.stringValue(paymentTx.get("providerPaymentIntentId"))) == null
+                ? service.stringValue(paymentTx.get("externalId"))
+                : service.stringValue(paymentTx.get("providerPaymentIntentId"));
+            String captureStatus = "paid";
+            service.run("""
+                UPDATE payment_transactions
+                SET status = ?, payload_json = jsonb_set(COALESCE(payload_json, '{}'::jsonb), '{last_capture}', ?::jsonb, true), updated_at = NOW()
+                WHERE order_id = ?
+                """, captureStatus, service.json(service.orderedMap("provider", provider, "captured", true, "externalId", captureExternalId)), id);
+            service.run("UPDATE orders SET payment_status = ?, updated_at = NOW() WHERE id = ?", captureStatus, id);
+            service.run("""
+                INSERT INTO order_events (order_id, status, title, description, source, created_at)
+                VALUES (?, ?, ?, ?, 'system', NOW())
+                """, id, captureStatus, paymentEventTitle(captureStatus), "Captura automatica " + provider + " ao enviar.");
+            recordPaymentEvent(id, provider, captureExternalId, provider + "_capture", captureStatus, service.orderedMap("externalId", captureExternalId, "captured", true));
+            consumeCartItemsForOrder(id);
+            service.run("UPDATE fiscal_documents SET status = 'ready', updated_at = NOW() WHERE order_id = ?", id);
+          }
         }
-      }
+        return null;
+      });
     }
     service.saveOwnerAuditLog(ownerUserId, "order_status_update", "order", id,
         service.orderedMap("status", current.get("status")),
@@ -1349,9 +1354,19 @@ public class CommerceService {
           u.name AS "customerName",
           u.email AS "customerEmail",
           u.phone AS "customerPhone",
-          u.document AS "customerDocument"
+          u.document AS "customerDocument",
+          fd.status AS "fiscalStatus",
+          fd.document_type AS "fiscalDocumentType",
+          fd.number AS "fiscalNumber",
+          fd.series AS "fiscalSeries",
+          fd.access_key AS "fiscalAccessKey",
+          fd.xml_url AS "fiscalXmlUrl",
+          fd.pdf_url AS "fiscalPdfUrl",
+          fd.payload_json AS "fiscalPayloadJson",
+          fd.updated_at AS "fiscalUpdatedAt"
         FROM orders o
         JOIN users u ON u.id = o.user_id
+        LEFT JOIN fiscal_documents fd ON fd.order_id = o.id
         WHERE o.id = ?
         LIMIT 1
         """, id).orElse(null);
@@ -1373,13 +1388,17 @@ public class CommerceService {
             "lineTotal", bd(item.get("lineTotal"))))
         .toList();
     List<Map<String, Object>> events = listOrderEventItems(id);
-    Map<String, Object> fiscal = service.one("""
-        SELECT status, document_type AS "documentType", number, series, access_key AS "accessKey",
-               xml_url AS "xmlUrl", pdf_url AS "pdfUrl", payload_json AS "payloadJson", updated_at AS "updatedAt"
-        FROM fiscal_documents
-        WHERE order_id = ?
-        LIMIT 1
-        """, id).orElse(null);
+    boolean hasFiscal = row.get("fiscalStatus") != null;
+    Map<String, Object> fiscal = hasFiscal ? service.orderedMap(
+        "status", service.stringValue(row.get("fiscalStatus")),
+        "documentType", service.stringValue(row.get("fiscalDocumentType")),
+        "number", service.blankToNull(service.stringValue(row.get("fiscalNumber"))),
+        "series", service.blankToNull(service.stringValue(row.get("fiscalSeries"))),
+        "accessKey", service.blankToNull(service.stringValue(row.get("fiscalAccessKey"))),
+        "xmlUrl", service.blankToNull(service.stringValue(row.get("fiscalXmlUrl"))),
+        "pdfUrl", service.blankToNull(service.stringValue(row.get("fiscalPdfUrl"))),
+        "payloadJson", row.get("fiscalPayloadJson"),
+        "updatedAt", service.blankToNull(service.stringValue(row.get("fiscalUpdatedAt")))) : null;
     return service.orderedMap("item", service.orderedMap(
         "id", service.longValue(row.get("id")),
         "status", service.stringValue(row.get("status")),
@@ -1409,16 +1428,7 @@ public class CommerceService {
             "state", service.blankToNull(service.stringValue(row.get("delivery_state")))),
         "items", items,
         "events", events,
-        "fiscal", fiscal == null ? null : service.orderedMap(
-            "status", service.stringValue(fiscal.get("status")),
-            "documentType", service.stringValue(fiscal.get("documentType")),
-            "number", service.blankToNull(service.stringValue(fiscal.get("number"))),
-            "series", service.blankToNull(service.stringValue(fiscal.get("series"))),
-            "accessKey", service.blankToNull(service.stringValue(fiscal.get("accessKey"))),
-            "xmlUrl", service.blankToNull(service.stringValue(fiscal.get("xmlUrl"))),
-            "pdfUrl", service.blankToNull(service.stringValue(fiscal.get("pdfUrl"))),
-            "payloadJson", fiscal.get("payloadJson"),
-            "updatedAt", service.blankToNull(service.stringValue(fiscal.get("updatedAt"))))));
+        "fiscal", fiscal));
   }
 
   private List<Map<String, Object>> listOrderEventItems(long orderId) {

@@ -149,8 +149,11 @@ export default function CheckoutPage() {
     return missing
   }, [paymentMethod])
 
+  const checkoutInFlightRef = useRef(false)
+
   async function createCheckout() {
-    if (loading || checkoutOrderId) return
+    if (loading || checkoutOrderId || checkoutInFlightRef.current) return
+    checkoutInFlightRef.current = true
     setLoading(true)
     setError(null)
     setSuccessMessage(null)
@@ -186,6 +189,7 @@ export default function CheckoutPage() {
       }
       setError(friendlyError(err, 'Falha ao finalizar pedido.'))
     } finally {
+      checkoutInFlightRef.current = false
       setLoading(false)
     }
   }

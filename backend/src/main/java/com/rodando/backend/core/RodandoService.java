@@ -1326,13 +1326,20 @@ public class RodandoService {
     }
     Map<String, Object> product = getProductById(productId);
     if (product == null || !booleanValue(product.get("isActive"))) throw new ApiException(404, "Produto nao encontrado.");
-    int nextQty = Math.min(quantity, intValue(product.get("stock")));
-    if (nextQty <= 0) throw new ApiException(409, "Produto sem estoque.");
-    if (one("SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ?", cartId, productId).isEmpty()) {
-      throw new ApiException(404, "Item nao encontrado na mochila.");
-    }
-    upsertBagItemById(cartId, productId, nextQty);
-    return getCartItemsByCartId(cartId);
+    return inTransaction(() -> {
+      // FOR UPDATE garante que aumentos de quantidade não excedam o estoque
+      // disponível em caso de checkouts concorrentes.
+      int stock = intValue(one("""
+          SELECT quantity FROM product_stocks WHERE product_id = ? FOR UPDATE
+          """, productId).orElse(Map.of()).get("quantity"));
+      int nextQty = Math.min(quantity, stock);
+      if (nextQty <= 0) throw new ApiException(409, "Produto sem estoque.");
+      if (one("SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ?", cartId, productId).isEmpty()) {
+        throw new ApiException(404, "Item nao encontrado na mochila.");
+      }
+      upsertBagItemById(cartId, productId, nextQty);
+      return getCartItemsByCartId(cartId);
+    });
   }
 
   public void removeBagItem(AuthContext context, long productId) {
