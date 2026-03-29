@@ -565,14 +565,12 @@ export default function OwnerDashboardPage() {
                     <SortHeader label="Receita" field="revenue" currentSort={currentSort} direction={currentDirection} onSort={handleSort} />
                   </th>
                   <th className="py-2.5 px-3 font-medium text-left">
-                    <SortHeader label="Margem" field="marginPercent" currentSort={currentSort} direction={currentDirection} onSort={handleSort} />
+                    <SortHeader label="Margem" field="margin" currentSort={currentSort} direction={currentDirection} onSort={handleSort} />
                   </th>
                   <th className="py-2.5 px-3 font-medium text-left">
-                    <SortHeader label="Conversão" field="conversionRate" currentSort={currentSort} direction={currentDirection} onSort={handleSort} />
+                    <SortHeader label="Conversão" field="conversion" currentSort={currentSort} direction={currentDirection} onSort={handleSort} />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-left">
-                    <SortHeader label="Views" field="views" currentSort={currentSort} direction={currentDirection} onSort={handleSort} />
-                  </th>
+                  <th className="py-2.5 px-3 font-medium text-left">Views</th>
                   <th className="py-2.5 px-3 font-medium text-left">Avaliação</th>
                   <th className="py-2.5 px-3 font-medium text-left">Status</th>
                   <th className="py-2.5 px-3 font-medium" />
