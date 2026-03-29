@@ -186,7 +186,7 @@ export default function OwnerDashboardPage() {
     setError(null)
     try {
       const data = await api.ownerDashboard({ ...filters, page: 1, pageSize: 500 })
-      const rows = data.products.items
+      const rows = data.products?.items ?? []
       const header = ['SKU','Nome','Categoria','Fabricante','Preco','Custo','MargemPercentual','Estoque','EstoqueMinimo','Reposicao','UnidadesVendidas','Receita','Conversao','Views','AddToCart','CheckoutStart','Compras','RatingMedio','Avaliacoes','Status']
       const toCsvValue = (value: string | number | null | undefined) => {
         const safe = String(value ?? '')
@@ -194,11 +194,11 @@ export default function OwnerDashboardPage() {
       }
       const body = rows.map((row) => [
         row.sku, row.name, row.category, row.manufacturer,
-        row.price.toFixed(2), row.cost.toFixed(2), row.marginPercent.toFixed(2),
+        Number(row.price ?? 0).toFixed(2), Number(row.cost ?? 0).toFixed(2), Number(row.marginPercent ?? 0).toFixed(2),
         row.stock, row.minimumStock, row.reorderPoint,
-        row.unitsSold, row.revenue.toFixed(2), row.conversionRate.toFixed(2),
+        row.unitsSold, Number(row.revenue ?? 0).toFixed(2), Number(row.conversionRate ?? 0).toFixed(2),
         row.views, row.addToCart, row.checkoutStart, row.purchases,
-        row.averageRating.toFixed(2), row.reviewCount, row.status,
+        Number(row.averageRating ?? 0).toFixed(2), row.reviewCount, row.status,
       ].map(toCsvValue).join(','))
       const csv = [header.join(','), ...body].join('\n')
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -600,12 +600,12 @@ export default function OwnerDashboardPage() {
                       <td className="py-3 px-3 text-[#9ca3af]">{product.unitsSold}</td>
                       <td className="py-3 px-3 font-semibold text-[#d4a843]">{toCurrency(product.revenue)}</td>
                       <td className="py-3 px-3">
-                        <span className={`font-semibold ${product.marginPercent >= 30 ? 'text-emerald-400' : product.marginPercent >= 15 ? 'text-amber-400' : 'text-red-400'}`}>
-                          {product.marginPercent.toFixed(1)}%
+                        <span className={`font-semibold ${(product.marginPercent ?? 0) >= 30 ? 'text-emerald-400' : (product.marginPercent ?? 0) >= 15 ? 'text-amber-400' : 'text-red-400'}`}>
+                          {Number(product.marginPercent ?? 0).toFixed(1)}%
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-[#9ca3af]">{product.conversionRate.toFixed(2)}%</td>
-                      <td className="py-3 px-3 text-[#9ca3af]">{product.views.toLocaleString('pt-BR')}</td>
+                      <td className="py-3 px-3 text-[#9ca3af]">{Number(product.conversionRate ?? 0).toFixed(2)}%</td>
+                      <td className="py-3 px-3 text-[#9ca3af]">{Number(product.views ?? 0).toLocaleString('pt-BR')}</td>
                       <td className="py-3 px-3">
                         {product.averageRating > 0 ? (
                           <span className="flex items-center gap-1 text-yellow-400 font-semibold">
