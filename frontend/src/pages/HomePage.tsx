@@ -623,7 +623,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section ref={localRef} className="py-24 bg-[#0a0a0f]">
+      <section ref={localRef} className="py-24 bg-[#f5f0e8]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <m.div
@@ -637,10 +637,10 @@ export default function HomePage() {
                   Presença Local
                 </span>
               </div>
-              <h2 className="font-['Rajdhani'] text-[clamp(1.8rem,4vw,2.8rem)] font-bold text-[#f0ede8] leading-[1.15]">
+              <h2 className="font-['Rajdhani'] text-[clamp(1.8rem,4vw,2.8rem)] font-bold text-[#1a1007] leading-[1.15]">
                 Loja física e atendimento comercial
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-[#6b7280] max-w-[400px]">
+              <p className="mt-4 text-sm leading-relaxed text-[#5a5040] max-w-[400px]">
                 Atendimento de segunda a sexta, retirada local e suporte rápido para orçamento e validação de aplicação.
               </p>
 
@@ -660,13 +660,13 @@ export default function HomePage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={localInView ? { opacity: 1, x: 0 } : {}}
                     transition={{ delay: 0.3 + i * 0.15 }}
-                    className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.06]"
+                    className="p-5 rounded-xl bg-white border border-[#e5ddd0] shadow-sm"
                   >
-                    <h4 className="text-sm mb-2 text-[#f0ede8] font-semibold">
+                    <h4 className="text-sm mb-2 text-[#1a1007] font-semibold">
                       {block.title}
                     </h4>
                     {block.items.map((item) => (
-                      <p key={item} className="flex items-start gap-2 text-xs mt-1.5 text-[#6b7280]">
+                      <p key={item} className="flex items-start gap-2 text-xs mt-1.5 text-[#5a5040]">
                         <CheckCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-[#d4a843]" />
                         {item}
                       </p>
@@ -686,7 +686,7 @@ export default function HomePage() {
                   <Phone className="w-4 h-4" />
                   Falar com vendedor
                 </m.a>
-                <div className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm bg-white/[0.04] border border-white/[0.08] text-[#6b7280]">
+                <div className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm bg-white border border-[#e5ddd0] text-[#5a5040]">
                   <Clock className="w-4 h-4 text-[#d4a843]" />
                   <span>~5 min. de resposta</span>
                 </div>
