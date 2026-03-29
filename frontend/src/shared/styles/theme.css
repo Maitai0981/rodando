@@ -574,6 +574,12 @@ html[data-site-theme='light'] {
   html[data-site-theme='light'] [class*='bg-black/85'] {
     background-color: rgba(10, 10, 15, 0.78) !important;
   }
+  html[data-site-theme='light'] [class*='bg-black/85'] [class*='text-[#f0ede8]'] {
+    color: #f0ede8 !important;
+  }
+  html[data-site-theme='light'] [class*='bg-black/85'] [class*='text-[#6b7280]'] {
+    color: #9ca3af !important;
+  }
 
   /* ── Cards vazios / empty state ─────────────────────────── */
   html[data-site-theme='light'] [class*='bg-white/[0.03]'][class*='border-white/[0.06]'],
