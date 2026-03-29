@@ -218,8 +218,8 @@ export default function OwnerDashboardPage() {
   }, [filters])
 
   const metrics = dashboard?.metrics
-  const products = dashboard?.products.items || []
-  const productMeta = dashboard?.products.meta
+  const products = dashboard?.products?.items ?? []
+  const productMeta = dashboard?.products?.meta
   const periodIsCustom = (filters.period || 'month') === 'custom'
   const metricsDelta = metrics?.metricDelta
   const currentSort = (filters.sortBy || 'revenue') as SortBy
