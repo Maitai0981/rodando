@@ -248,6 +248,7 @@ export default function CatalogPage() {
       sort: filters.sort,
     }),
     placeholderData: keepPreviousData,
+    staleTime: 2 * 60 * 1000,
     retry: false,
   })
   const applyFilters = useCallback(() => {

@@ -35,15 +35,19 @@ public class PublicCacheService {
   }
 
   public long invalidateByPrefix(List<String> prefixes) {
-    long removed = 0;
-    for (String key : cache.asMap().keySet()) {
-      if (prefixes.stream().anyMatch(key::startsWith)) {
-        cache.invalidate(key);
-        removed += 1;
+    if (prefixes.isEmpty()) return 0;
+    long[] removed = {0};
+    cache.asMap().keySet().removeIf(key -> {
+      for (String prefix : prefixes) {
+        if (key.startsWith(prefix)) {
+          removed[0]++;
+          return true;
+        }
       }
-    }
-    metricsTracker.recordCacheInvalidation(removed);
-    return removed;
+      return false;
+    });
+    metricsTracker.recordCacheInvalidation(removed[0]);
+    return removed[0];
   }
 }
 

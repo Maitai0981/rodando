@@ -1,6 +1,7 @@
 package com.rodando.backend.commerce;
 
 import com.rodando.backend.api.BaseApiController;
+import com.rodando.backend.common.ApiException;
 import com.rodando.backend.config.AppProperties;
 import com.rodando.backend.core.RateLimiterService;
 import com.rodando.backend.core.RodandoService;
@@ -46,14 +47,18 @@ public class CommerceController extends BaseApiController {
   @PostMapping("/bag/items")
   public ResponseEntity<Map<String, Object>> addBagItem(HttpServletRequest request, @RequestBody Map<String, Object> body) {
     long productId = service.longValue(body.get("productId"));
-    int quantity = Math.max(1, service.intValue(body.get("quantity")));
+    int quantity = service.intValue(body.get("quantity"));
+    if (productId <= 0) throw new ApiException(400, "productId invalido.");
+    if (quantity <= 0 || quantity > 999) throw new ApiException(400, "quantity deve estar entre 1 e 999.");
     List<Map<String, Object>> items = service.addBagItem(context(request), productId, quantity);
     return ResponseEntity.status(HttpStatus.CREATED).body(service.orderedMap("items", items));
   }
 
   @PutMapping("/bag/items/{productId}")
   public Map<String, Object> updateBagItem(HttpServletRequest request, @PathVariable long productId, @RequestBody Map<String, Object> body) {
+    if (productId <= 0) throw new ApiException(400, "productId invalido.");
     int quantity = service.intValue(body.get("quantity"));
+    if (quantity < 0 || quantity > 999) throw new ApiException(400, "quantity deve estar entre 0 e 999.");
     return service.orderedMap("items", service.updateBagItem(context(request), productId, quantity));
   }
 

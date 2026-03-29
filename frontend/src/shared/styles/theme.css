@@ -352,6 +352,21 @@ html[data-site-theme='light'] {
     fill: #b97a16 !important;
   }
 
+  /* ── Verde de sucesso → verde-floresta com contraste ─────── */
+  html[data-site-theme='light'] [class*='text-[#22c55e]'] {
+    color: #15803d !important;
+  }
+
+  /* ── Vermelho de erro → carmesim legível no claro ─────────── */
+  html[data-site-theme='light'] [class*='text-[#f87171]'] {
+    color: #b91c1c !important;
+  }
+
+  /* ── Ícone/texto semi-transparente branco no claro ────────── */
+  html[data-site-theme='light'] [class*='text-white/75'] {
+    color: #3f526c !important;
+  }
+
   /* ── Bordas translúcidas → areia quente ──────────────────── */
   html[data-site-theme='light'] [class*='border-white/[0.04]'],
   html[data-site-theme='light'] [class*='border-white/[0.05]'],
@@ -384,14 +399,22 @@ html[data-site-theme='light'] {
 
   /* Bordas de status */
   html[data-site-theme='light'] [class*='border-[#ef4444]/20'],
-  html[data-site-theme='light'] [class*='border-[#ef4444]/30'] {
+  html[data-site-theme='light'] [class*='border-[#ef4444]/30'],
+  html[data-site-theme='light'] [class*='border-[#ef4444]/40'],
+  html[data-site-theme='light'] [class*='border-[#ef4444]/[0.15]'] {
     border-color: rgba(220, 38, 38, 0.28) !important;
   }
-  html[data-site-theme='light'] [class*='border-[#22c55e]/20'] {
+  html[data-site-theme='light'] [class*='border-[#22c55e]/20'],
+  html[data-site-theme='light'] [class*='border-[#22c55e]/30'] {
     border-color: rgba(34, 197, 94, 0.3) !important;
   }
   html[data-site-theme='light'] [class*='border-amber-500/30'] {
     border-color: rgba(216, 154, 42, 0.3) !important;
+  }
+
+  /* Borda translúcida branca fraca (botão ícone no header) */
+  html[data-site-theme='light'] [class*='border-white/15'] {
+    border-color: #e7d8ba !important;
   }
 
   /* ── Fundos dourados ────────────────────────────────────── */
@@ -404,10 +427,15 @@ html[data-site-theme='light'] {
 
   /* ── Fundos de status ───────────────────────────────────── */
   html[data-site-theme='light'] [class*='bg-[#ef4444]/10'],
-  html[data-site-theme='light'] [class*='bg-[#ef4444]/20'] {
+  html[data-site-theme='light'] [class*='bg-[#ef4444]/15'],
+  html[data-site-theme='light'] [class*='bg-[#ef4444]/20'],
+  html[data-site-theme='light'] [class*='bg-[#ef4444]/[0.08]'],
+  html[data-site-theme='light'] [class*='bg-[#ef4444]/30'],
+  html[data-site-theme='light'] [class*='bg-[#ef4444]/40'] {
     background-color: rgba(220, 38, 38, 0.07) !important;
   }
   html[data-site-theme='light'] [class*='bg-[#22c55e]/10'],
+  html[data-site-theme='light'] [class*='bg-[#22c55e]/15'],
   html[data-site-theme='light'] [class*='bg-[#22c55e]/20'] {
     background-color: rgba(34, 197, 94, 0.09) !important;
   }

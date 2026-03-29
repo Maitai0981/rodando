@@ -26,6 +26,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.bouncycastle.crypto.generators.SCrypt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Service
 public class RodandoService {
 
+  private static final Logger log = LoggerFactory.getLogger(RodandoService.class);
   public static final int FREE_SHIPPING_TARGET = 199;
   private static final HexFormat HEX = HexFormat.of();
   private static final SecureRandom RANDOM = new SecureRandom();
@@ -1297,6 +1300,7 @@ public class RodandoService {
     Map<String, Object> product = getProductById(productId);
     if (product == null || !booleanValue(product.get("isActive"))) throw new ApiException(404, "Produto nao encontrado.");
     return inTransaction(() -> {
+      long cartId = getOrCreateOpenCart(actor);
       // SELECT FOR UPDATE garante que nenhuma outra transação simultânea leia
       // o mesmo estoque antes desta concluir — evita overselling.
       int stock = intValue(one("""
@@ -1304,34 +1308,36 @@ public class RodandoService {
           """, productId).orElse(Map.of()).get("quantity"));
       if (stock <= 0) throw new ApiException(409, "Produto sem estoque.");
       int currentQty = intValue(one("SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ?",
-          getOrCreateOpenCart(actor), productId).orElse(Map.of()).get("quantity"));
+          cartId, productId).orElse(Map.of()).get("quantity"));
       int nextQty = Math.min(stock, currentQty + quantity);
       if (nextQty <= 0) throw new ApiException(409, "Quantidade indisponivel.");
-      upsertBagItem(actor, productId, nextQty);
+      upsertBagItemById(cartId, productId, nextQty);
       trackProductEvent(productId, "add_to_cart", quantity);
-      return getBagItems(actor);
+      return getCartItemsByCartId(cartId);
     });
   }
 
   public List<Map<String, Object>> updateBagItem(AuthContext context, long productId, int quantity) {
     BagActor actor = resolveBagActor(context);
+    long cartId = getOrCreateOpenCart(actor);
     if (quantity <= 0) {
-      deleteBagItem(actor, productId);
-      return getBagItems(actor);
+      deleteBagItemById(cartId, productId);
+      return getCartItemsByCartId(cartId);
     }
     Map<String, Object> product = getProductById(productId);
     if (product == null || !booleanValue(product.get("isActive"))) throw new ApiException(404, "Produto nao encontrado.");
     int nextQty = Math.min(quantity, intValue(product.get("stock")));
     if (nextQty <= 0) throw new ApiException(409, "Produto sem estoque.");
-    if (one("SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ?", getOrCreateOpenCart(actor), productId).isEmpty()) {
+    if (one("SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ?", cartId, productId).isEmpty()) {
       throw new ApiException(404, "Item nao encontrado na mochila.");
     }
-    upsertBagItem(actor, productId, nextQty);
-    return getBagItems(actor);
+    upsertBagItemById(cartId, productId, nextQty);
+    return getCartItemsByCartId(cartId);
   }
 
   public void removeBagItem(AuthContext context, long productId) {
-    deleteBagItem(resolveBagActor(context), productId);
+    long cartId = getOrCreateOpenCart(resolveBagActor(context));
+    deleteBagItemById(cartId, productId);
   }
 
   public void clearBag(AuthContext context) {
@@ -1342,28 +1348,35 @@ public class RodandoService {
   public void mergeGuestBagToUser(String guestTokenHash, long userId) {
     if (guestTokenHash == null || guestTokenHash.isBlank() || userId <= 0) return;
     inTransaction(() -> {
-      Optional<Map<String, Object>> guestCart = one("SELECT * FROM carts WHERE guest_token_hash = ? AND status = 'open' LIMIT 1", guestTokenHash);
+      // FOR UPDATE previne merge duplo concorrente: apenas uma transação
+      // adquire o lock e altera o status para 'abandoned', a segunda vê
+      // status != 'open' na re-leitura após o lock e aborta.
+      Optional<Map<String, Object>> guestCart = one(
+          "SELECT * FROM carts WHERE guest_token_hash = ? AND status = 'open' LIMIT 1 FOR UPDATE",
+          guestTokenHash);
       if (guestCart.isEmpty()) return null;
+      long guestCartId = longValue(guestCart.get().get("id"));
       BagActor userActor = new BagActor("user", userId, null);
       long userCartId = getOrCreateOpenCart(userActor);
-      List<Map<String, Object>> guestItems = getCartItemsByCartId(longValue(guestCart.get().get("id")));
+      List<Map<String, Object>> guestItems = getCartItemsByCartId(guestCartId);
       for (Map<String, Object> guestItem : guestItems) {
         long productId = longValue(guestItem.get("productId"));
         Map<String, Object> product = getProductById(productId);
-        if (product == null || !booleanValue(product.get("isActive")) || intValue(product.get("stock")) <= 0) continue;
-        int current = intValue(one("SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ?", userCartId, productId).orElse(Map.of()).get("quantity"));
-        int next = Math.min(intValue(product.get("stock")), current + intValue(guestItem.get("quantity")));
+        if (product == null || !booleanValue(product.get("isActive"))) continue;
+        // FOR UPDATE no estoque impede overselling durante o merge
+        int stock = intValue(one("""
+            SELECT quantity FROM product_stocks WHERE product_id = ? FOR UPDATE
+            """, productId).orElse(Map.of()).get("quantity"));
+        if (stock <= 0) continue;
+        int current = intValue(one("SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ?",
+            userCartId, productId).orElse(Map.of()).get("quantity"));
+        int next = Math.min(stock, current + intValue(guestItem.get("quantity")));
         if (next > 0) {
-          run("""
-              INSERT INTO cart_items (cart_id, product_id, quantity, created_at, updated_at)
-              VALUES (?, ?, ?, NOW(), NOW())
-              ON CONFLICT (cart_id, product_id)
-              DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()
-              """, userCartId, productId, next);
+          upsertBagItemById(userCartId, productId, next);
         }
       }
-      run("DELETE FROM cart_items WHERE cart_id = ?", longValue(guestCart.get().get("id")));
-      run("UPDATE carts SET status = 'abandoned', updated_at = NOW() WHERE id = ?", longValue(guestCart.get().get("id")));
+      run("DELETE FROM cart_items WHERE cart_id = ?", guestCartId);
+      run("UPDATE carts SET status = 'abandoned', updated_at = NOW() WHERE id = ?", guestCartId);
       return null;
     });
   }
@@ -1489,22 +1502,25 @@ public class RodandoService {
           entityId,
           json(before instanceof Map<?, ?> map ? map : Map.of()),
           json(after instanceof Map<?, ?> map ? map : Map.of()));
-    } catch (Exception ignored) {
-      // Audit logging is best-effort and must not break the request flow.
+    } catch (Exception e) {
+      // Audit logging é best-effort e não deve quebrar o fluxo da requisição,
+      // mas a falha é registrada para alertas de observabilidade.
+      log.warn("[audit] Falha ao salvar log de auditoria: ownerUserId={}, action={}, entity={}",
+          ownerUserId, actionType, entityType, e);
     }
   }
 
-  public void upsertBagItem(BagActor actor, long productId, int quantity) {
+  private void upsertBagItemById(long cartId, long productId, int quantity) {
     run("""
         INSERT INTO cart_items (cart_id, product_id, quantity, created_at, updated_at)
         VALUES (?, ?, ?, NOW(), NOW())
         ON CONFLICT (cart_id, product_id)
         DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()
-        """, getOrCreateOpenCart(actor), productId, quantity);
+        """, cartId, productId, quantity);
   }
 
-  public void deleteBagItem(BagActor actor, long productId) {
-    run("DELETE FROM cart_items WHERE cart_id = ? AND product_id = ?", getOrCreateOpenCart(actor), productId);
+  private void deleteBagItemById(long cartId, long productId) {
+    run("DELETE FROM cart_items WHERE cart_id = ? AND product_id = ?", cartId, productId);
   }
 
   public void trackProductEvent(long productId, String eventType, int quantity) {

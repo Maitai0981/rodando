@@ -58,6 +58,9 @@ export function CartProvider({ children }: PropsWithChildren) {
   const [items, setItems] = useState<BagItem[]>([])
   const [loading, setLoading] = useState(false)
   const migratedLegacyRef = useRef(false)
+  // Contador de geração: garante que apenas a resposta da chamada mais recente
+  // atualiza o estado, descartando respostas de chamadas concorrentes antigas.
+  const refreshGenRef = useRef(0)
 
   const migrateLegacyGuestBagIfNeeded = useCallback(async () => {
     if (migratedLegacyRef.current) return
@@ -83,19 +86,25 @@ export function CartProvider({ children }: PropsWithChildren) {
   const refresh = useCallback(async () => {
     if (status === 'loading') return
 
+    const gen = ++refreshGenRef.current
     setLoading(true)
     try {
       await migrateLegacyGuestBagIfNeeded()
       const result = await api.getBag()
+      // Descarta a resposta se uma chamada mais nova já foi iniciada.
+      if (gen !== refreshGenRef.current) return
       startTransition(() => setItems(result.items))
     } catch (err) {
+      if (gen !== refreshGenRef.current) return
       if (err instanceof ApiError && err.status === 401) {
         startTransition(() => setItems([]))
         return
       }
       throw err
     } finally {
-      setLoading(false)
+      if (gen === refreshGenRef.current) {
+        setLoading(false)
+      }
     }
   }, [migrateLegacyGuestBagIfNeeded, status])
 

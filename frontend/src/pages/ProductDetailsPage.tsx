@@ -80,6 +80,7 @@ export default function ProductDetailsPage() {
     queryKey: ['product-details', parsed.id],
     enabled: Number.isInteger(parsed.id) && Number(parsed.id) > 0,
     queryFn: () => api.getPublicProduct(Number(parsed.id)),
+    staleTime: 5 * 60 * 1000,
     retry: false,
   })
 
@@ -157,6 +158,7 @@ export default function ProductDetailsPage() {
         return []
       }
     },
+    staleTime: 5 * 60 * 1000,
     retry: false,
   })
 

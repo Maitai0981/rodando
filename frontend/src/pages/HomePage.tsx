@@ -217,18 +217,21 @@ export default function HomePage() {
   const highlightsQuery = useQuery({
     queryKey: ['home-highlights'],
     queryFn: () => api.listCatalogHighlights(),
+    staleTime: 5 * 60 * 1000,
     retry: false,
   })
 
   const catalogQuery = useQuery({
     queryKey: ['home-catalog-categories'],
     queryFn: () => api.listCatalogCategories(),
+    staleTime: 5 * 60 * 1000,
     retry: false,
   })
 
   const commentsQuery = useQuery({
     queryKey: ['home-comments'],
     queryFn: () => api.listComments({ limit: 6 }),
+    staleTime: 5 * 60 * 1000,
     retry: false,
   })
 
