@@ -45,7 +45,7 @@ export default function OwnerSignInPage() {
       completeStep('signin-complete', 'owner-login')
       navigate('/owner/dashboard')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao entrar no owner.')
+      setError(err instanceof ApiError ? err.message : 'Falha ao entrar. Verifique suas credenciais.')
     } finally {
       setLoading(false)
     }
@@ -55,8 +55,8 @@ export default function OwnerSignInPage() {
     <div className="min-h-screen pt-24 pb-16 bg-[#0a0a0f]">
       <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-2xl p-6 bg-white/[0.03] border border-white/[0.06]">
-          <h1 className="text-2xl mb-2 text-[#f0ede8] font-bold">Entrar no painel</h1>
-          <p className="text-sm mb-6 text-[#6b7280]">Acesso exclusivo para conta owner.</p>
+          <h1 className="text-2xl mb-2 text-[#f0ede8] font-bold">Acesso ao painel</h1>
+          <p className="text-sm mb-6 text-[#6b7280]">Entre com suas credenciais de colaborador.</p>
 
           {error ? (
             <div className="mb-4 p-3 rounded-lg text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">
@@ -67,7 +67,7 @@ export default function OwnerSignInPage() {
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
               <label htmlFor="owner-signin-email" className="text-xs uppercase tracking-widest text-[#d4a843]">
-                Email owner
+                E-mail
               </label>
               <div className="relative mt-2">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />

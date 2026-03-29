@@ -257,7 +257,7 @@ export default function OrderDetailsPage() {
                         <img
                           src={order.payment.pix.startsWith('data:') ? order.payment.pix : `data:image/png;base64,${order.payment.pix}`}
                           alt="QR Code Pix do pedido"
-                          className="h-44 w-44 rounded-xl border border-white/[0.08] bg-white p-3 object-contain"
+                          className="w-full max-w-[176px] aspect-square rounded-xl border border-white/[0.08] bg-white p-3 object-contain"
                         />
                       ) : null}
                       <div className="flex-1 space-y-2">

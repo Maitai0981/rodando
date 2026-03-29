@@ -734,7 +734,7 @@ export default function HomePage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="relative rounded-3xl overflow-hidden p-10 lg:p-16 text-center bg-[linear-gradient(135deg,rgba(212,168,67,0.12),rgba(212,168,67,0.04),rgba(10,10,15,0.8))] border border-[#d4a843]/20"
+            className="relative rounded-3xl overflow-hidden p-6 sm:p-10 lg:p-16 text-center bg-[linear-gradient(135deg,rgba(212,168,67,0.12),rgba(212,168,67,0.04),rgba(10,10,15,0.8))] border border-[#d4a843]/20"
           >
             <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_50%,rgba(212,168,67,0.08)_0%,transparent_70%)]" />
             <h2 className="font-['Rajdhani'] text-[clamp(2rem,5vw,3.5rem)] font-bold text-[#f0ede8]">

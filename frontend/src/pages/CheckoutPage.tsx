@@ -477,10 +477,10 @@ export default function CheckoutPage() {
                           <img
                             src={pixQrImageSrc}
                             alt="QR Code Pix do pedido"
-                            className="h-52 w-52 rounded-xl border border-white/[0.08] bg-white p-3 object-contain"
+                            className="w-full max-w-[208px] aspect-square rounded-xl border border-white/[0.08] bg-white p-3 object-contain"
                           />
                         ) : (
-                          <div className="flex h-52 w-52 items-center justify-center rounded-xl border border-dashed border-white/[0.12] text-center text-xs text-[#6b7280]">
+                          <div className="flex w-full max-w-[208px] aspect-square items-center justify-center rounded-xl border border-dashed border-white/[0.12] text-center text-xs text-[#6b7280]">
                             QR Code indisponivel neste momento.
                           </div>
                         )}

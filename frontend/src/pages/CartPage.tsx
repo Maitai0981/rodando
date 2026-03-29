@@ -297,7 +297,7 @@ export default function CartPage() {
                 ))}
               </AnimatePresence>
 
-              <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="grid grid-cols-3 gap-3 mt-4">
+              <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-3 mt-4">
                 {[
                   { icon: Shield, label: 'Compra segura' },
                   { icon: Truck, label: 'Entrega rápida' },

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { AlertTriangle, Check, Loader2 } from 'lucide-react'
 import OwnerLayout from '../shared/layout/OwnerLayout'
 import { api, ApiError, type OwnerSettings } from '../shared/lib/api'
 import { useAssist } from '../shared/context/AssistContext'
@@ -8,48 +9,127 @@ function toDraft(item: OwnerSettings): OwnerSettings {
   return { ...item }
 }
 
-type FieldDescriptor = { key: keyof OwnerSettings; label: string; type?: 'number' | 'checkbox' }
+type FieldDef = { key: keyof OwnerSettings; label: string; type?: 'number' | 'checkbox'; cols?: number }
 
-const SETTINGS_FIELDS: FieldDescriptor[] = [
-  { key: 'salesAlertEmail', label: 'Email de alerta' },
-  { key: 'salesAlertWhatsapp', label: 'WhatsApp (opcional)' },
-  { key: 'storeName', label: 'Nome da loja' },
-  { key: 'storeCnpj', label: 'CNPJ' },
-  { key: 'storeIe', label: 'IE' },
-  { key: 'storeAddressStreet', label: 'Rua' },
-  { key: 'storeAddressNumber', label: 'Numero' },
-  { key: 'storeAddressComplement', label: 'Complemento' },
-  { key: 'storeAddressDistrict', label: 'Bairro' },
-  { key: 'storeAddressCity', label: 'Cidade' },
-  { key: 'storeAddressState', label: 'UF' },
-  { key: 'storeAddressCep', label: 'CEP da loja' },
-  { key: 'taxProfile', label: 'Perfil tributario' },
-  { key: 'storeLat', label: 'Latitude', type: 'number' },
-  { key: 'storeLng', label: 'Longitude', type: 'number' },
-  { key: 'freeShippingGlobalMin', label: 'Meta frete gratis', type: 'number' },
-  { key: 'taxPercent', label: 'Impostos %', type: 'number' },
-  { key: 'gatewayFeePercent', label: 'Gateway %', type: 'number' },
-  { key: 'gatewayFixedFee', label: 'Taxa fixa gateway', type: 'number' },
-  { key: 'operationalPercent', label: 'Operacional %', type: 'number' },
-  { key: 'packagingCost', label: 'Custo de embalagem', type: 'number' },
-  { key: 'blockBelowMinimum', label: 'Bloquear abaixo do minimo', type: 'checkbox' },
+const SETTING_SECTIONS: { title: string; description: string; fields: FieldDef[] }[] = [
+  {
+    title: 'Alertas e contatos',
+    description: 'Configure onde as notificações de venda serão enviadas.',
+    fields: [
+      { key: 'salesAlertEmail',    label: 'E-mail de alerta de venda' },
+      { key: 'salesAlertWhatsapp', label: 'WhatsApp (opcional)'       },
+    ],
+  },
+  {
+    title: 'Dados da loja',
+    description: 'Informações institucionais e fiscais do estabelecimento.',
+    fields: [
+      { key: 'storeName', label: 'Nome da loja' },
+      { key: 'storeCnpj', label: 'CNPJ'         },
+      { key: 'storeIe',   label: 'Inscrição estadual' },
+      { key: 'taxProfile', label: 'Perfil tributário'  },
+    ],
+  },
+  {
+    title: 'Endereço',
+    description: 'Endereço físico da loja exibido no site.',
+    fields: [
+      { key: 'storeAddressStreet',     label: 'Logradouro',   cols: 2 },
+      { key: 'storeAddressNumber',     label: 'Número'                },
+      { key: 'storeAddressComplement', label: 'Complemento'           },
+      { key: 'storeAddressDistrict',   label: 'Bairro'                },
+      { key: 'storeAddressCity',       label: 'Cidade'                },
+      { key: 'storeAddressState',      label: 'UF'                    },
+      { key: 'storeAddressCep',        label: 'CEP'                   },
+    ],
+  },
+  {
+    title: 'Localização',
+    description: 'Coordenadas para exibição no mapa.',
+    fields: [
+      { key: 'storeLat', label: 'Latitude',  type: 'number' },
+      { key: 'storeLng', label: 'Longitude', type: 'number' },
+    ],
+  },
+  {
+    title: 'Custos operacionais',
+    description: 'Parâmetros usados no cálculo de margem e frete.',
+    fields: [
+      { key: 'freeShippingGlobalMin', label: 'Mínimo para frete grátis (R$)',  type: 'number' },
+      { key: 'taxPercent',            label: 'Impostos (%)',                   type: 'number' },
+      { key: 'gatewayFeePercent',     label: 'Taxa gateway (%)',               type: 'number' },
+      { key: 'gatewayFixedFee',       label: 'Taxa fixa gateway (R$)',         type: 'number' },
+      { key: 'operationalPercent',    label: 'Custo operacional (%)',          type: 'number' },
+      { key: 'packagingCost',         label: 'Custo de embalagem (R$)',        type: 'number' },
+      { key: 'blockBelowMinimum',     label: 'Bloquear venda abaixo do mínimo de estoque', type: 'checkbox', cols: 3 },
+    ],
+  },
 ]
+
+/* ── Campo reutilizável ─────────────────────────────────────── */
+function SettingsField({
+  field,
+  draft,
+  onChange,
+}: {
+  field: FieldDef
+  draft: OwnerSettings
+  onChange: (key: keyof OwnerSettings, value: string | number | boolean) => void
+}) {
+  const id = `owner-settings-${field.key}`
+  const value = draft[field.key]
+  const colSpan = field.cols === 3 ? 'md:col-span-3' : field.cols === 2 ? 'md:col-span-2' : ''
+
+  if (field.type === 'checkbox') {
+    return (
+      <div className={`${colSpan} flex items-center gap-3 pt-1`}>
+        <input
+          id={id}
+          type="checkbox"
+          className="w-4 h-4 accent-[#d4a843] flex-shrink-0"
+          checked={Boolean(value)}
+          onChange={(e) => onChange(field.key, e.target.checked)}
+        />
+        <label htmlFor={id} className="text-sm text-[#f0ede8] cursor-pointer select-none">
+          {field.label}
+        </label>
+      </div>
+    )
+  }
+
+  return (
+    <div className={colSpan}>
+      <label htmlFor={id} className="block text-[10px] uppercase tracking-widest text-[#6b7280] mb-1.5">
+        {field.label}
+      </label>
+      <input
+        id={id}
+        type={field.type ?? 'text'}
+        value={field.type === 'number' ? String(value ?? '') : String(value ?? '')}
+        onChange={(e) =>
+          onChange(field.key, field.type === 'number' ? Number(e.target.value || 0) : e.target.value)
+        }
+        className="w-full h-10 px-3 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/[0.1] text-[#f0ede8] focus:border-[#d4a843]/40 transition-colors"
+      />
+    </div>
+  )
+}
+
+/* ── Página ─────────────────────────────────────────────────── */
 
 export default function OwnerSettingsPage() {
   const { completeStep } = useAssist()
-  const [draft, setDraft] = useState<OwnerSettings | null>(null)
+  const [draft, setDraft]       = useState<OwnerSettings | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]       = useState<string | null>(null)
 
   const settingsQuery = useQuery({
     queryKey: ['owner-settings'],
-    queryFn: () => api.getOwnerSettings(),
+    queryFn:  () => api.getOwnerSettings(),
   })
 
   useEffect(() => {
-    if (settingsQuery.data?.item) {
-      setDraft(toDraft(settingsQuery.data.item))
-    }
+    if (settingsQuery.data?.item) setDraft(toDraft(settingsQuery.data.item))
   }, [settingsQuery.data?.item])
 
   const saveMutation = useMutation({
@@ -75,89 +155,77 @@ export default function OwnerSettingsPage() {
     }
   }, [completeStep, draft?.salesAlertEmail])
 
+  function handleChange(key: keyof OwnerSettings, value: string | number | boolean) {
+    setDraft((prev) => (prev ? { ...prev, [key]: value } : prev))
+  }
+
   return (
     <OwnerLayout>
       <div className="space-y-6">
+
+        {/* ── Cabeçalho ────────────────────────────────────────── */}
         <div>
-          <h1 className="text-2xl text-[#f0ede8] font-bold">Configurações do owner</h1>
-          <p className="text-sm text-[#9ca3af]">
-            Defina alertas de venda, endereço da loja, frete e parâmetros de custo operacional.
+          <h1 className="text-xl font-bold text-[#f0ede8]">Configurações</h1>
+          <p className="mt-0.5 text-xs text-[#6b7280]">
+            Dados da loja, alertas de venda, frete e parâmetros de custo operacional.
           </p>
         </div>
 
+        {/* ── Loading ──────────────────────────────────────────── */}
         {settingsQuery.isLoading || !draft ? (
-          <div className="p-3 rounded-xl text-sm bg-white/[0.04] border border-white/[0.08] text-[#9ca3af]">
+          <div className="flex items-center gap-2 p-4 rounded-xl text-sm text-[#6b7280] bg-white/[0.03] border border-white/[0.07]">
+            <Loader2 className="w-4 h-4 animate-spin" />
             Carregando configurações...
           </div>
         ) : (
-          <div className="p-5 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {SETTINGS_FIELDS.map((field) => {
-                const value = draft?.[field.key]
-                if (field.type === 'checkbox') {
-                  return (
-                    <div key={field.key} className="md:col-span-3 pt-2">
-                      <label className="flex items-center gap-2 text-sm text-[#f0ede8]">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-[#d4a843]"
-                          checked={Boolean(value)}
-                          onChange={(event) =>
-                            setDraft((prev) =>
-                              prev ? { ...prev, [field.key]: event.target.checked } : prev,
-                            )
-                          }
-                        />
-                        {field.label}
-                      </label>
-                    </div>
-                  )
-                }
-                const fieldId = `owner-settings-${field.key}`
-                return (
-                  <div key={field.key}>
-                    <label htmlFor={fieldId} className="text-[11px] uppercase tracking-widest text-[#f0c040]">
-                      {field.label}
-                    </label>
-                    <input
-                      id={fieldId}
-                      type={field.type || 'text'}
-                      value={field.type === 'number' ? String(value ?? '') : String(value ?? '')}
-                      onChange={(event) =>
-                        setDraft((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                [field.key]: field.type === 'number' ? Number(event.target.value || 0) : event.target.value,
-                              }
-                            : prev,
-                        )
-                      }
-                      className="w-full mt-2 h-11 px-3 rounded-xl text-sm outline-none bg-white/[0.06] border border-white/[0.12] text-[#f0ede8]"
+          <div className="space-y-4">
+            {SETTING_SECTIONS.map((section) => (
+              <div key={section.title} className="rounded-xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-white/[0.06] bg-white/[0.02]">
+                  <p className="text-sm font-semibold text-[#f0ede8]">{section.title}</p>
+                  <p className="text-xs text-[#6b7280] mt-0.5">{section.description}</p>
+                </div>
+                <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {section.fields.map((field) => (
+                    <SettingsField
+                      key={field.key}
+                      field={field}
+                      draft={draft}
+                      onChange={handleChange}
                     />
-                  </div>
-                )
-              })}
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Salvar */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending}
+                className="flex items-center gap-2 h-10 px-5 rounded-xl text-sm font-bold text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] disabled:opacity-70"
+              >
+                {saveMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                {saveMutation.isPending ? 'Salvando...' : 'Salvar configurações'}
+              </button>
             </div>
-            <button
-              onClick={() => saveMutation.mutate()}
-              className={`mt-4 h-11 px-5 rounded-xl text-sm text-black bg-gradient-to-br from-[#d4a843] to-[#f0c040] font-bold ${
-                saveMutation.isPending ? 'opacity-70' : 'opacity-100'
-              }`}
-              disabled={saveMutation.isPending}
-            >
-              Salvar configurações
-            </button>
           </div>
         )}
 
+        {/* ── Feedback ─────────────────────────────────────────── */}
         {feedback ? (
-          <div className="p-3 rounded-xl text-sm bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]">
+          <div className="flex items-center gap-2 p-3 rounded-lg text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+            <Check className="w-3.5 h-3.5 flex-shrink-0" />
             {feedback}
           </div>
         ) : null}
         {error ? (
-          <div className="p-3 rounded-xl text-sm bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#f87171]">
+          <div className="flex items-center gap-2 p-3 rounded-lg text-xs bg-red-500/10 border border-red-500/20 text-red-400">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
             {error}
           </div>
         ) : null}
