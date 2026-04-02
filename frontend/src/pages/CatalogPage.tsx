@@ -18,6 +18,7 @@ import { formatCurrency } from '../shared/lib'
 import { useCart } from '../shared/context/CartContext'
 
 const SEARCH_DEBOUNCE_MS = 300
+const PRICE_MAX = 1200
 
 const SORT_OPTIONS = [
   { label: 'Mais vendidos', value: 'best-sellers' },
@@ -47,7 +48,7 @@ const DEFAULT_FILTERS: Filters = {
   promo: 'Todas',
   sort: 'best-sellers',
   priceMin: 0,
-  priceMax: 1200,
+  priceMax: PRICE_MAX,
 }
 
 function buildPageRange(current: number, total: number): Array<number | '...'> {
@@ -231,7 +232,7 @@ export default function CatalogPage() {
     filters.promo !== 'Todas' ||
     filters.search !== '' ||
     filters.priceMin > 0 ||
-    filters.priceMax < 1200
+    filters.priceMax < PRICE_MAX
 
   const productQuery = useQuery({
     queryKey: ['catalog', filters, page],
@@ -428,7 +429,7 @@ export default function CatalogPage() {
                     <input
                       type="range"
                       min={0}
-                      max={1200}
+                      max={PRICE_MAX}
                       step={50}
                       value={filters.priceMin}
                       onChange={(e) => updateFilter('priceMin', Math.min(Number(e.target.value), filters.priceMax - 50))}
@@ -438,7 +439,7 @@ export default function CatalogPage() {
                     <input
                       type="range"
                       min={0}
-                      max={1200}
+                      max={PRICE_MAX}
                       step={50}
                       value={filters.priceMax}
                       onChange={(e) => updateFilter('priceMax', Math.max(Number(e.target.value), filters.priceMin + 50))}
@@ -513,7 +514,7 @@ export default function CatalogPage() {
                         <input
                           type="range"
                           min={0}
-                          max={1200}
+                          max={PRICE_MAX}
                           step={50}
                           value={filters.priceMin}
                           onChange={(e) => updateFilter('priceMin', Math.min(Number(e.target.value), filters.priceMax - 50))}
@@ -523,7 +524,7 @@ export default function CatalogPage() {
                         <input
                           type="range"
                           min={0}
-                          max={1200}
+                          max={PRICE_MAX}
                           step={50}
                           value={filters.priceMax}
                           onChange={(e) => updateFilter('priceMax', Math.max(Number(e.target.value), filters.priceMin + 50))}
