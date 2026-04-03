@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rodando Moto Center — Sua loja de peças online</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .page {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 56px;
+    }
+
+    /* ── Capa ── */
+    .cover {
+      background: linear-gradient(135deg, #0a0a0f 0%, #1a1408 100%);
+      border-radius: 14px;
+      padding: 52px 48px;
+      margin-bottom: 44px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 240px; height: 240px;
+      background: radial-gradient(circle, rgba(212,168,67,0.15) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .cover-inner { position: relative; }
+    .cover .eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #d4a843;
+      margin-bottom: 12px;
+    }
+    .cover h1 {
+      font-size: 36px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -1px;
+      line-height: 1.1;
+    }
+    .cover h1 span { color: #d4a843; }
+    .cover .divider {
+      width: 40px; height: 3px;
+      background: #d4a843;
+      border-radius: 2px;
+      margin: 18px 0;
+    }
+    .cover .tagline {
+      font-size: 15px;
+      color: #c8c4bc;
+      line-height: 1.7;
+      max-width: 420px;
+    }
+    .cover .pills {
+      display: flex;
+      gap: 8px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      background: rgba(212,168,67,0.15);
+      border: 1px solid rgba(212,168,67,0.35);
+      color: #d4a843;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    /* ── Section ── */
+    .section { margin-bottom: 36px; }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      color: #d4a843;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f0ede8;
+    }
+
+    /* ── Intro ── */
+    .intro {
+      font-size: 14px;
+      color: #333;
+      line-height: 1.85;
+      background: #fafafa;
+      border-left: 3px solid #d4a843;
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    /* ── Steps ── */
+    .steps { display: flex; flex-direction: column; gap: 10px; }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      border: 1px solid #ebebeb;
+      border-radius: 10px;
+      padding: 16px;
+      transition: border-color 0.2s;
+    }
+    .step-number {
+      background: #d4a843;
+      color: #fff;
+      font-weight: 700;
+      font-size: 12px;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-title { font-weight: 600; font-size: 13px; color: #0a0a0f; margin-bottom: 3px; }
+    .step-desc  { font-size: 12px; color: #555; line-height: 1.6; }
+
+    /* ── Benefícios ── */
+    .benefits { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .benefit {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 1px solid #ebebeb;
+      border-radius: 10px;
+    }
+    .benefit-icon { font-size: 22px; flex-shrink: 0; line-height: 1; margin-top: 1px; }
+    .benefit-title { font-weight: 600; font-size: 12px; color: #0a0a0f; margin-bottom: 3px; }
+    .benefit-desc  { font-size: 11px; color: #666; line-height: 1.55; }
+
+    /* ── Pagamentos ── */
+    .payment-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .payment-item {
+      text-align: center;
+      border: 1px solid #ebebeb;
+      border-radius: 10px;
+      padding: 18px 12px;
+    }
+    .payment-icon { font-size: 26px; margin-bottom: 8px; }
+    .payment-name { font-weight: 600; font-size: 12px; color: #0a0a0f; }
+    .payment-desc { font-size: 11px; color: #888; margin-top: 3px; }
+
+    /* ── Segurança ── */
+    .security-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .security-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 12px;
+      color: #333;
+      background: #fafafa;
+      border-radius: 8px;
+      padding: 12px 14px;
+      line-height: 1.5;
+    }
+    .security-icon { font-size: 16px; flex-shrink: 0; }
+
+    /* ── FAQ ── */
+    .faq { display: flex; flex-direction: column; gap: 10px; }
+    .faq-item { border: 1px solid #ebebeb; border-radius: 10px; padding: 14px 16px; }
+    .faq-q { font-weight: 600; font-size: 12px; color: #0a0a0f; margin-bottom: 4px; }
+    .faq-a { font-size: 12px; color: #555; line-height: 1.6; }
+
+    /* ── CTA ── */
+    .cta {
+      background: linear-gradient(135deg, #0a0a0f 0%, #1a1408 100%);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      margin-top: 36px;
+    }
+    .cta h2 { color: #d4a843; font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .cta p  { color: #aaa; font-size: 13px; line-height: 1.7; }
+    .cta .highlight { color: #f0ede8; font-weight: 500; }
+    .cta .url {
+      display: inline-block;
+      margin-top: 16px;
+      background: rgba(212,168,67,0.15);
+      border: 1px solid rgba(212,168,67,0.4);
+      color: #d4a843;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 20px;
+      border-radius: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid #ebebeb;
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #bbb;
+    }
+
+    @media print {
+      body { font-size: 12px; }
+      .page { padding: 32px 40px; }
+      .step, .benefit, .payment-item, .faq-item { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Capa -->
+  <div class="cover">
+    <div class="cover-inner">
+      <div class="eyebrow">Rodando Moto Center</div>
+      <h1>Peças para a sua<br/><span>moto, do jeito fácil.</span></h1>
+      <div class="divider"></div>
+      <div class="tagline">
+        Catálogo completo, preço justo e entrega em todo o Brasil.
+        Compre pelo computador ou celular, quando e onde quiser.
+      </div>
+      <div class="pills">
+        <span class="pill">Frete calculado na hora</span>
+        <span class="pill">Pagamento seguro</span>
+        <span class="pill">Disponível 24h</span>
+        <span class="pill">Acompanhe seu pedido</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- O que é -->
+  <div class="section">
+    <div class="section-title">O que é a Rodando?</div>
+    <div class="intro">
+      A <strong>Rodando Moto Center</strong> é uma loja online especializada em peças para motocicletas.
+      Você acessa pelo celular ou computador, encontra a peça certa, escolhe como pagar e acompanha
+      a entrega direto pela sua conta. Sem filas, sem deslocamento — disponível 24 horas por dia,
+      todos os dias.
+    </div>
+  </div>
+
+  <!-- Como funciona -->
+  <div class="section">
+    <div class="section-title">Como funciona — é simples assim</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div>
+          <div class="step-title">Encontre a peça que precisa</div>
+          <div class="step-desc">Pesquise pelo nome ou navegue pelo catálogo. Filtre por categoria, marca ou faixa de preço. Cada produto tem foto, descrição detalhada e estoque atualizado.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div>
+          <div class="step-title">Adicione ao carrinho</div>
+          <div class="step-desc">Escolha a quantidade e adicione. Você pode continuar navegando e adicionar mais itens antes de finalizar. O carrinho fica salvo mesmo se você fechar o site.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div>
+          <div class="step-title">Calcule o frete e finalize</div>
+          <div class="step-desc">Digite seu CEP e veja o custo do frete antes de pagar. Sem surpresas. Escolha o endereço de entrega e a forma de pagamento que preferir.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <div>
+          <div class="step-title">Acompanhe seu pedido</div>
+          <div class="step-desc">Depois do pagamento, acesse sua conta e veja o status em tempo real — de "pagamento confirmado" até "entregue". Você é notificado a cada atualização.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Benefícios -->
+  <div class="section">
+    <div class="section-title">Por que comprar na Rodando?</div>
+    <div class="benefits">
+      <div class="benefit">
+        <div class="benefit-icon">🔍</div>
+        <div>
+          <div class="benefit-title">Catálogo completo e organizado</div>
+          <div class="benefit-desc">Peças separadas por categoria e marca, com busca rápida para você achar exatamente o que precisa.</div>
+        </div>
+      </div>
+      <div class="benefit">
+        <div class="benefit-icon">💰</div>
+        <div>
+          <div class="benefit-title">Promoções e descontos</div>
+          <div class="benefit-desc">Produtos em destaque com desconto e ofertas exclusivas atualizadas regularmente.</div>
+        </div>
+      </div>
+      <div class="benefit">
+        <div class="benefit-icon">📦</div>
+        <div>
+          <div class="benefit-title">Frete calculado antes de pagar</div>
+          <div class="benefit-desc">Digite o CEP e veja o valor exato do frete antes de finalizar. Sem custo escondido.</div>
+        </div>
+      </div>
+      <div class="benefit">
+        <div class="benefit-icon">📱</div>
+        <div>
+          <div class="benefit-title">Funciona em qualquer aparelho</div>
+          <div class="benefit-desc">Celular, tablet ou computador — a loja se adapta à tela do seu dispositivo.</div>
+        </div>
+      </div>
+      <div class="benefit">
+        <div class="benefit-icon">⭐</div>
+        <div>
+          <div class="benefit-title">Avaliações de clientes reais</div>
+          <div class="benefit-desc">Veja o que outros compradores acharam do produto antes de tomar sua decisão.</div>
+        </div>
+      </div>
+      <div class="benefit">
+        <div class="benefit-icon">↩️</div>
+        <div>
+          <div class="benefit-title">Devolução facilitada</div>
+          <div class="benefit-desc">Caso precise devolver, o processo é simples e acompanhado direto pela sua conta.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagamentos -->
+  <div class="section">
+    <div class="section-title">Formas de pagamento</div>
+    <div class="payment-list">
+      <div class="payment-item">
+        <div class="payment-icon">📲</div>
+        <div class="payment-name">PIX</div>
+        <div class="payment-desc">Aprovação na hora</div>
+      </div>
+      <div class="payment-item">
+        <div class="payment-icon">💳</div>
+        <div class="payment-name">Cartão de crédito</div>
+        <div class="payment-desc">Parcelamento disponível</div>
+      </div>
+      <div class="payment-item">
+        <div class="payment-icon">🏦</div>
+        <div class="payment-name">Cartão de débito</div>
+        <div class="payment-desc">Pagamento à vista</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Segurança -->
+  <div class="section">
+    <div class="section-title">Sua compra é 100% segura</div>
+    <div class="security-grid">
+      <div class="security-item">
+        <div class="security-icon">🔒</div>
+        Dados pessoais e de pagamento protegidos com criptografia.
+      </div>
+      <div class="security-item">
+        <div class="security-icon">🛡️</div>
+        Pagamentos processados por MercadoPago e Stripe — referências em segurança.
+      </div>
+      <div class="security-item">
+        <div class="security-icon">👤</div>
+        Conta protegida por senha. Você controla seus dados e endereços.
+      </div>
+      <div class="security-item">
+        <div class="security-icon">📋</div>
+        Histórico completo de pedidos sempre disponível na sua conta.
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section">
+    <div class="section-title">Dúvidas frequentes</div>
+    <div class="faq">
+      <div class="faq-item">
+        <div class="faq-q">Preciso criar uma conta para comprar?</div>
+        <div class="faq-a">Não é obrigatório para navegar pelo catálogo, mas para finalizar a compra e acompanhar o pedido você precisará se cadastrar. O cadastro é gratuito e leva menos de 1 minuto.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Como sei se a peça é compatível com a minha moto?</div>
+        <div class="faq-a">Cada produto traz a descrição completa com as informações de compatibilidade. Em caso de dúvida, entre em contato com nosso suporte antes de finalizar o pedido.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Posso cancelar um pedido?</div>
+        <div class="faq-a">Sim. Enquanto o pedido não foi enviado, você pode cancelar direto pela sua conta, na seção "Meus Pedidos".</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">E se a peça chegar com defeito?</div>
+        <div class="faq-a">Você pode abrir uma solicitação de devolução diretamente pela plataforma. Nossa equipe analisará e entrará em contato para resolver o mais rápido possível.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <h2>Comece agora mesmo</h2>
+    <p>
+      Crie sua conta gratuitamente e aproveite<br/>
+      <span class="highlight">as melhores peças para a sua moto, com entrega em todo o Brasil.</span>
+    </p>
+    <div class="url">www.rodando.com.br</div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>Rodando Moto Center &mdash; Peças para motocicletas</span>
+    <span>Abril de 2026</span>
+  </div>
+
+</div>
+</body>
+</html>

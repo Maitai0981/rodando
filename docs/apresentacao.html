@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rodando Moto Center — Relatório Técnico</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .page {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 56px;
+    }
+
+    /* ── Capa ── */
+    .cover {
+      background: linear-gradient(135deg, #0a0a0f 0%, #1a1408 100%);
+      border-radius: 14px;
+      padding: 48px 44px;
+      margin-bottom: 44px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      top: -80px; right: -80px;
+      width: 280px; height: 280px;
+      background: radial-gradient(circle, rgba(212,168,67,0.12) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .cover-inner { position: relative; display: flex; justify-content: space-between; align-items: flex-start; }
+    .cover-left {}
+    .cover .eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #d4a843;
+      margin-bottom: 10px;
+    }
+    .cover h1 {
+      font-size: 30px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+      line-height: 1.15;
+    }
+    .cover .divider {
+      width: 40px; height: 3px;
+      background: #d4a843;
+      border-radius: 2px;
+      margin: 16px 0;
+    }
+    .cover .subtitle { font-size: 13px; color: #999; line-height: 1.6; max-width: 340px; }
+    .cover-right { text-align: right; flex-shrink: 0; }
+    .cover-right .label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .cover-right .value { font-size: 13px; color: #ccc; }
+    .cover-badge {
+      display: inline-block;
+      background: rgba(212,168,67,0.2);
+      border: 1px solid rgba(212,168,67,0.4);
+      color: #d4a843;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-top: 10px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── Section ── */
+    .section { margin-bottom: 34px; }
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #d4a843;
+      margin-bottom: 14px;
+      padding-bottom: 7px;
+      border-bottom: 1px solid #f0ede8;
+    }
+
+    /* ── Intro ── */
+    .intro {
+      font-size: 13.5px;
+      color: #333;
+      line-height: 1.8;
+      background: #fafafa;
+      border-left: 3px solid #d4a843;
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    /* ── Métricas ── */
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .metric {
+      text-align: center;
+      border: 1px solid #ebebeb;
+      border-radius: 10px;
+      padding: 16px 8px;
+    }
+    .metric .value { font-size: 26px; font-weight: 800; color: #d4a843; line-height: 1; }
+    .metric .label { font-size: 10px; color: #777; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ── Grid ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .card {
+      border: 1px solid #ebebeb;
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0a0a0f;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card-title .dot {
+      width: 7px; height: 7px;
+      background: #d4a843;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .card ul { list-style: none; }
+    .card ul li {
+      font-size: 11.5px;
+      color: #444;
+      padding: 3px 0;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .card ul li::before { content: "›"; color: #d4a843; font-weight: 700; flex-shrink: 0; }
+
+    /* ── Stack ── */
+    .stack-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stack-group {}
+    .stack-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #888; margin-bottom: 8px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag {
+      background: #f5f5f5;
+      border: 1px solid #e3e3e3;
+      border-radius: 4px;
+      padding: 3px 9px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #333;
+    }
+    .tag.hi {
+      background: #fff8e6;
+      border-color: #e8c96a;
+      color: #8a6010;
+    }
+
+    /* ── Feature grid ── */
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      color: #333;
+      line-height: 1.5;
+    }
+    .feature-item .ok { color: #16a34a; font-weight: 700; flex-shrink: 0; }
+
+    /* ── Tabela de status ── */
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th {
+      text-align: left;
+      background: #f8f8f8;
+      padding: 9px 12px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #666;
+      border-bottom: 1px solid #e8e8e8;
+    }
+    td { padding: 9px 12px; border-bottom: 1px solid #f2f2f2; color: #333; }
+    tr:last-child td { border-bottom: none; }
+    .ok-text   { color: #15803d; font-weight: 600; }
+    .warn-text { color: #b45309; font-weight: 600; }
+
+    /* ── Próximos passos ── */
+    .next-steps { display: flex; flex-direction: column; gap: 8px; }
+    .next-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid #ebebeb;
+      border-radius: 8px;
+    }
+    .next-priority {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .p-alta  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .p-media { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .p-baixa { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .next-text strong { font-size: 12px; color: #0a0a0f; display: block; margin-bottom: 2px; }
+    .next-text span   { font-size: 11px; color: #666; }
+
+    /* ── Arquitetura ── */
+    .arch {
+      background: #fafafa;
+      border: 1px solid #ebebeb;
+      border-radius: 10px;
+      padding: 20px;
+      font-size: 11.5px;
+    }
+    .arch-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .arch-box {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #333;
+      text-align: center;
+      min-width: 100px;
+    }
+    .arch-box.gold { border-color: #d4a843; background: #fff8e6; color: #7a5c00; }
+    .arch-arrow {
+      color: #bbb;
+      font-size: 14px;
+      padding: 0 8px;
+    }
+    .arch-note { font-size: 11px; color: #888; text-align: center; margin-top: 4px; }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 36px;
+      padding-top: 14px;
+      border-top: 1px solid #ebebeb;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #bbb;
+    }
+
+    @media print {
+      body { font-size: 12px; }
+      .page { padding: 32px 40px; }
+      .metric, .card, .next-item { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Capa -->
+  <div class="cover">
+    <div class="cover-inner">
+      <div class="cover-left">
+        <div class="eyebrow">Relatório técnico</div>
+        <h1>Rodando<br/>Moto Center</h1>
+        <div class="divider"></div>
+        <div class="subtitle">
+          Plataforma de e-commerce especializada<br/>
+          em peças para motocicletas — full-stack,<br/>
+          pronta para produção.
+        </div>
+      </div>
+      <div class="cover-right">
+        <div class="label">Data</div>
+        <div class="value">Abril de 2026</div>
+        <br/>
+        <div class="label">Versão</div>
+        <div class="value">1.0</div>
+        <div class="cover-badge">Em desenvolvimento</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resumo -->
+  <div class="section">
+    <div class="section-title">Resumo executivo</div>
+    <div class="intro">
+      O <strong>Rodando Moto Center</strong> é uma plataforma completa de e-commerce para peças de motocicletas,
+      desenvolvida com React no frontend e Spring Boot no backend. O sistema cobre o ciclo completo de vendas —
+      catálogo, carrinho, checkout, pagamento e gestão de pedidos — além de um painel administrativo robusto
+      para o proprietário. A aplicação está funcional, com testes automatizados passando e arquitetura preparada
+      para deploy em produção.
+    </div>
+  </div>
+
+  <!-- Métricas -->
+  <div class="section">
+    <div class="section-title">Números do projeto</div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="value">23</div>
+        <div class="label">Páginas</div>
+      </div>
+      <div class="metric">
+        <div class="value">50+</div>
+        <div class="label">Endpoints</div>
+      </div>
+      <div class="metric">
+        <div class="value">32</div>
+        <div class="label">Testes</div>
+      </div>
+      <div class="metric">
+        <div class="value">9</div>
+        <div class="label">Migrações DB</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Arquitetura -->
+  <div class="section">
+    <div class="section-title">Arquitetura do sistema</div>
+    <div class="arch">
+      <div class="arch-row">
+        <div class="arch-box">Navegador / Celular</div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box gold">React + TypeScript<br/><small style="font-weight:400;color:#a07a1a">Frontend (Vite)</small></div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box gold">Spring Boot<br/><small style="font-weight:400;color:#a07a1a">API REST (Java 21)</small></div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box">PostgreSQL<br/><small style="font-weight:400;color:#666">Banco de dados</small></div>
+      </div>
+      <div class="arch-note">
+        Pagamentos via MercadoPago e Stripe &nbsp;·&nbsp; Cache com Caffeine &nbsp;·&nbsp; Migrations com Flyway
+      </div>
+    </div>
+  </div>
+
+  <!-- Funcionalidades -->
+  <div class="section">
+    <div class="section-title">Funcionalidades implementadas</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Loja — visão do cliente</div>
+        <ul>
+          <li>Catálogo com filtros, busca e paginação</li>
+          <li>Página de produto com avaliações</li>
+          <li>Carrinho persistente (logado e visitante)</li>
+          <li>Checkout com cotação de frete por CEP</li>
+          <li>Pagamento via PIX e cartão</li>
+          <li>Acompanhamento de pedidos em tempo real</li>
+          <li>Cadastro, login e recuperação de senha</li>
+          <li>Gerenciamento de endereços</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Painel administrativo</div>
+        <ul>
+          <li>Dashboard com métricas de vendas</li>
+          <li>Cadastro, edição e upload de produtos</li>
+          <li>Gestão de pedidos e atualização de status</li>
+          <li>Criação de ofertas e promoções de frete</li>
+          <li>Análise de vendas por período</li>
+          <li>Gestão de devoluções e reclamações</li>
+          <li>Gerenciamento de funcionários</li>
+          <li>Log de auditoria de ações</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stack -->
+  <div class="section">
+    <div class="section-title">Stack tecnológica</div>
+    <div class="stack-grid">
+      <div class="stack-group">
+        <div class="stack-label">Frontend</div>
+        <div class="tags">
+          <span class="tag hi">React 18</span>
+          <span class="tag hi">TypeScript</span>
+          <span class="tag">Vite</span>
+          <span class="tag">Tailwind CSS</span>
+          <span class="tag">Framer Motion</span>
+          <span class="tag">TanStack Query v5</span>
+          <span class="tag">React Router v6</span>
+        </div>
+      </div>
+      <div class="stack-group">
+        <div class="stack-label">Backend</div>
+        <div class="tags">
+          <span class="tag hi">Spring Boot 3.5</span>
+          <span class="tag hi">Java 21</span>
+          <span class="tag">PostgreSQL</span>
+          <span class="tag">Flyway</span>
+          <span class="tag">Caffeine Cache</span>
+          <span class="tag">MercadoPago</span>
+          <span class="tag">Stripe</span>
+        </div>
+      </div>
+      <div class="stack-group" style="margin-top:10px">
+        <div class="stack-label">Testes</div>
+        <div class="tags">
+          <span class="tag">Vitest</span>
+          <span class="tag">Testing Library</span>
+          <span class="tag">axe-core (a11y)</span>
+          <span class="tag">Playwright (E2E)</span>
+          <span class="tag">JUnit 5</span>
+        </div>
+      </div>
+      <div class="stack-group" style="margin-top:10px">
+        <div class="stack-label">Qualidade</div>
+        <div class="tags">
+          <span class="tag">ESLint</span>
+          <span class="tag">Prettier</span>
+          <span class="tag">TypeScript estrito</span>
+          <span class="tag">Maven</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Segurança e qualidade -->
+  <div class="section">
+    <div class="section-title">Segurança e qualidade de código</div>
+    <div class="feature-grid">
+      <div class="feature-item"><span class="ok">✓</span>Type-safety 100% — zero uso de <code>any</code> no frontend</div>
+      <div class="feature-item"><span class="ok">✓</span>Autenticação com cookies HttpOnly e sessões com expiração</div>
+      <div class="feature-item"><span class="ok">✓</span>Senhas com hash SCrypt e comparação em tempo constante</div>
+      <div class="feature-item"><span class="ok">✓</span>Rate limiting em autenticação, checkout e webhooks</div>
+      <div class="feature-item"><span class="ok">✓</span>Validação de MIME e tamanho em uploads de imagem</div>
+      <div class="feature-item"><span class="ok">✓</span>Webhooks de pagamento com validação de assinatura</div>
+      <div class="feature-item"><span class="ok">✓</span>Cache público com Caffeine para endpoints de catálogo</div>
+      <div class="feature-item"><span class="ok">✓</span>Limpeza automática de sessões e tokens expirados</div>
+      <div class="feature-item"><span class="ok">✓</span>Lazy loading de rotas — carregamento otimizado</div>
+      <div class="feature-item"><span class="ok">✓</span>Testes de acessibilidade com axe-core integrados</div>
+    </div>
+  </div>
+
+  <!-- Status dos componentes -->
+  <div class="section">
+    <div class="section-title">Status dos componentes</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Componente</th>
+          <th>Status</th>
+          <th>Observação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Catálogo e busca</td>
+          <td class="ok-text">✓ Completo</td>
+          <td>Filtros, paginação e busca em tempo real</td>
+        </tr>
+        <tr>
+          <td>Carrinho e checkout</td>
+          <td class="ok-text">✓ Completo</td>
+          <td>Persistente para visitante e usuário logado</td>
+        </tr>
+        <tr>
+          <td>Pagamentos</td>
+          <td class="ok-text">✓ Completo</td>
+          <td>MercadoPago (PIX + cartão) e Stripe integrados</td>
+        </tr>
+        <tr>
+          <td>Autenticação e conta</td>
+          <td class="ok-text">✓ Completo</td>
+          <td>Login, cadastro, recuperação de senha, endereços</td>
+        </tr>
+        <tr>
+          <td>Painel administrativo</td>
+          <td class="ok-text">✓ Completo</td>
+          <td>Produtos, pedidos, ofertas, staff, auditoria</td>
+        </tr>
+        <tr>
+          <td>Notificações por e-mail</td>
+          <td class="ok-text">✓ Completo</td>
+          <td>SMTP configurável via variáveis de ambiente</td>
+        </tr>
+        <tr>
+          <td>Testes automatizados</td>
+          <td class="warn-text">⚠ Em expansão</td>
+          <td>32 testes passando — cobertura de segurança planejada</td>
+        </tr>
+        <tr>
+          <td>Deploy em produção</td>
+          <td class="warn-text">⚠ Pendente</td>
+          <td>Infraestrutura de produção a ser configurada</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Próximos passos -->
+  <div class="section">
+    <div class="section-title">Próximos passos</div>
+    <div class="next-steps">
+      <div class="next-item">
+        <span class="next-priority p-alta">Alta</span>
+        <div class="next-text">
+          <strong>Configurar ambiente de produção</strong>
+          <span>Provisionar servidor, banco de dados em produção, variáveis de ambiente e domínio.</span>
+        </div>
+      </div>
+      <div class="next-item">
+        <span class="next-priority p-alta">Alta</span>
+        <div class="next-text">
+          <strong>Expandir cobertura de testes</strong>
+          <span>Adicionar testes de segurança (injeção SQL, expiração de tokens) e testes E2E de checkout completo.</span>
+        </div>
+      </div>
+      <div class="next-item">
+        <span class="next-priority p-media">Média</span>
+        <div class="next-text">
+          <strong>Logging estruturado em produção</strong>
+          <span>Implementar logs JSON com SLF4J para monitoramento de eventos críticos (login, pagamento, erros).</span>
+        </div>
+      </div>
+      <div class="next-item">
+        <span class="next-priority p-baixa">Baixa</span>
+        <div class="next-text">
+          <strong>Expandir rate limiting</strong>
+          <span>Aplicar limitação de requisições também em endpoints de catálogo público.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>Rodando Moto Center &mdash; Documento interno &mdash; Relatório Técnico v1.0</span>
+    <span>Abril de 2026</span>
+  </div>
+
+</div>
+</body>
+</html>
